@@ -259,7 +259,7 @@ async function initMsal() {
     auth: {
       clientId: CONFIG.clientId,
       authority: `https://login.microsoftonline.com/${CONFIG.tenantId}`,
-      redirectUri: window.location.href.split("?")[0]
+      redirectUri: "https://jochidemi.github.io/adblick-logistica/"
     },
     cache: { cacheLocation: "sessionStorage" }
   });
