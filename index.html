@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ADBlick Granos - Logistica de Camiones</title>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', sans-serif; background: #fafafa; min-height: 100vh; }
@@ -503,7 +503,11 @@ function showToast(msg, type) {
   setTimeout(function() { t.className = "toast"; }, 3500);
 }
 
-window.addEventListener("DOMContentLoaded", function() {
+window.addEventListener("load", function() {
+  if (typeof msal === "undefined") {
+    document.getElementById("loadingScreen").innerHTML = "<p style='color:red;padding:20px;'>Error: No se pudo cargar la libreria de Microsoft. Verifica tu conexion.</p>";
+    return;
+  }
   initMsal();
 });
 </script>
