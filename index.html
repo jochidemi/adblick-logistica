@@ -525,10 +525,11 @@ async function cargarMisPedidos() {
   container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
   try {
     var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId +
-      "/items?$expand=fields&$top=999&$filter=fields/Usuario eq '" + encodeURIComponent(currentUser) + "'";
+      "/items?$expand=fields&$top=999";
     var r = await fetch(url, { headers: { "Authorization": "Bearer " + graphToken } });
     var data = await r.json();
     var items = (data.value || []).map(function(i) { return { id: i.id, fields: i.fields }; });
+    items = items.filter(function(item) { return item.fields.Usuario === currentUser; });
     items.sort(function(a, b) { return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
     if (items.length === 0) {
       container.innerHTML = "<div class=\"empty-state\">No tenes pedidos cargados aun.</div>"; return;
