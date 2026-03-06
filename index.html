@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ADBlick Granos - Logistica de Camiones</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ADBlick Granos - Logistica</title>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -14,36 +14,49 @@ body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100
   --dark: #1A1A1A; --gray: #666; --border: #e0e0e0; --white: #fff;
 }
 .header {
-  background: var(--yellow); padding: 0 28px; height: 68px;
+  background: var(--yellow); padding: 0 20px; height: 60px;
   display: flex; align-items: center; justify-content: space-between;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
 }
-.header-title { font-size: 18px; font-weight: 700; color: var(--dark); }
-.header-user { font-size: 13px; font-weight: 600; color: var(--dark); }
+.header-title { font-size: 16px; font-weight: 700; color: var(--dark); }
+.header-user { font-size: 12px; font-weight: 600; color: var(--dark); }
 .loading-screen {
   display: flex; align-items: center; justify-content: center;
-  min-height: calc(100vh - 68px); background: #fffbe8;
-  flex-direction: column; gap: 16px;
+  min-height: calc(100vh - 60px); background: #fffbe8; flex-direction: column; gap: 16px;
 }
 .spinner {
   width: 36px; height: 36px; border: 3px solid #e0e0e0;
-  border-top-color: var(--yellow); border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  border-top-color: var(--yellow); border-radius: 50%; animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .app { display: none; }
-.main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+/* TABS */
+.tabs {
+  display: flex; background: var(--white);
+  border-bottom: 2px solid var(--border); position: sticky; top: 60px; z-index: 99;
+}
+.tab {
+  flex: 1; padding: 14px 8px; text-align: center; font-size: 14px; font-weight: 600;
+  color: var(--gray); cursor: pointer; border-bottom: 3px solid transparent;
+  transition: all 0.2s; margin-bottom: -2px;
+}
+.tab.active { color: var(--dark); border-bottom-color: var(--yellow); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.main { padding: 16px; max-width: 1400px; margin: 0 auto; }
 .card {
   background: var(--white); border: 1.5px solid var(--border);
-  border-radius: 10px; padding: 20px; margin-bottom: 20px;
+  border-radius: 10px; padding: 16px; margin-bottom: 16px;
 }
-.card-title { font-size: 15px; font-weight: 700; color: var(--dark); margin-bottom: 16px; }
-.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.card-title { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 14px; }
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field label { font-size: 11px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.05em; }
 .field-value {
   font-size: 13px; padding: 7px 10px; border: 1.5px solid var(--border);
-  border-radius: 6px; background: #f9f9f9; color: var(--dark); min-width: 160px;
+  border-radius: 6px; background: #f9f9f9; color: var(--dark); min-width: 140px;
 }
 select, input[type=number], textarea {
   font-family: inherit; border: 1.5px solid var(--border); border-radius: 6px;
@@ -53,20 +66,23 @@ select:focus, input[type=number]:focus, textarea:focus { border-color: var(--yel
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 input[type=number] { -moz-appearance: textfield; }
-.dias-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 16px; }
+
+/* DIAS GRID - scrollable on mobile */
+.dias-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 14px; }
+.dias-grid { display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 8px; min-width: 700px; }
 .dia-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .dia-col .fecha {
   font-size: 11px; font-weight: 700; background: var(--dark); color: var(--white);
-  padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+  padding: 3px 8px; border-radius: 4px; white-space: nowrap; text-align: center; width: 100%;
 }
-.dia-col input[type=number] { width: 70px; text-align: center; }
+.dia-col input[type=number] { width: 80px; text-align: center; }
 .dia-col .chk { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--gray); cursor: pointer; }
 .dia-col .chk input { width: 14px; height: 14px; accent-color: var(--yellow-dark); cursor: pointer; }
+
 .btn {
-  border: none; border-radius: 7px; padding: 9px 18px;
-  font-size: 13px; font-weight: 700; cursor: pointer;
-  font-family: inherit; transition: all 0.15s;
-  display: inline-flex; align-items: center; gap: 6px;
+  border: none; border-radius: 7px; padding: 9px 16px;
+  font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
 }
 .btn-primary { background: var(--yellow); color: var(--dark); }
 .btn-primary:hover { background: var(--yellow-dark); }
@@ -78,40 +94,90 @@ input[type=number] { -moz-appearance: textfield; }
 .btn-green:hover { background: #c8e6c9; }
 .btn-dark { background: var(--dark); color: var(--white); }
 .btn-dark:hover { background: #333; }
+.btn-edit { background: #e8f0fe; color: #1a73e8; }
+.btn-edit:hover { background: #d2e3fc; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
+.actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+
+/* RESUMEN TABLE */
+.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .pedidos-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .pedidos-table th {
   background: var(--dark); color: var(--white); padding: 8px 10px; text-align: center;
   font-size: 11px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap;
 }
 .pedidos-table th:first-child, .pedidos-table th:nth-child(2) { text-align: left; }
-.pedidos-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; }
+.pedidos-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; vertical-align: middle; }
 .pedidos-table td:first-child, .pedidos-table td:nth-child(2) { text-align: left; font-weight: 600; }
 .pedidos-table tr:hover td { background: #fffbe8; }
 .badge {
   display: inline-block; background: var(--yellow-light); color: #7a6000;
   border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700;
 }
+
+/* MIS PEDIDOS */
+.pedido-card {
+  background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 16px; margin-bottom: 12px; transition: box-shadow 0.15s;
+}
+.pedido-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.pedido-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.pedido-meta { font-size: 11px; color: var(--gray); margin-top: 4px; }
+.pedido-campo { font-size: 15px; font-weight: 700; color: var(--dark); }
+.pedido-cultivo { display: inline-block; background: var(--yellow-light); color: #7a6000; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin-top: 4px; }
+.pedido-dias { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.dia-chip {
+  background: #f5f5f5; border-radius: 8px; padding: 6px 10px; font-size: 11px; text-align: center;
+  min-width: 70px; border: 1.5px solid var(--border);
+}
+.dia-chip.tiene-camiones { background: var(--yellow-light); border-color: var(--yellow); }
+.dia-chip .dc-fecha { font-weight: 700; color: var(--dark); font-size: 10px; }
+.dia-chip .dc-cam { font-size: 14px; font-weight: 700; color: var(--dark); }
+.dia-chip .dc-emb { font-size: 9px; color: #c8a000; font-weight: 700; margin-top: 2px; }
+.pedido-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--gray); font-size: 14px; }
+.loading-pedidos { text-align: center; padding: 30px; color: var(--gray); }
+
+/* MODAL DE EDICION */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 200; align-items: flex-start; justify-content: center; padding: 20px; overflow-y: auto;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--white); border-radius: 12px; width: 100%; max-width: 900px;
+  padding: 24px; margin: auto; position: relative;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-title { font-size: 16px; font-weight: 700; color: var(--dark); }
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--gray); padding: 4px 8px; }
+.modal-close:hover { color: var(--dark); }
+
 .toast {
-  position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px;
-  font-size: 13px; font-weight: 700; color: var(--white);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 1000; display: none;
+  position: fixed; bottom: 20px; right: 20px; left: 20px; max-width: 400px; margin: 0 auto;
+  padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--white);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 300; display: none; text-align: center;
 }
 .toast.show { display: block; }
 .toast.success { background: #2d7a45; }
 .toast.error { background: #c0392b; }
 textarea { width: 100%; min-height: 60px; resize: vertical; }
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.section-header h3 { font-size: 15px; font-weight: 700; color: var(--dark); }
-.descarga-card { background: var(--yellow-light); border: 1.5px solid #e8c800; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-.descarga-card .card-title { color: #7a6000; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+.section-header h3 { font-size: 14px; font-weight: 700; color: var(--dark); }
+.descarga-card { background: var(--yellow-light); border: 1.5px solid #e8c800; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+
+@media (max-width: 600px) {
+  .header-title { font-size: 13px; }
+  .main { padding: 10px; }
+  .form-row { flex-direction: column; }
+  .field select, .field-value { min-width: unset; width: 100%; }
+}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-title">ADBlick Granos - Planificacion Logistica</div>
+  <div class="header-title">ADBlick Granos - Logistica</div>
   <div class="header-user" id="headerUser"></div>
 </div>
 
@@ -121,67 +187,112 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 </div>
 
 <div class="app" id="appContent">
-  <div class="main">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('nuevo')">Nuevo Pedido</div>
+    <div class="tab" onclick="switchTab('mispedidos')">Mis Pedidos</div>
+    <div class="tab" onclick="switchTab('descargas')">Descargas</div>
+  </div>
 
-    <div class="card">
-      <div class="card-title">Cargar fila de pedido</div>
-      <div class="row">
-        <div class="field">
-          <label>Campo</label>
-          <select id="selCampo" onchange="onCampoChange()" style="min-width:300px;">
-            <option value="">-- Seleccionar campo --</option>
-          </select>
+  <!-- TAB: NUEVO PEDIDO -->
+  <div class="tab-content active" id="tab-nuevo">
+    <div class="main">
+      <div class="card">
+        <div class="card-title">Cargar fila de pedido</div>
+        <div class="form-row">
+          <div class="field">
+            <label>Campo</label>
+            <select id="selCampo" onchange="onCampoChange()" style="min-width:280px;">
+              <option value="">-- Seleccionar campo --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Zona</label>
+            <div class="field-value" id="lblZona">-</div>
+          </div>
+          <div class="field">
+            <label>Cultivo</label>
+            <select id="selCultivo" disabled onchange="onCultivoChange()" style="min-width:180px;">
+              <option value="">-- Cultivo --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Comentario Logistica</label>
+            <div class="field-value" id="lblComentarioLog" style="max-width:280px;word-wrap:break-word;">-</div>
+          </div>
         </div>
-        <div class="field">
-          <label>Zona</label>
-          <div class="field-value" id="lblZona">-</div>
+
+        <div class="dias-wrapper">
+          <div class="dias-grid" id="diasGrid"></div>
         </div>
-        <div class="field">
-          <label>Cultivo</label>
-          <select id="selCultivo" disabled onchange="onCultivoChange()" style="min-width:200px;">
-            <option value="">-- Cultivo --</option>
-          </select>
+
+        <div class="field" style="margin-top:14px;">
+          <label>Comentarios del pedido</label>
+          <textarea id="txtComentarios" placeholder="Comentarios opcionales..."></textarea>
         </div>
-        <div class="field">
-          <label>Comentario Logistica</label>
-          <div class="field-value" id="lblComentarioLog" style="max-width:300px;word-wrap:break-word;">-</div>
+
+        <div class="actions">
+          <button class="btn btn-secondary" onclick="agregarFila()">+ Agregar al pedido</button>
+          <button class="btn btn-primary" id="btnGuardar" onclick="guardarPedido()">Guardar Pedido</button>
         </div>
       </div>
 
-      <div class="dias-grid" id="diasGrid"></div>
-
-      <div class="field" style="margin-top:16px;">
-        <label>Comentarios del pedido</label>
-        <textarea id="txtComentarios" placeholder="Comentarios opcionales..."></textarea>
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-secondary" onclick="agregarFila()">+ Agregar al pedido</button>
-        <button class="btn btn-primary" id="btnGuardar" onclick="guardarPedido()">Guardar Pedido</button>
+      <div class="card" id="tablaCard" style="display:none;">
+        <div class="section-header">
+          <h3>Filas del pedido actual &nbsp;<span id="contadorFilas" class="badge">0</span></h3>
+          <button class="btn btn-danger" onclick="limpiarFilas()" style="font-size:12px;padding:6px 12px;">Limpiar todo</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="pedidos-table">
+            <thead id="tablaHead"></thead>
+            <tbody id="tablaBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div class="card" id="tablaCard" style="display:none;">
-      <div class="section-header">
-        <h3>Filas del pedido actual &nbsp;<span id="contadorFilas" class="badge">0</span></h3>
-        <button class="btn btn-danger" onclick="limpiarFilas()">Limpiar todo</button>
+  <!-- TAB: MIS PEDIDOS -->
+  <div class="tab-content" id="tab-mispedidos">
+    <div class="main">
+      <div class="section-header" style="margin-top:8px;">
+        <h3>Mis pedidos cargados</h3>
+        <button class="btn btn-secondary" onclick="cargarMisPedidos()" style="font-size:12px;padding:6px 12px;">Actualizar</button>
       </div>
-      <div style="overflow-x:auto;">
-        <table class="pedidos-table">
-          <thead id="tablaHead"></thead>
-          <tbody id="tablaBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="descarga-card">
-      <div class="card-title">Descargas</div>
-      <div class="actions" style="margin-top:0;">
-        <button class="btn btn-green" onclick="descargarProyeccion()">Proyeccion Semanal (Excel)</button>
-        <button class="btn btn-dark" onclick="descargarHistorico()">Historico (Excel)</button>
+      <div id="misPedidosContainer">
+        <div class="loading-pedidos">Cargando pedidos...</div>
       </div>
     </div>
+  </div>
 
+  <!-- TAB: DESCARGAS -->
+  <div class="tab-content" id="tab-descargas">
+    <div class="main">
+      <div class="descarga-card">
+        <div class="card-title">Proyeccion Semanal</div>
+        <p style="font-size:13px;color:#7a6000;margin-bottom:12px;">Una fila por campo/cultivo con los proximos 7 dias como columnas. Los camiones del mismo campo/cultivo/dia se suman.</p>
+        <button class="btn btn-green" onclick="descargarProyeccion()">Descargar Excel</button>
+      </div>
+      <div class="descarga-card">
+        <div class="card-title">Historico</div>
+        <p style="font-size:13px;color:#7a6000;margin-bottom:12px;">Todos los pedidos en formato largo: una fila por dia/camion con fecha, campo, cultivo, zona y comentarios.</p>
+        <button class="btn btn-dark" onclick="descargarHistorico()">Descargar Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDICION -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Editar pedido</div>
+      <button class="modal-close" onclick="cerrarModal()">&#x2715;</button>
+    </div>
+    <div id="modalContent"></div>
+    <div class="actions" style="justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarEdicion" onclick="guardarEdicion()">Guardar cambios</button>
+    </div>
   </div>
 </div>
 
@@ -205,78 +316,52 @@ var currentAccount = null;
 var graphToken = null;
 var filasPedido = [];
 var currentUser = "";
+var editingItemId = null;
 
+// ── TABS ──
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(function(t, i) {
+    t.classList.toggle("active", ["nuevo","mispedidos","descargas"][i] === name);
+  });
+  document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.remove("active"); });
+  document.getElementById("tab-" + name).classList.add("active");
+  if (name === "mispedidos") cargarMisPedidos();
+}
+
+// ── FECHAS ──
 function getDates() {
   var dates = [];
   for (var i = 0; i < 7; i++) {
-    var d = new Date();
-    d.setHours(0,0,0,0);
-    d.setDate(d.getDate() + i);
-    dates.push(d);
+    var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + i); dates.push(d);
   }
   return dates;
 }
+function fmtDate(d) { return d.toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "2-digit" }); }
+function fmtDateShort(d) { return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" }); }
+function fmtDateKey(d) { return d.toISOString().split("T")[0]; }
 
-function fmtDate(d) {
-  return d.toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "2-digit" });
-}
-
-function fmtDateShort(d) {
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
-}
-
-function fmtDateKey(d) {
-  return d.toISOString().split("T")[0];
-}
-
-function parseFechaPedido(str) {
-  if (!str) return null;
-  var parts = str.split("/");
-  if (parts.length >= 3) {
-    return new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
-  }
-  return new Date(str);
-}
-
+// ── MSAL ──
 async function initMsal() {
   msalInstance = new msal.PublicClientApplication({
-    auth: {
-      clientId: CONFIG.clientId,
-      authority: "https://login.microsoftonline.com/" + CONFIG.tenantId,
-      redirectUri: CONFIG.redirectUri
-    },
+    auth: { clientId: CONFIG.clientId, authority: "https://login.microsoftonline.com/" + CONFIG.tenantId, redirectUri: CONFIG.redirectUri },
     cache: { cacheLocation: "sessionStorage" }
   });
   await msalInstance.initialize();
   var response = await msalInstance.handleRedirectPromise();
-  if (response) {
-    currentAccount = response.account;
-    graphToken = response.accessToken;
-    showApp(); return;
-  }
+  if (response) { currentAccount = response.account; graphToken = response.accessToken; showApp(); return; }
   var accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) {
-    currentAccount = accounts[0];
-    await acquireTokenSilent();
-    showApp(); return;
-  }
+  if (accounts.length > 0) { currentAccount = accounts[0]; await acquireTokenSilent(); showApp(); return; }
   try {
     await msalInstance.ssoSilent({ scopes: ["Sites.ReadWrite.All", "User.Read"] });
     var accs = msalInstance.getAllAccounts();
-    if (accs.length > 0) {
-      currentAccount = accs[0];
-      await acquireTokenSilent();
-      showApp(); return;
-    }
+    if (accs.length > 0) { currentAccount = accs[0]; await acquireTokenSilent(); showApp(); return; }
   } catch(e) {}
   await msalInstance.loginRedirect({ scopes: ["Sites.ReadWrite.All", "User.Read"] });
 }
 
 async function acquireTokenSilent() {
   try {
-    var result = await msalInstance.acquireTokenSilent({
-      account: currentAccount, scopes: ["Sites.ReadWrite.All", "User.Read"]
-    });
+    var result = await msalInstance.acquireTokenSilent({ account: currentAccount, scopes: ["Sites.ReadWrite.All", "User.Read"] });
     graphToken = result.accessToken;
   } catch(e) {
     await msalInstance.acquireTokenRedirect({ account: currentAccount, scopes: ["Sites.ReadWrite.All", "User.Read"] });
@@ -291,56 +376,52 @@ function showApp() {
   initForm();
 }
 
+// ── FORM ──
 function initForm() {
   var sel = document.getElementById("selCampo");
   var campos = Object.keys(CAMPOS_ZONA).sort();
   for (var i = 0; i < campos.length; i++) {
     var opt = document.createElement("option");
-    opt.value = campos[i]; opt.textContent = campos[i];
-    sel.appendChild(opt);
+    opt.value = campos[i]; opt.textContent = campos[i]; sel.appendChild(opt);
   }
-  buildDiasGrid();
+  buildDiasGrid("diasGrid");
 }
 
-function buildDiasGrid() {
+function buildDiasGrid(containerId, values) {
   var dates = getDates();
   var html = "";
   for (var i = 0; i < dates.length; i++) {
+    var cam = values ? (values["Camiones" + i] || 0) : 0;
+    var emb = values ? (values["Embolsar" + i] || false) : false;
     html += "<div class=\"dia-col\">";
     html += "<span class=\"fecha\">" + fmtDate(dates[i]) + "</span>";
-    html += "<input type=\"number\" id=\"cam" + i + "\" min=\"0\" value=\"0\" style=\"width:70px;text-align:center;\">";
-    html += "<label class=\"chk\"><input type=\"checkbox\" id=\"emb" + i + "\"> Embolsar</label>";
+    html += "<input type=\"number\" id=\"" + containerId + "_cam" + i + "\" min=\"0\" value=\"" + cam + "\" style=\"width:80px;text-align:center;\">";
+    html += "<label class=\"chk\"><input type=\"checkbox\" id=\"" + containerId + "_emb" + i + "\"" + (emb ? " checked" : "") + "> Embolsar</label>";
     html += "</div>";
   }
-  document.getElementById("diasGrid").innerHTML = html;
+  document.getElementById(containerId).innerHTML = html;
 }
 
 function onCampoChange() {
   var campo = document.getElementById("selCampo").value;
-  var zona = campo && CAMPOS_ZONA[campo] ? CAMPOS_ZONA[campo] : "-";
-  document.getElementById("lblZona").textContent = zona;
+  document.getElementById("lblZona").textContent = (campo && CAMPOS_ZONA[campo]) ? CAMPOS_ZONA[campo] : "-";
   var sel = document.getElementById("selCultivo");
   sel.innerHTML = "<option value=\"\">-- Cultivo --</option>";
   document.getElementById("lblComentarioLog").textContent = "-";
   if (campo && CAMPO_CULTIVOS[campo]) {
-    var cultivos = CAMPO_CULTIVOS[campo];
-    for (var i = 0; i < cultivos.length; i++) {
-      var opt = document.createElement("option");
-      opt.value = cultivos[i]; opt.textContent = cultivos[i];
-      sel.appendChild(opt);
-    }
+    CAMPO_CULTIVOS[campo].forEach(function(c) {
+      var opt = document.createElement("option"); opt.value = c; opt.textContent = c; sel.appendChild(opt);
+    });
     sel.disabled = false;
-  } else {
-    sel.disabled = true;
-  }
+  } else { sel.disabled = true; }
 }
 
 function onCultivoChange() {
   var campo = document.getElementById("selCampo").value;
   var cultivo = document.getElementById("selCultivo").value;
   var key = campo + "|||" + cultivo;
-  var comentario = (CULTIVO_COMENTARIOS[key] && CULTIVO_COMENTARIOS[key] !== "None") ? CULTIVO_COMENTARIOS[key] : "-";
-  document.getElementById("lblComentarioLog").textContent = comentario;
+  var c = (CULTIVO_COMENTARIOS[key] && CULTIVO_COMENTARIOS[key] !== "None") ? CULTIVO_COMENTARIOS[key] : "-";
+  document.getElementById("lblComentarioLog").textContent = c;
 }
 
 function agregarFila() {
@@ -354,10 +435,9 @@ function agregarFila() {
   var fila = { campo: campo, cultivo: cultivo, zona: zona, comentarioLog: comentarioLog, dias: [] };
   for (var i = 0; i < dates.length; i++) {
     fila.dias.push({
-      fecha: fmtDateShort(dates[i]),
-      fechaKey: fmtDateKey(dates[i]),
-      camiones: parseInt(document.getElementById("cam" + i).value) || 0,
-      embolsar: document.getElementById("emb" + i).checked
+      fecha: fmtDateShort(dates[i]), fechaKey: fmtDateKey(dates[i]),
+      camiones: parseInt(document.getElementById("diasGrid_cam" + i).value) || 0,
+      embolsar: document.getElementById("diasGrid_emb" + i).checked
     });
   }
   filasPedido.push(fila);
@@ -372,18 +452,11 @@ function resetForm() {
   document.getElementById("selCultivo").innerHTML = "<option value=\"\">-- Cultivo --</option>";
   document.getElementById("selCultivo").disabled = true;
   document.getElementById("lblComentarioLog").textContent = "-";
-  for (var i = 0; i < 7; i++) {
-    document.getElementById("cam" + i).value = 0;
-    document.getElementById("emb" + i).checked = false;
-  }
+  buildDiasGrid("diasGrid");
 }
 
-function eliminarFila(idx) { filasPedido.splice(idx, 1); renderTabla(); }
-
-function limpiarFilas() {
-  if (!confirm("Eliminar todas las filas?")) return;
-  filasPedido = []; renderTabla();
-}
+function eliminarFilaResumen(idx) { filasPedido.splice(idx, 1); renderTabla(); }
+function limpiarFilas() { if (!confirm("Eliminar todas las filas?")) return; filasPedido = []; renderTabla(); }
 
 function renderTabla() {
   var card = document.getElementById("tablaCard");
@@ -391,26 +464,26 @@ function renderTabla() {
   if (filasPedido.length === 0) { card.style.display = "none"; return; }
   card.style.display = "block";
   var dates = getDates();
-  var theadHtml = "<tr><th style=\"text-align:left;\">Campo</th><th style=\"text-align:left;\">Cultivo</th><th>Zona</th>";
-  for (var i = 0; i < dates.length; i++) theadHtml += "<th>" + fmtDate(dates[i]) + "</th>";
-  theadHtml += "<th></th></tr>";
-  document.getElementById("tablaHead").innerHTML = theadHtml;
-  var tbodyHtml = "";
+  var th = "<tr><th style=\"text-align:left;\">Campo</th><th style=\"text-align:left;\">Cultivo</th><th>Zona</th>";
+  for (var i = 0; i < dates.length; i++) th += "<th>" + fmtDate(dates[i]) + "</th>";
+  th += "<th></th></tr>";
+  document.getElementById("tablaHead").innerHTML = th;
+  var tb = "";
   for (var r = 0; r < filasPedido.length; r++) {
     var fila = filasPedido[r];
-    tbodyHtml += "<tr><td>" + fila.campo + "</td><td><span class=\"badge\">" + fila.cultivo + "</span></td><td>" + (fila.zona||"-") + "</td>";
+    tb += "<tr><td>" + fila.campo + "</td><td><span class=\"badge\">" + fila.cultivo + "</span></td><td>" + (fila.zona||"-") + "</td>";
     for (var d = 0; d < fila.dias.length; d++) {
       var dia = fila.dias[d];
-      tbodyHtml += "<td>";
-      tbodyHtml += dia.camiones > 0 ? "<strong>" + dia.camiones + "</strong>" : "<span style=\"color:#ccc;\">-</span>";
-      if (dia.embolsar) tbodyHtml += "<br><span style=\"font-size:10px;color:#c8a000;font-weight:700;\">EMB</span>";
-      tbodyHtml += "</td>";
+      tb += "<td>" + (dia.camiones > 0 ? "<strong>" + dia.camiones + "</strong>" : "<span style=\"color:#ccc;\">-</span>");
+      if (dia.embolsar) tb += "<br><span style=\"font-size:10px;color:#c8a000;font-weight:700;\">EMB</span>";
+      tb += "</td>";
     }
-    tbodyHtml += "<td><button class=\"btn btn-danger\" style=\"padding:4px 10px;font-size:11px;\" onclick=\"eliminarFila(" + r + ")\">x</button></td></tr>";
+    tb += "<td><button class=\"btn btn-danger\" style=\"padding:4px 8px;font-size:11px;\" onclick=\"eliminarFilaResumen(" + r + ")\">x</button></td></tr>";
   }
-  document.getElementById("tablaBody").innerHTML = tbodyHtml;
+  document.getElementById("tablaBody").innerHTML = tb;
 }
 
+// ── GUARDAR ──
 async function guardarPedido() {
   if (filasPedido.length === 0) { showToast("Agrega al menos una fila", "error"); return; }
   var btn = document.getElementById("btnGuardar");
@@ -425,17 +498,13 @@ async function guardarPedido() {
         Title: pedidoId, Usuario: currentUser, FechaPedido: fechaPedido,
         Campo: fila.campo, Cultivo: fila.cultivo, Zona: fila.zona,
         Comentarios: comentarios, ComentarioLogistica: fila.comentarioLog,
-        Camiones0: fila.dias[0].camiones, Embolsar0: fila.dias[0].embolsar,
-        Camiones1: fila.dias[1].camiones, Embolsar1: fila.dias[1].embolsar,
-        Camiones2: fila.dias[2].camiones, Embolsar2: fila.dias[2].embolsar,
-        Camiones3: fila.dias[3].camiones, Embolsar3: fila.dias[3].embolsar,
-        Camiones4: fila.dias[4].camiones, Embolsar4: fila.dias[4].embolsar,
-        Camiones5: fila.dias[5].camiones, Embolsar5: fila.dias[5].embolsar,
-        Camiones6: fila.dias[6].camiones, Embolsar6: fila.dias[6].embolsar,
-        Fecha0: fila.dias[0].fechaKey, Fecha1: fila.dias[1].fechaKey,
-        Fecha2: fila.dias[2].fechaKey, Fecha3: fila.dias[3].fechaKey,
-        Fecha4: fila.dias[4].fechaKey, Fecha5: fila.dias[5].fechaKey,
-        Fecha6: fila.dias[6].fechaKey
+        Camiones0: fila.dias[0].camiones, Embolsar0: fila.dias[0].embolsar, Fecha0: fila.dias[0].fechaKey,
+        Camiones1: fila.dias[1].camiones, Embolsar1: fila.dias[1].embolsar, Fecha1: fila.dias[1].fechaKey,
+        Camiones2: fila.dias[2].camiones, Embolsar2: fila.dias[2].embolsar, Fecha2: fila.dias[2].fechaKey,
+        Camiones3: fila.dias[3].camiones, Embolsar3: fila.dias[3].embolsar, Fecha3: fila.dias[3].fechaKey,
+        Camiones4: fila.dias[4].camiones, Embolsar4: fila.dias[4].embolsar, Fecha4: fila.dias[4].fechaKey,
+        Camiones5: fila.dias[5].camiones, Embolsar5: fila.dias[5].embolsar, Fecha5: fila.dias[5].fechaKey,
+        Camiones6: fila.dias[6].camiones, Embolsar6: fila.dias[6].embolsar, Fecha6: fila.dias[6].fechaKey
       };
       var r = await fetch(
         "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId + "/items",
@@ -450,6 +519,136 @@ async function guardarPedido() {
   btn.disabled = false; btn.textContent = "Guardar Pedido";
 }
 
+// ── MIS PEDIDOS ──
+async function cargarMisPedidos() {
+  var container = document.getElementById("misPedidosContainer");
+  container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
+  try {
+    var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId +
+      "/items?$expand=fields&$top=999&$filter=fields/Usuario eq '" + encodeURIComponent(currentUser) + "'";
+    var r = await fetch(url, { headers: { "Authorization": "Bearer " + graphToken } });
+    var data = await r.json();
+    var items = (data.value || []).map(function(i) { return { id: i.id, fields: i.fields }; });
+    items.sort(function(a, b) { return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
+    if (items.length === 0) {
+      container.innerHTML = "<div class=\"empty-state\">No tenes pedidos cargados aun.</div>"; return;
+    }
+    var dates = getDates();
+    var html = "";
+    for (var i = 0; i < items.length; i++) {
+      var f = items[i].fields;
+      var id = items[i].id;
+      html += "<div class=\"pedido-card\">";
+      html += "<div class=\"pedido-header\">";
+      html += "<div><div class=\"pedido-campo\">" + (f.Campo||"") + "</div>";
+      html += "<div class=\"pedido-cultivo\">" + (f.Cultivo||"") + "</div>";
+      html += "<div class=\"pedido-meta\">Pedido el " + (f.FechaPedido||"") + " &nbsp;|&nbsp; Zona: " + (f.Zona||"-") + "</div>";
+      if (f.Comentarios) html += "<div class=\"pedido-meta\" style=\"margin-top:2px;\">Comentario: " + f.Comentarios + "</div>";
+      html += "</div>";
+      html += "<div class=\"pedido-actions\">";
+      html += "<button class=\"btn btn-edit\" style=\"padding:6px 12px;font-size:12px;\" onclick=\"abrirEdicion('" + id + "')\" >Editar</button>";
+      html += "<button class=\"btn btn-danger\" style=\"padding:6px 12px;font-size:12px;\" onclick=\"eliminarPedido('" + id + "')\">Eliminar</button>";
+      html += "</div></div>";
+      html += "<div class=\"pedido-dias\">";
+      for (var d = 0; d < 7; d++) {
+        var cam = parseInt(f["Camiones" + d]) || 0;
+        var emb = f["Embolsar" + d];
+        var fechaKey = f["Fecha" + d];
+        var fechaLabel = "";
+        if (fechaKey) {
+          var dp = new Date(fechaKey + "T00:00:00");
+          fechaLabel = fmtDateShort(dp);
+        } else {
+          fechaLabel = fmtDateShort(dates[d]);
+        }
+        html += "<div class=\"dia-chip" + (cam > 0 ? " tiene-camiones" : "") + "\">";
+        html += "<div class=\"dc-fecha\">" + fechaLabel + "</div>";
+        html += "<div class=\"dc-cam\">" + (cam > 0 ? cam : "-") + "</div>";
+        if (emb) html += "<div class=\"dc-emb\">EMBOLSAR</div>";
+        html += "</div>";
+      }
+      html += "</div></div>";
+    }
+    container.innerHTML = html;
+    // Store items for editing
+    window._misPedidosItems = {};
+    items.forEach(function(item) { window._misPedidosItems[item.id] = item.fields; });
+  } catch(e) {
+    container.innerHTML = "<div class=\"empty-state\">Error al cargar pedidos: " + e.message + "</div>";
+  }
+}
+
+// ── ELIMINAR ──
+async function eliminarPedido(itemId) {
+  if (!confirm("Eliminar este pedido? Esta accion no se puede deshacer.")) return;
+  try {
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId + "/items/" + itemId,
+      { method: "DELETE", headers: { "Authorization": "Bearer " + graphToken } }
+    );
+    if (r.status === 204 || r.ok) { showToast("Pedido eliminado", "success"); cargarMisPedidos(); }
+    else throw new Error("Error " + r.status);
+  } catch(e) { showToast("Error al eliminar: " + e.message, "error"); }
+}
+
+// ── EDITAR ──
+function abrirEdicion(itemId) {
+  var f = window._misPedidosItems[itemId];
+  if (!f) return;
+  editingItemId = itemId;
+
+  var html = "";
+  // Campo y Cultivo (solo lectura en edicion)
+  html += "<div class=\"form-row\" style=\"margin-bottom:14px;\">";
+  html += "<div class=\"field\"><label>Campo</label><div class=\"field-value\">" + (f.Campo||"") + "</div></div>";
+  html += "<div class=\"field\"><label>Cultivo</label><div class=\"field-value\">" + (f.Cultivo||"") + "</div></div>";
+  html += "<div class=\"field\"><label>Zona</label><div class=\"field-value\">" + (f.Zona||"-") + "</div></div>";
+  html += "</div>";
+
+  // Dias
+  html += "<div class=\"dias-wrapper\"><div class=\"dias-grid\" id=\"modalDiasGrid\"></div></div>";
+
+  // Comentarios
+  html += "<div class=\"field\" style=\"margin-top:14px;\">";
+  html += "<label>Comentarios del pedido</label>";
+  html += "<textarea id=\"modalComentarios\">" + (f.Comentarios||"") + "</textarea>";
+  html += "</div>";
+
+  document.getElementById("modalContent").innerHTML = html;
+  buildDiasGrid("modalDiasGrid", f);
+  document.getElementById("modalOverlay").classList.add("open");
+}
+
+function cerrarModal() {
+  document.getElementById("modalOverlay").classList.remove("open");
+  editingItemId = null;
+}
+
+async function guardarEdicion() {
+  if (!editingItemId) return;
+  var btn = document.getElementById("btnGuardarEdicion");
+  btn.disabled = true; btn.textContent = "Guardando...";
+  var dates = getDates();
+  try {
+    var fields = { Comentarios: document.getElementById("modalComentarios").value };
+    for (var i = 0; i < 7; i++) {
+      fields["Camiones" + i] = parseInt(document.getElementById("modalDiasGrid_cam" + i).value) || 0;
+      fields["Embolsar" + i] = document.getElementById("modalDiasGrid_emb" + i).checked;
+      fields["Fecha" + i] = fmtDateKey(dates[i]);
+    }
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId + "/items/" + editingItemId + "/fields",
+      { method: "PATCH", headers: { "Authorization": "Bearer " + graphToken, "Content-Type": "application/json" }, body: JSON.stringify(fields) }
+    );
+    if (!r.ok) throw new Error("Error " + r.status);
+    showToast("Pedido actualizado", "success");
+    cerrarModal();
+    cargarMisPedidos();
+  } catch(e) { showToast("Error: " + e.message, "error"); }
+  btn.disabled = false; btn.textContent = "Guardar cambios";
+}
+
+// ── GRAPH ──
 async function fetchAllItems() {
   var items = [];
   var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId + "/items?$expand=fields&$top=999";
@@ -462,107 +661,7 @@ async function fetchAllItems() {
   return items.map(function(i) { return i.fields; });
 }
 
-function csvEscape(v) {
-  if (v === null || v === undefined) return "";
-  v = String(v);
-  if (v.indexOf(",") >= 0 || v.indexOf('"') >= 0 || v.indexOf("\n") >= 0) {
-    return '"' + v.replace(/"/g, '""') + '"';
-  }
-  return v;
-}
-
-async function descargarProyeccion() {
-  showToast("Generando proyeccion...", "success");
-  try {
-    var items = await fetchAllItems();
-    var today = new Date(); today.setHours(0,0,0,0);
-    var dates = [];
-    for (var i = 0; i < 7; i++) {
-      var d = new Date(today);
-      d.setDate(d.getDate() + i);
-      dates.push(fmtDateKey(d));
-    }
-
-    var colMap = {};
-    for (var di = 0; di < dates.length; di++) colMap[dates[di]] = di;
-
-    var cols = ["Campo", "Cultivo", "Zona"];
-    for (var di = 0; di < dates.length; di++) {
-      var dobj = new Date(dates[di] + "T00:00:00");
-      cols.push(fmtDateShort(dobj) + " Camiones");
-      cols.push(fmtDateShort(dobj) + " Embolsar");
-    }
-
-    var rowMap = {};
-    for (var ii = 0; ii < items.length; ii++) {
-      var item = items[ii];
-      var key = (item.Campo||"") + "|||" + (item.Cultivo||"");
-      if (!rowMap[key]) rowMap[key] = { campo: item.Campo||"", cultivo: item.Cultivo||"", zona: item.Zona||"", dias: {} };
-      for (var di = 0; di < 7; di++) {
-        var fechaKey = item["Fecha" + di];
-        if (fechaKey && colMap[fechaKey] !== undefined) {
-          var idx = colMap[fechaKey];
-          if (!rowMap[key].dias[idx]) rowMap[key].dias[idx] = { cam: 0, emb: false };
-          rowMap[key].dias[idx].cam += (parseInt(item["Camiones" + di]) || 0);
-          if (item["Embolsar" + di]) rowMap[key].dias[idx].emb = true;
-        }
-      }
-    }
-
-    var excelRows = [cols];
-    var keys = Object.keys(rowMap);
-    for (var ki = 0; ki < keys.length; ki++) {
-      var row = rowMap[keys[ki]];
-      var line = [row.campo, row.cultivo, row.zona];
-      for (var di = 0; di < dates.length; di++) {
-        var dia = row.dias[di] || { cam: 0, emb: false };
-        line.push(dia.cam > 0 ? dia.cam : "");
-        line.push(dia.emb ? "Si" : "");
-      }
-      excelRows.push(line);
-    }
-
-    downloadExcel(excelRows, "proyeccion_semanal_" + fmtDateKey(today) + ".xlsx");
-    showToast("Descargado", "success");
-  } catch(e) { showToast("Error: " + e.message, "error"); }
-}
-
-async function descargarHistorico() {
-  showToast("Generando historico...", "success");
-  try {
-    var items = await fetchAllItems();
-    var cols = ["Fecha Pedido","Usuario","Campo","Cultivo","Zona","Comentario Logistica","Comentarios","Fecha Camion","Camiones","Embolsado"];
-    var excelRows = [cols];
-    for (var ii = 0; ii < items.length; ii++) {
-      var item = items[ii];
-      for (var di = 0; di < 7; di++) {
-        var cam = parseInt(item["Camiones" + di]) || 0;
-        if (cam === 0) continue;
-        var fechaCamion = item["Fecha" + di] || "";
-        if (fechaCamion) {
-          var dp = new Date(fechaCamion + "T00:00:00");
-          fechaCamion = fmtDateShort(dp);
-        }
-        var line = [
-          item.FechaPedido||"",
-          item.Usuario||"",
-          item.Campo||"",
-          item.Cultivo||"",
-          item.Zona||"",
-          item.ComentarioLogistica||"",
-          item.Comentarios||"",
-          fechaCamion,
-          cam,
-          item["Embolsar" + di] ? "Si" : "No"
-        ];
-        excelRows.push(line);
-      }
-    }
-    downloadExcel(excelRows, "historico_pedidos.xlsx");
-    showToast("Descargado", "success");
-  } catch(e) { showToast("Error: " + e.message, "error"); }
-}
-
+// ── DESCARGAS ──
 function downloadExcel(rows, filename) {
   var ws = XLSX.utils.aoa_to_sheet(rows);
   var wb2 = XLSX.utils.book_new();
@@ -570,16 +669,84 @@ function downloadExcel(rows, filename) {
   XLSX.writeFile(wb2, filename);
 }
 
+async function descargarProyeccion() {
+  showToast("Generando...", "success");
+  try {
+    var items = await fetchAllItems();
+    var today = new Date(); today.setHours(0,0,0,0);
+    var dates = [];
+    for (var i = 0; i < 7; i++) { var d = new Date(today); d.setDate(d.getDate() + i); dates.push(fmtDateKey(d)); }
+    var colMap = {};
+    dates.forEach(function(d, i) { colMap[d] = i; });
+    var cols = ["Campo", "Cultivo", "Zona"];
+    dates.forEach(function(d) {
+      var dobj = new Date(d + "T00:00:00");
+      cols.push(fmtDateShort(dobj) + " Camiones");
+      cols.push(fmtDateShort(dobj) + " Embolsar");
+    });
+    var rowMap = {};
+    items.forEach(function(item) {
+      var key = (item.Campo||"") + "|||" + (item.Cultivo||"");
+      if (!rowMap[key]) rowMap[key] = { campo: item.Campo||"", cultivo: item.Cultivo||"", zona: item.Zona||"", dias: {} };
+      for (var di = 0; di < 7; di++) {
+        var fk = item["Fecha" + di];
+        if (fk && colMap[fk] !== undefined) {
+          var idx = colMap[fk];
+          if (!rowMap[key].dias[idx]) rowMap[key].dias[idx] = { cam: 0, emb: false };
+          rowMap[key].dias[idx].cam += (parseInt(item["Camiones" + di]) || 0);
+          if (item["Embolsar" + di]) rowMap[key].dias[idx].emb = true;
+        }
+      }
+    });
+    var excelRows = [cols];
+    Object.keys(rowMap).forEach(function(k) {
+      var row = rowMap[k];
+      var line = [row.campo, row.cultivo, row.zona];
+      for (var di = 0; di < dates.length; di++) {
+        var dia = row.dias[di] || { cam: 0, emb: false };
+        line.push(dia.cam > 0 ? dia.cam : "");
+        line.push(dia.emb ? "Si" : "");
+      }
+      excelRows.push(line);
+    });
+    downloadExcel(excelRows, "proyeccion_semanal_" + fmtDateKey(today) + ".xlsx");
+    showToast("Descargado", "success");
+  } catch(e) { showToast("Error: " + e.message, "error"); }
+}
+
+async function descargarHistorico() {
+  showToast("Generando...", "success");
+  try {
+    var items = await fetchAllItems();
+    var cols = ["Fecha Pedido","Usuario","Campo","Cultivo","Zona","Comentario Logistica","Comentarios","Fecha Camion","Camiones","Embolsado"];
+    var excelRows = [cols];
+    items.forEach(function(item) {
+      for (var di = 0; di < 7; di++) {
+        var cam = parseInt(item["Camiones" + di]) || 0;
+        if (cam === 0) return;
+        var fechaCamion = item["Fecha" + di] || "";
+        if (fechaCamion) { var dp = new Date(fechaCamion + "T00:00:00"); fechaCamion = fmtDateShort(dp); }
+        excelRows.push([
+          item.FechaPedido||"", item.Usuario||"", item.Campo||"", item.Cultivo||"",
+          item.Zona||"", item.ComentarioLogistica||"", item.Comentarios||"",
+          fechaCamion, cam, item["Embolsar" + di] ? "Si" : "No"
+        ]);
+      }
+    });
+    downloadExcel(excelRows, "historico_pedidos.xlsx");
+    showToast("Descargado", "success");
+  } catch(e) { showToast("Error: " + e.message, "error"); }
+}
+
 function showToast(msg, type) {
   var t = document.getElementById("toast");
-  t.textContent = msg;
-  t.className = "toast show " + (type || "success");
+  t.textContent = msg; t.className = "toast show " + (type || "success");
   setTimeout(function() { t.className = "toast"; }, 3500);
 }
 
 window.addEventListener("load", function() {
   if (typeof msal === "undefined") {
-    document.getElementById("loadingScreen").innerHTML = "<p style=\"color:red;padding:20px;\">Error: No se pudo cargar la libreria de Microsoft.</p>";
+    document.getElementById("loadingScreen").innerHTML = "<p style=\"color:red;padding:20px;\">Error: No se pudo cargar Microsoft Auth.</p>";
     return;
   }
   initMsal();
