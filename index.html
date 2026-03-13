@@ -440,7 +440,7 @@ async function loadMasterData() {
   try {
     var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
               "/lists/" + CONFIG.dbListId +
-              "/items?$select=id&$expand=fields($select=Campo,Cultivo,Comentario_Logistica,Responsable,Zona)&$top=999";
+              "/items?$select=id&$expand=fields($select=Title,field_1,field_2,field_3,field_4)&$top=999";
     var items = [];
     while (url) {
       var res = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
@@ -456,11 +456,11 @@ async function loadMasterData() {
     CAMPOS_RESPONSABLE = {};
     items.forEach(function(item) {
       var f = item.fields || {};
-      var campo = (f.Campo || "").trim();
-      var cultivo = (f.Cultivo || "").trim();
-      var zona = (f.Zona || "").trim();
-      var comentario = (f.Comentario_Logistica || "").trim();
-      var responsable = (f.Responsable || "").trim();
+      var campo = (f.Title || "").trim();
+      var cultivo = (f.field_1 || "").trim();
+      var comentario = (f.field_2 || "").trim();
+      var responsable = (f.field_3 || "").trim();
+      var zona = (f.field_4 || "").trim();
       if (!campo) return;
       if (!CAMPOS_ZONA[campo]) CAMPOS_ZONA[campo] = zona;
       if (!CAMPOS_RESPONSABLE[campo]) CAMPOS_RESPONSABLE[campo] = responsable;
