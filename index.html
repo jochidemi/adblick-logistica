@@ -438,16 +438,22 @@ async function loadMasterData() {
   sel.innerHTML = "<option value=\"\">Cargando campos...</option>";
   sel.disabled = true;
   try {
+    var items = [];
     var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
               "/lists/" + CONFIG.dbListId +
-              "/items?$select=id&$expand=fields($select=Title,field_1,field_2,field_3,field_4)&$top=999";
-    var items = [];
+              "/items?$expand=fields&$top=100";
     while (url) {
       var res = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
+      if (res.status === 429) {
+        var retryAfter = parseInt(res.headers.get("Retry-After") || "5") * 1000;
+        await new Promise(function(r){ setTimeout(r, retryAfter); });
+        continue;
+      }
       if (!res.ok) throw new Error("HTTP " + res.status);
       var data = await res.json();
       items = items.concat(data.value || []);
       url = data["@odata.nextLink"] || null;
+      if (url) await new Promise(function(r){ setTimeout(r, 300); });
     }
     // Poblar estructuras
     CAMPOS_ZONA = {};
