@@ -700,7 +700,7 @@ var CONFIG = {
     padronTransp:    "a5e2cb66-6e75-4b06-a750-26e885af12d4",
     padronOperadores:"17a13b1e-217b-40cc-831f-1ea48c8a33ce",
   },
-redirectUri: "https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html",
+  redirectUri: window.location.origin + window.location.pathname,
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -820,8 +820,12 @@ async function onLoggedIn() {
   await loadAllMasterData();
   var opEntry = padronOperadores.find(function(o){ return o.email && o.email.toLowerCase()===currentUserEmail.toLowerCase(); });
   currentUserRol = (opEntry && opEntry.rol) ? opEntry.rol.toLowerCase() : "operador";
+  console.log("Rol resuelto:", currentUserRol, "| opEntry:", opEntry ? opEntry.rol : "ninguno");
   // Normalizar: "Administrador" → "administrador", etc.
-  if (!ROL_TABS[currentUserRol]) currentUserRol = "operador";
+  if (!ROL_TABS[currentUserRol]) {
+    console.warn("Rol no reconocido:", currentUserRol, "→ fallback operador");
+    currentUserRol = "operador";
+  }
   renderNav(currentUserRol);
   var startTab = currentUserRol === "insumos" ? "insumos"
     : currentUserRol === "logistica" ? "logistica"
@@ -885,14 +889,27 @@ async function loadAllMasterData() {
       spGet(CONFIG.lists.padronInsumos),
       spGet(CONFIG.lists.padronTransp),
       spGet(CONFIG.lists.padronOperadores),
-      spGet(CONFIG.lists.stockSnapshot, "&$orderby=fields/Modified desc&$top=1"),
+      spGet(CONFIG.lists.stockSnapshot, "&$top=50"),
     ]);
     padronCampos   = campos.map(function(i){ return i.fields.Title||""; }).filter(Boolean).sort();
     padronInsumos  = insumos.map(function(i){ return { nombre:i.fields.Title||"", categoria:i.fields.Categoria||"", tipo:i.fields.TipoInsumo||"", presentacion:i.fields.Presentacion||"" }; }).filter(function(i){ return i.nombre; });
     padronTransp   = transps.map(function(i){ return { nombre:i.fields.Title||"", razonSocial:i.fields.RazonSocial||"", cuit:i.fields.CUIT||"" }; }).filter(function(i){ return i.nombre; });
-    padronOperadores = ops.map(function(i){ return { nombre:i.fields.Nombre||i.fields.Title||"", iniciales:i.fields.Iniciales||"", email:i.fields.Email||"", rol:i.fields.Rol||"operador" }; });
+    padronOperadores = ops.map(function(i){ 
+      // SP puede devolver el campo Rol con distintos nombres internos
+      var rolVal = i.fields.Rol || i.fields.rol || "";
+      return { 
+        nombre:    i.fields.Nombre||i.fields.Title||"", 
+        iniciales: i.fields.Iniciales||"", 
+        email:     i.fields.Email||"", 
+        rol:       rolVal||"operador",
+        _raw:      JSON.stringify(i.fields) // debug
+      }; 
+    });
+    console.log("PadronOperadores cargado:", padronOperadores.length, "entradas");
+    console.log("Mi email:", currentUserEmail);
     // Buscar iniciales del usuario actual en el padrón
     var opEntry = padronOperadores.find(function(o){ return o.email && o.email.toLowerCase()===currentUserEmail.toLowerCase(); });
+    console.log("Mi entrada en padrón:", opEntry ? JSON.stringify(opEntry) : "NO ENCONTRADO");
     if (opEntry && opEntry.iniciales) currentUserInitials = opEntry.iniciales;
     // Stock snapshot más reciente
     if (snap && snap.length) {
@@ -1166,8 +1183,9 @@ async function cargarMisPedidos() {
   var container = document.getElementById("mis-pedidos-list");
   container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
   try {
-    var items = await spGet(CONFIG.lists.pedidos, "&$orderby=fields/FechaPedido desc");
+    var items = await spGet(CONFIG.lists.pedidos, "");
     var mios = items.filter(function(i){ return i.fields.OperadorEmail === currentUserEmail || i.fields.Operador === currentUser; });
+    mios.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
     document.getElementById("mis-count").textContent = mios.length ? "("+mios.length+")" : "";
     if (!mios.length) {
       container.innerHTML = '<div class="card" style="text-align:center;padding:48px 32px;"><div style="font-size:36px;margin-bottom:12px;">📋</div><div style="font-size:17px;font-weight:800;color:var(--sub);margin-bottom:16px;">No hay pedidos todavía</div><button class="btn btn-brand" onclick="subTab(\'operador\',\'nuevo\')">+ Nuevo pedido</button></div>';
@@ -1349,7 +1367,7 @@ async function cargarPedidosInsumos() {
   var container = document.getElementById("ins-pedidos-list");
   container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
   try {
-    var items = await spGet(CONFIG.lists.pedidos, "&$orderby=fields/FechaPedido desc");
+    var items = await spGet(CONFIG.lists.pedidos, "");
     pedidosInsumos = items.filter(function(i){ return i.fields.Estado==="Pendiente insumos"; });
     document.getElementById("ins-pend-count").textContent = pedidosInsumos.length ? "("+pedidosInsumos.length+")" : "";
     if (!pedidosInsumos.length) {
@@ -1430,7 +1448,7 @@ function nuevoCamId() {
 
 async function cargarPedidosLogistica() {
   try {
-    var items = await spGet(CONFIG.lists.pedidos, "&$orderby=fields/FechaEntrega asc");
+    var items = await spGet(CONFIG.lists.pedidos, "");
     pedidosLogistica = items.filter(function(i){ return i.fields.Estado==="Pendiente logística"||i.fields.Estado==="En camino"; });
     renderItemsLogistica();
   } catch(e) { showToast("Error cargando pedidos: "+e.message,"error"); }
