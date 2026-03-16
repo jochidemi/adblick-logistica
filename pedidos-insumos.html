@@ -873,6 +873,31 @@ async function spGetMaxConsecutivo() {
   } catch(e){ return 0; }
 }
 
+async function spDeleteAll(listId) {
+  // Borra todos los items de una lista (para reemplazar padrón completo)
+  var items = [];
+  var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items?$select=id&$top=500";
+  while (url) {
+    var r = await fetch(url, { headers:{ Authorization:"Bearer "+graphToken } });
+    if (!r.ok) throw new Error("Error leyendo lista para borrar: " + r.status);
+    var d = await r.json();
+    items = items.concat(d.value||[]);
+    url = d["@odata.nextLink"]||null;
+    if (url) await sleep(200);
+  }
+  if (!items.length) return 0;
+  // Borrar de a 5 en paralelo con pausa
+  for (var i=0; i<items.length; i+=5) {
+    var batch = items.slice(i, i+5);
+    await Promise.all(batch.map(function(item){
+      return fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items/" + item.id,
+        { method:"DELETE", headers:{ Authorization:"Bearer "+graphToken } });
+    }));
+    await sleep(300);
+  }
+  return items.length;
+}
+
 function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1742,20 +1767,29 @@ async function processPadron(file, padId, listId) {
       var errBody = await testResult.json().catch(function(){ return {}; });
       throw new Error("SP rechazó el item: " + JSON.stringify(errBody.error||errBody).substring(0,200));
     }
+    // Borrar el item de prueba
+    var testItem = await testResult.json();
+    await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items/" + testItem.id,
+      { method:"DELETE", headers:{ Authorization:"Bearer "+graphToken } });
 
+    // Borrar todos los registros anteriores
+    showToast("Reemplazando padrón — borrando registros anteriores...","");
+    var borrados = await spDeleteAll(listId);
+    console.log("Borrados:", borrados, "registros anteriores");
+
+    // Subir todos los nuevos
     showToast("Subiendo "+fields_list.length+" registros...","");
-    var ok = 1;
-    // Resto de los items de a 5 con pausa
-    for (var i=1; i<fields_list.length; i++) {
+    var ok = 0;
+    for (var i=0; i<fields_list.length; i++) {
       await spPost(listId, fields_list[i]);
       ok++;
-      if (i % 5 === 0) await sleep(500);
+      if (i % 5 === 0) await sleep(400);
       if (i % 50 === 0) {
         showToast("Subiendo... "+ok+"/"+fields_list.length,"");
         await acquireToken(); // Renovar token cada 50
       }
     }
-    showToast(ok+" registros actualizados en SharePoint ✓","ok");
+    showToast(ok+" registros cargados en SharePoint ✓","ok");
     await loadAllMasterData();
   } catch(e) {
     showToast("Error: "+e.message,"error");
