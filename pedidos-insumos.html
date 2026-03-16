@@ -820,12 +820,9 @@ async function onLoggedIn() {
   await loadAllMasterData();
   var opEntry = padronOperadores.find(function(o){ return o.email && o.email.toLowerCase()===currentUserEmail.toLowerCase(); });
   currentUserRol = (opEntry && opEntry.rol) ? opEntry.rol.toLowerCase() : "operador";
-  console.log("Rol resuelto:", currentUserRol, "| opEntry:", opEntry ? opEntry.rol : "ninguno");
+
   // Normalizar: "Administrador" → "administrador", etc.
-  if (!ROL_TABS[currentUserRol]) {
-    console.warn("Rol no reconocido:", currentUserRol, "→ fallback operador");
-    currentUserRol = "operador";
-  }
+  if (!ROL_TABS[currentUserRol]) currentUserRol = "operador";
   renderNav(currentUserRol);
   var startTab = currentUserRol === "insumos" ? "insumos"
     : currentUserRol === "logistica" ? "logistica"
@@ -891,29 +888,35 @@ async function loadAllMasterData() {
       spGet(CONFIG.lists.padronOperadores),
       spGet(CONFIG.lists.stockSnapshot, ""),
     ]);
-    padronCampos   = campos.map(function(i){ return i.fields.Title||""; }).filter(Boolean).sort();
-    padronInsumos  = insumos.map(function(i){ return { nombre:i.fields.Title||"", categoria:i.fields.Categoria||"", tipo:i.fields.TipoInsumo||"", presentacion:i.fields.Presentacion||"" }; }).filter(function(i){ return i.nombre; });
+    padronCampos   = campos.map(function(i){ return (i.fields.Nombre||i.fields.NombreCampo||i.fields.Title||"").trim(); }).filter(Boolean).sort();
+    console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0,3));
+    padronInsumos  = insumos.map(function(i){ 
+      // Categoria en SP puede venir como "Tipo.1" del Excel (SP lo encodea)
+      var cat = i.fields.Categoria || i.fields.TipoInsumo || "";
+      var tipo = i.fields.TipoInsumo || i.fields.Categoria || "";
+      return { 
+        nombre:      (i.fields.Title||"").trim(), 
+        categoria:   cat.trim(), 
+        tipo:        tipo.trim(), 
+        presentacion:(i.fields.Presentacion||"").trim(),
+        unidad:      (i.fields.Unidad||"").trim()
+      }; 
+    }).filter(function(i){ return i.nombre && i.categoria; });
+    console.log("Insumos cargados:", padronInsumos.length, "| Ejemplo:", JSON.stringify(padronInsumos[0]));
     padronTransp   = transps.map(function(i){ return { nombre:i.fields.Title||"", razonSocial:i.fields.RazonSocial||"", cuit:i.fields.CUIT||"" }; }).filter(function(i){ return i.nombre; });
     padronOperadores = ops.map(function(i){ 
       // SP puede devolver el campo Rol con distintos nombres internos
       // SP puede renombrar columnas internamente - intentamos todos los nombres posibles
-      var rolVal = i.fields.Rol || i.fields.rol || i.fields.Rol0 || i.fields.field_4 || i.fields.field_3 || "";
-      var emailVal = i.fields.Email || i.fields.email || i.fields.field_2 || "";
-      var inicialesVal = i.fields.Iniciales || i.fields.iniciales || i.fields.field_1 || "";
-      var nombreVal = i.fields.Nombre || i.fields.nombre || i.fields.Title || "";
-      console.log("Operador raw fields:", JSON.stringify(i.fields));
-      return { 
-        nombre:    nombreVal, 
-        iniciales: inicialesVal, 
-        email:     emailVal, 
-        rol:       rolVal || "operador"
-      }; 
+      var rolVal = (i.fields.Rol || i.fields.rol || "operador").toLowerCase().trim();
+      var emailVal = (i.fields.Email || i.fields.email || "").trim();
+      var inicialesVal = (i.fields.Iniciales || i.fields.iniciales || "").trim();
+      var nombreVal = (i.fields.Nombre || i.fields.nombre || i.fields.Title || "").trim();
+      return { nombre:nombreVal, iniciales:inicialesVal, email:emailVal, rol:rolVal }; 
     });
-    console.log("PadronOperadores cargado:", padronOperadores.length, "entradas");
-    console.log("Mi email:", currentUserEmail);
+  
     // Buscar iniciales del usuario actual en el padrón
     var opEntry = padronOperadores.find(function(o){ return o.email && o.email.toLowerCase()===currentUserEmail.toLowerCase(); });
-    console.log("Mi entrada en padrón:", opEntry ? JSON.stringify(opEntry) : "NO ENCONTRADO");
+
     if (opEntry && opEntry.iniciales) currentUserInitials = opEntry.iniciales;
     // Stock snapshot más reciente
     if (snap && snap.length) {
@@ -1202,7 +1205,7 @@ async function cargarMisPedidos() {
       var enCamino = f.Estado==="En camino";
       html += '<div class="pedido-card">';
       html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">';
-      html += '<div><div style="font-weight:700;font-size:15px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:13px;">'+f.Cantidad+' × '+f.Presentacion+'</span></div>';
+      html += '<div><div style="font-weight:700;font-size:15px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:13px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?'<span style="font-size:11px;color:var(--light);margin-left:5px;">('+f.Presentacion+')</span>':'')+' </div></div>';
       html += '<div style="font-size:13px;color:var(--sub);margin-top:3px;">📍 '+f.Campo+' · 🌾 '+f.Campa_x00f1_a+'</div>';
       html += '<div style="font-size:12px;color:var(--light);margin-top:2px;">N° '+f.NumeroPedido+' · '+new Date(f.FechaPedido).toLocaleDateString("es-AR")+'</div></div>';
       html += estadoBadge+'</div>';
@@ -1383,12 +1386,12 @@ async function cargarPedidosInsumos() {
       var f=item.fields; var spId=item.id;
       html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
       html += '<div style="flex:1;min-width:0;">';
-      html += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' × '+f.Presentacion+'</span></div>';
+      html += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);">('+f.Presentacion+')</span>':'')+' </div>';
       html += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
               '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
       html += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
       html += '<span class="badge badge-pending">Pendiente</span>';
-      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' × '+esc(f.Presentacion)+'\',\''+esc(f.Campo)+'\')">Asignar origen</button>';
+      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\')">Asignar origen</button>';
       html += '</div></div>';
     });
     container.innerHTML = '<div style="overflow:hidden;">'+html+'</div>';
@@ -1472,7 +1475,7 @@ function renderItemsLogistica() {
       html += '<div class="item-row '+(sel?"sel":"") +'" onclick="toggleItem(\''+spId+'\')">'+
         '<div class="checkbox '+(sel?"checked":"")+'">'+( sel?"✓":"")+'</div>'+
         '<div style="flex:1;min-width:0;">'+
-          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' × '+f.Presentacion+'</span></div>'+
+          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);font-size:11px;">('+f.Presentacion+')</span>':'')+' </div>'+
           '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
             '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span>'+
             (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
@@ -1500,7 +1503,7 @@ function renderItemsLogistica() {
     itemsCam.forEach(function(item){
       var f=item.fields;
       html2 += '<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
-      html2 += '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' × '+f.Presentacion+'</span></div>';
+      html2 += '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);font-size:11px;">('+f.Presentacion+')</span>':'')+' </div>';
       html2 += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f.Campo+' · 👤 '+f.Operador+'</div></div>';
       html2 += '<span class="badge badge-transit">En camino</span>';
       html2 += '<button style="font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--sub);" onclick="quitarDeCamion(\''+item.id+'\')">✕ Quitar</button>';
@@ -1663,10 +1666,10 @@ function guardarCamion() {
 }
 
 function exportarCSVLogistica() {
-  var headers=["N° Pedido","Operador","Campo","Insumo","Cantidad","Presentación","Fecha Entrega","Estado","Origen","Camión","Transportista","Chofer","Patente","N° Viaje","Tarifa","CUIT","Remito"];
+  var headers=["N° Pedido","Operador","Campo","Insumo","Cantidad","Unidad","Presentación","Fecha Entrega","Estado","Origen","Camión","Transportista","Chofer","Patente","N° Viaje","Tarifa","CUIT","Remito"];
   var rows = pedidosLogistica.map(function(item){
     var f=item.fields;
-    return [f.NumeroPedido||"",f.Operador||"",f.Campo||"",f.Insumo||"",f.Cantidad||"",f.Presentacion||"",f.FechaEntrega||"",f.Estado||"",f.OrigenAsignado||"",f.CamionId||"",f.Transportista||"",f.Chofer||"",f.Patente||"",f.NroViaje||"",f.Tarifa||"",f.CUIT||"",f.NroRemito||""];
+    return [f.NumeroPedido||"",f.Operador||"",f.Campo||"",f.Insumo||"",f.Cantidad||"",f.Unidad||"",f.Presentacion||"",f.FechaEntrega||"",f.Estado||"",f.OrigenAsignado||"",f.CamionId||"",f.Transportista||"",f.Chofer||"",f.Patente||"",f.NroViaje||"",f.Tarifa||"",f.CUIT||"",f.NroRemito||""];
   });
   var csv = [headers,...rows].map(function(r){return r.map(function(v){return '"'+String(v||"").replace(/"/g,'""')+'"';}).join(",");}).join("\n");
   var blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
@@ -1748,9 +1751,25 @@ async function processPadron(file, padId, listId) {
 }
 
 function mapPadronRows(padId, rows) {
-  if (padId==="insumos") return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Categoria:String(r["Tipo.1"]||r["Categoría"]||"").trim(), TipoInsumo:String(r["Tipo.1"]||"").trim(), Presentacion:String(r["Presentación"]||"").trim() }; }).filter(function(r){return r.Title;});
+  if (padId==="insumos") return rows.map(function(r){ 
+    var tipo = String(r["Tipo.1"]||r["TipoInsumo"]||"").trim();
+    var nombre = String(r["Nombre"]||r["Title"]||"").trim();
+    if (!nombre || !tipo) return null;
+    return { 
+      Title:       nombre.substring(0,255), 
+      Nombre:      nombre.substring(0,255),
+      Categoria:   tipo,      // "Agroquimicos", "Fertilizantes", etc.
+      TipoInsumo:  tipo,
+      Presentacion:String(r["Presentación"]||r["Presentacion"]||"").trim(),
+      Unidad:      String(r["Unidad_Texto"]||r["UnidadTexto"]||r["Unidad medida"]||"").trim()
+    }; 
+  }).filter(Boolean);
   if (padId==="transp") return rows.map(function(r){ return { Title:String(r["Nombre"]||"").trim().substring(0,255), RazonSocial:String(r["Razón Social"]||"").trim(), CUIT:String(r["CUIT"]||"").trim() }; }).filter(function(r){return r.Title;});
-  if (padId==="campos") return rows.map(function(r){ var v=String(Object.values(r)[0]||"").trim(); return v?{Title:v.substring(0,255)}:null; }).filter(Boolean);
+  if (padId==="campos") return rows.map(function(r){ 
+    // Read Nombre column (field name in Albor export), fallback to first column
+    var v = String(r["Nombre"]||r["nombre"]||Object.values(r)[0]||"").trim();
+    return v ? {Title:v.substring(0,255), Nombre:v.substring(0,255)} : null; 
+  }).filter(Boolean);
   if (padId==="ops")    return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
   return [];
 }
