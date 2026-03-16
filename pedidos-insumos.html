@@ -1765,11 +1765,16 @@ function mapPadronRows(padId, rows) {
     }; 
   }).filter(Boolean);
   if (padId==="transp") return rows.map(function(r){ return { Title:String(r["Nombre"]||"").trim().substring(0,255), RazonSocial:String(r["Razón Social"]||"").trim(), CUIT:String(r["CUIT"]||"").trim() }; }).filter(function(r){return r.Title;});
-  if (padId==="campos") return rows.map(function(r){ 
-    // Read Nombre column (field name in Albor export), fallback to first column
-    var v = String(r["Nombre"]||r["nombre"]||Object.values(r)[0]||"").trim();
-    return v ? {Title:v.substring(0,255), Nombre:v.substring(0,255)} : null; 
-  }).filter(Boolean);
+  if (padId==="campos") return rows
+    .filter(function(r){ 
+      // Solo campos activos (columna Activo == "Si")
+      var activo = String(r["Activo"]||r["activo"]||"Si").trim().toLowerCase();
+      return activo === "si" || activo === "sí" || activo === "true" || activo === "1";
+    })
+    .map(function(r){ 
+      var v = String(r["Nombre"]||r["nombre"]||"").trim();
+      return v ? {Title:v.substring(0,255), Nombre:v.substring(0,255)} : null; 
+    }).filter(Boolean);
   if (padId==="ops")    return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
   return [];
 }
