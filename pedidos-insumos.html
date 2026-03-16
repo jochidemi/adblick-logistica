@@ -1825,39 +1825,27 @@ async function spPostRaw(listId, fields) {
 function mapPadronRows(padId, rows) {
   if (padId==="insumos") {
     if (!rows.length) return [];
-    // Detectar la clave del tipo buscando en todas las keys de la primera fila
-    var allKeys = Object.keys(rows[0]);
-    console.log("INSUMOS keys:", JSON.stringify(allKeys));
-    // Buscar la key que contenga el valor "Agroquimicos" o "Fertilizantes" o "Semillas"
-    var tipoKey = null;
-    var testRow = rows[0];
-    allKeys.forEach(function(k){
-      var v = String(testRow[k]||"");
-      if (v==="Agroquimicos"||v==="Fertilizantes"||v==="Semillas"||v==="Otros") tipoKey = k;
-    });
-    // Fallback: buscar key con "Tipo" que no sea exactamente "Tipo"
-    if (!tipoKey) tipoKey = allKeys.find(function(k){ return k.toLowerCase().indexOf("tipo")!==-1 && k!=="Tipo"; });
-    console.log("tipoKey:", tipoKey);
-    // Buscar key del nombre
-    var nombreKey = allKeys.find(function(k){ return k==="Nombre"||k==="nombre"||k==="NOMBRE"; }) || "Nombre";
-    var presKey   = allKeys.find(function(k){ return k.indexOf("Presentaci")!==-1||k==="Presentacion"; });
-    var unidadKey = allKeys.find(function(k){ return k==="Unidad"||k==="unidad"; });
-    console.log("nombreKey:", nombreKey, "presKey:", presKey, "unidadKey:", unidadKey);
-    return rows.map(function(r){
-      var nombre = String(r[nombreKey]||"").trim();
-      var tipo   = tipoKey ? String(r[tipoKey]||"").trim() : "Otros";
-      if (!nombre) return null;
-      var pres   = presKey   ? String(r[presKey]||"").trim()   : "";
-      var unidad = unidadKey ? String(r[unidadKey]||"").trim() : "";
-      if (unidad && !isNaN(Number(unidad))) unidad = "";
-      return {
-        Title:        nombre.substring(0,255),
-        Categoria:    tipo,
-        TipoInsumo:   tipo,
-        Presentacion: pres,
-        Unidad:       unidad
-      };
-    }).filter(Boolean);
+    return rows
+      .filter(function(r){
+        var activo = String(r["Activo"]||r["activo"]||"Si").trim().toLowerCase();
+        return activo==="si"||activo==="sí"||activo==="true"||activo==="1";
+      })
+      .map(function(r){
+        var nombre = String(r["Nombre"]||r["nombre"]||"").trim();
+        var tipo   = String(r["Tipo"]||r["tipo"]||"Otros").trim();
+        var unidad = String(r["Unidad"]||r["unidad"]||"").trim();
+        var pres   = String(r["Presentación"]||r["Presentacion"]||r["presentacion"]||"").trim();
+        if (!nombre) return null;
+        // Ignorar unidad si es numérica (ID interno)
+        if (unidad && !isNaN(Number(unidad))) unidad = "";
+        return {
+          Title:        nombre.substring(0,255),
+          Categoria:    tipo,
+          TipoInsumo:   tipo,
+          Presentacion: pres,
+          Unidad:       unidad
+        };
+      }).filter(Boolean);
   }
   if (padId==="transp") return rows.map(function(r){ return { Title:String(r["Nombre"]||"").trim().substring(0,255), RazonSocial:String(r["Razón Social"]||"").trim(), CUIT:String(r["CUIT"]||"").trim() }; }).filter(function(r){return r.Title;});
   if (padId==="campos") return rows
