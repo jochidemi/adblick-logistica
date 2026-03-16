@@ -405,13 +405,20 @@ tr:hover td{background:var(--brand-light);}
             </div>
             <div class="fld" id="fld-cantidad" style="display:none;">
               <label class="lbl">Cantidad <span class="req">*</span></label>
-              <div style="display:flex;align-items:center;gap:10px;">
-                <input type="number" id="inp-cantidad" min="1" placeholder="ej: 5" style="max-width:110px;"
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <input type="number" id="inp-cantidad" min="0.01" step="0.01" placeholder="ej: 200" style="max-width:120px;"
                   oninput="renderProgress();renderResumen();">
-                <div class="pres-tag" id="pres-tag" style="display:none;">
-                  <span class="pres-lbl">Unidad</span>
-                  <span id="pres-val"></span>
+                <div class="pres-tag" id="unidad-tag" style="display:none;">
+                  <span class="pres-lbl">Unidad de medida</span>
+                  <span id="unidad-val"></span>
                 </div>
+                <div class="pres-tag" id="pres-tag" style="display:none;background:#F0FDF4;border-color:#86EFAC;">
+                  <span class="pres-lbl" style="color:#15803D;">Presentación</span>
+                  <span id="pres-val" style="color:#15803D;"></span>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--light);margin-top:5px;">
+                Ingresá la cantidad en la unidad indicada. La presentación es referencia para logística.
               </div>
             </div>
           </div>
@@ -1101,9 +1108,17 @@ function setGrupo(g) {
       function(v){ return v; }
     );
     document.getElementById("fld-cantidad").style.display = "block";
+    if (formState.unidad) {
+      document.getElementById("unidad-val").textContent = formState.unidad;
+      document.getElementById("unidad-tag").style.display = "inline-flex";
+    } else {
+      document.getElementById("unidad-tag").style.display = "none";
+    }
     if (formState.presentacion) {
       document.getElementById("pres-val").textContent = formState.presentacion;
       document.getElementById("pres-tag").style.display = "inline-flex";
+    } else {
+      document.getElementById("pres-tag").style.display = "none";
     }
     renderProgress(); renderResumen();
   },
@@ -1120,6 +1135,7 @@ function resetGrupo() {
   document.getElementById("fld-insumo").style.display="none";
   document.getElementById("fld-cantidad").style.display="none";
   document.getElementById("pres-tag").style.display="none";
+  if (document.getElementById("unidad-tag")) document.getElementById("unidad-tag").style.display="none";
   renderProgress(); renderResumen();
 }
 
@@ -1185,7 +1201,7 @@ async function enviarPedido() {
       NumeroPedido: nroPedido,
       Operador: currentUser,
       OperadorEmail: currentUserEmail,
-      Campa_x00f1_a: formState.campaña,
+      Campana: formState.campaña,
       Campo: formState.campo,
       GrupoInsumo: formState.grupoInsumo,
       TipoInsumo: formState.tipoInsumo,
