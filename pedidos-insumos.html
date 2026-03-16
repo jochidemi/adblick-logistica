@@ -840,7 +840,7 @@ async function onLoggedIn() {
 // ═══════════════════════════════════════════════════════════════
 async function spGet(listId, params) {
   params = params || "";
-  var items = [], url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items?$expand=fields&$top=999" + params;
+  var items = [], url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items?$expand=fields&$top=500" + params;
   while (url) {
     var r = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
     if (r.status === 429) { await sleep(parseInt(r.headers.get("Retry-After")||"5")*1000); continue; }
@@ -870,7 +870,7 @@ async function spPatch(listId, itemId, fields) {
 async function spGetMaxConsecutivo() {
   // Leer todos los pedidos y obtener el máximo consecutivo global
   try {
-    var items = await spGet(CONFIG.lists.pedidos, "&$select=fields/NumeroPedido");
+    var items = await spGet(CONFIG.lists.pedidos, "");
     var nums = items.map(function(i){ return parseInt((i.fields.NumeroPedido||"").replace(/[^0-9]/g,"")||"0"); }).filter(function(n){ return !isNaN(n); });
     return nums.length ? Math.max.apply(null, nums) : 0;
   } catch(e){ return 0; }
@@ -889,20 +889,24 @@ async function loadAllMasterData() {
       spGet(CONFIG.lists.padronInsumos),
       spGet(CONFIG.lists.padronTransp),
       spGet(CONFIG.lists.padronOperadores),
-      spGet(CONFIG.lists.stockSnapshot, "&$top=50"),
+      spGet(CONFIG.lists.stockSnapshot, ""),
     ]);
     padronCampos   = campos.map(function(i){ return i.fields.Title||""; }).filter(Boolean).sort();
     padronInsumos  = insumos.map(function(i){ return { nombre:i.fields.Title||"", categoria:i.fields.Categoria||"", tipo:i.fields.TipoInsumo||"", presentacion:i.fields.Presentacion||"" }; }).filter(function(i){ return i.nombre; });
     padronTransp   = transps.map(function(i){ return { nombre:i.fields.Title||"", razonSocial:i.fields.RazonSocial||"", cuit:i.fields.CUIT||"" }; }).filter(function(i){ return i.nombre; });
     padronOperadores = ops.map(function(i){ 
       // SP puede devolver el campo Rol con distintos nombres internos
-      var rolVal = i.fields.Rol || i.fields.rol || "";
+      // SP puede renombrar columnas internamente - intentamos todos los nombres posibles
+      var rolVal = i.fields.Rol || i.fields.rol || i.fields.Rol0 || i.fields.field_4 || i.fields.field_3 || "";
+      var emailVal = i.fields.Email || i.fields.email || i.fields.field_2 || "";
+      var inicialesVal = i.fields.Iniciales || i.fields.iniciales || i.fields.field_1 || "";
+      var nombreVal = i.fields.Nombre || i.fields.nombre || i.fields.Title || "";
+      console.log("Operador raw fields:", JSON.stringify(i.fields));
       return { 
-        nombre:    i.fields.Nombre||i.fields.Title||"", 
-        iniciales: i.fields.Iniciales||"", 
-        email:     i.fields.Email||"", 
-        rol:       rolVal||"operador",
-        _raw:      JSON.stringify(i.fields) // debug
+        nombre:    nombreVal, 
+        iniciales: inicialesVal, 
+        email:     emailVal, 
+        rol:       rolVal || "operador"
       }; 
     });
     console.log("PadronOperadores cargado:", padronOperadores.length, "entradas");
@@ -1344,7 +1348,7 @@ async function guardarStockEnSP() {
   try {
     // Borrar snapshots anteriores del día para no acumular
     var hoy = new Date().toISOString().split("T")[0];
-    var existing = await spGet(CONFIG.lists.stockSnapshot, "&$select=id,fields/TipoStock");
+    var existing = await spGet(CONFIG.lists.stockSnapshot, "");
     // Borrar y re-escribir (SP no tiene bulk delete, escribimos sobre el mismo día)
     var allRows = [];
     stockPropio.forEach(function(r){ allRows.push({TipoStock:"ExistenciaPropia",Title:r.nombre.substring(0,255),Insumo:r.nombre,Categoria:r.categoria,Unidad:r.unidad,Cantidad:r.existencia,Proveedor:"",CargadoPor:currentUser}); });
