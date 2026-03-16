@@ -888,7 +888,7 @@ async function loadAllMasterData() {
       spGet(CONFIG.lists.padronOperadores),
       spGet(CONFIG.lists.stockSnapshot, ""),
     ]);
-    padronCampos   = campos.map(function(i){ return (i.fields.Title||i.fields.Nombre||"").trim(); }).filter(Boolean).sort();
+    padronCampos   = campos.map(function(i){ return (i.fields.NombreCampo||i.fields.Title||"").trim(); }).filter(Boolean).sort();
     console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0,3));
     padronInsumos  = insumos.map(function(i){ 
       // Categoria en SP puede venir como "Tipo.1" del Excel (SP lo encodea)
@@ -1735,19 +1735,39 @@ async function processPadron(file, padId, listId) {
     var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""});
     var fields_list = mapPadronRows(padId, rows);
     if (!fields_list.length) throw new Error("No se encontraron registros válidos");
-    showToast("Subiendo "+fields_list.length+" registros a SharePoint...","");
-    // Escribir en lote
-    for (var i=0;i<fields_list.length;i+=15) {
-      var batch=fields_list.slice(i,i+15);
-      await Promise.all(batch.map(function(f){ return spPost(listId, f); }));
-      await sleep(300);
+    
+    // Primero verificar que un POST de prueba funciona
+    var testResult = await spPostRaw(listId, fields_list[0]);
+    if (!testResult.ok) {
+      var errBody = await testResult.json().catch(function(){ return {}; });
+      throw new Error("SP rechazó el item: " + JSON.stringify(errBody.error||errBody).substring(0,200));
     }
-    showToast(fields_list.length+" registros actualizados en SharePoint ✓","ok");
-    await loadAllMasterData(); // Recargar
+
+    showToast("Subiendo "+fields_list.length+" registros...","");
+    var ok = 1;
+    // Resto de los items de a 5 con pausa
+    for (var i=1; i<fields_list.length; i++) {
+      await spPost(listId, fields_list[i]);
+      ok++;
+      if (i % 5 === 0) await sleep(500);
+      if (i % 50 === 0) {
+        showToast("Subiendo... "+ok+"/"+fields_list.length,"");
+        await acquireToken(); // Renovar token cada 50
+      }
+    }
+    showToast(ok+" registros actualizados en SharePoint ✓","ok");
+    await loadAllMasterData();
   } catch(e) {
     showToast("Error: "+e.message,"error");
+    console.error("processPadron error:", e);
     renderPadronesPanel();
   }
+}
+
+// spPost que devuelve el response sin tirar error (para test)
+async function spPostRaw(listId, fields) {
+  return fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items",
+    { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify({ fields }) });
 }
 
 function mapPadronRows(padId, rows) {
@@ -1773,7 +1793,7 @@ function mapPadronRows(padId, rows) {
     })
     .map(function(r){ 
       var v = String(r["Nombre"]||r["nombre"]||"").trim();
-      return v ? {Title:v.substring(0,255)} : null; 
+      return v ? {Title:v.substring(0,255), NombreCampo:v.substring(0,255)} : null; 
     }).filter(Boolean);
   if (padId==="ops")    return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
   return [];
