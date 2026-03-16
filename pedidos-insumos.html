@@ -888,7 +888,7 @@ async function loadAllMasterData() {
       spGet(CONFIG.lists.padronOperadores),
       spGet(CONFIG.lists.stockSnapshot, ""),
     ]);
-    padronCampos   = campos.map(function(i){ return (i.fields.Nombre||i.fields.NombreCampo||i.fields.Title||"").trim(); }).filter(Boolean).sort();
+    padronCampos   = campos.map(function(i){ return (i.fields.Title||i.fields.Nombre||"").trim(); }).filter(Boolean).sort();
     console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0,3));
     padronInsumos  = insumos.map(function(i){ 
       // Categoria en SP puede venir como "Tipo.1" del Excel (SP lo encodea)
@@ -1773,7 +1773,7 @@ function mapPadronRows(padId, rows) {
     })
     .map(function(r){ 
       var v = String(r["Nombre"]||r["nombre"]||"").trim();
-      return v ? {Title:v.substring(0,255), Nombre:v.substring(0,255)} : null; 
+      return v ? {Title:v.substring(0,255)} : null; 
     }).filter(Boolean);
   if (padId==="ops")    return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
   return [];
