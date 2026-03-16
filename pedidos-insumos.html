@@ -1823,19 +1823,32 @@ async function spPostRaw(listId, fields) {
 }
 
 function mapPadronRows(padId, rows) {
-  if (padId==="insumos") return rows.map(function(r){ 
-    var tipo = String(r["Tipo.1"]||r["TipoInsumo"]||"").trim();
-    var nombre = String(r["Nombre"]||r["Title"]||"").trim();
-    if (!nombre || !tipo) return null;
-    return { 
-      Title:       nombre.substring(0,255), 
-      Nombre:      nombre.substring(0,255),
-      Categoria:   tipo,      // "Agroquimicos", "Fertilizantes", etc.
-      TipoInsumo:  tipo,
-      Presentacion:String(r["Presentación"]||r["Presentacion"]||"").trim(),
-      Unidad:      String(r["Unidad_Texto"]||r["UnidadTexto"]||r["Unidad medida"]||"").trim()
-    }; 
-  }).filter(Boolean);
+  if (padId==="insumos") {
+    // SheetJS puede encodear "Tipo.1" de distintas formas — buscamos dinámicamente
+    var tipoKey = null;
+    if (rows.length > 0) {
+      var keys = Object.keys(rows[0]);
+      console.log("Columnas Excel insumos:", keys);
+      tipoKey = keys.find(function(k){ return k==="Tipo.1"||k==="Tipo_1"||k==="Tipo__1"||k==="Tipo.1 "; });
+      if (!tipoKey) tipoKey = keys.find(function(k){ return /^Tipo/i.test(k) && k!=="Tipo"; });
+      console.log("TipoKey:", tipoKey);
+    }
+    return rows.map(function(r){
+      var nombre = String(r["Nombre"]||r["nombre"]||r["NOMBRE"]||"").trim();
+      var tipo   = tipoKey ? String(r[tipoKey]||"").trim() : "";
+      if (!nombre || !tipo) return null;
+      var pres   = String(r["Presentación"]||r["Presentacion"]||r["presentacion"]||"").trim();
+      var unidad = String(r["Unidad"]||r["unidad"]||"").trim();
+      if (unidad && !isNaN(Number(unidad))) unidad = ""; // ignorar IDs numéricos
+      return {
+        Title:        nombre.substring(0,255),
+        Categoria:    tipo,
+        TipoInsumo:   tipo,
+        Presentacion: pres,
+        Unidad:       unidad
+      };
+    }).filter(Boolean);
+  }
   if (padId==="transp") return rows.map(function(r){ return { Title:String(r["Nombre"]||"").trim().substring(0,255), RazonSocial:String(r["Razón Social"]||"").trim(), CUIT:String(r["CUIT"]||"").trim() }; }).filter(function(r){return r.Title;});
   if (padId==="campos") return rows
     .filter(function(r){ 
