@@ -1726,6 +1726,19 @@ async function guardarRemito() {
 // ═══════════════════════════════════════════════════════════════
 // PADRONES (upload a SharePoint)
 // ═══════════════════════════════════════════════════════════════
+async function limpiarPadron(listId, event) {
+  event.stopPropagation();
+  if (!confirm('¿Borrar TODOS los registros de este padrón en SharePoint? Esta acción no se puede deshacer.')) return;
+  showToast('Limpiando lista...','');
+  try {
+    var n = await spDeleteAll(listId);
+    showToast(n+' registros eliminados ✓','ok');
+    await loadAllMasterData();
+  } catch(e) {
+    showToast('Error: '+e.message,'error');
+  }
+}
+
 function renderPadronesPanel() {
   var paneles = [
     { id:"campos",   titulo:"Campos / Destinos", desc:"Descargá del ERP, subí el Excel. Columnas leídas: primera columna como nombre del campo.", listId:CONFIG.lists.padronCampos, count:padronCampos.length },
@@ -1742,8 +1755,11 @@ function renderPadronesPanel() {
     html += '<div class="drop-zone" id="dz-'+p.id+'" onclick="document.getElementById(\'inp-pad-'+p.id+'\').click();" ondragover="event.preventDefault();this.classList.add(\'over\');" ondragleave="this.classList.remove(\'over\');" ondrop="dropPadron(event,\''+p.id+'\',\''+p.listId+'\')">';
     html += '<div style="font-size:22px;margin-bottom:6px;">📂</div>';
     html += '<div style="font-weight:700;font-size:14px;color:var(--sub);margin-bottom:4px;">Arrastrá el Excel o hacé click para seleccionar</div>';
-    html += '<div style="font-size:12px;color:var(--light);">Excel directo de Albor · se actualiza la lista en SharePoint</div>';
+    html += '<div style="font-size:12px;color:var(--light);">Reemplaza todos los registros anteriores · Excel directo de Albor</div>';
     html += '<input type="file" id="inp-pad-'+p.id+'" accept=".xlsx,.xls" style="display:none;" onchange="loadPadron(this,\''+p.id+'\',\''+p.listId+'\')"></div>';
+    html += '<div style="margin-top:10px;display:flex;justify-content:flex-end;">';
+    html += '<button class="btn btn-danger btn-sm" onclick="limpiarPadron(\''+p.listId+'\',event)">🗑 Limpiar lista</button>';
+    html += '</div>';
     html += '</div>';
   });
   document.getElementById("padrones-panels").innerHTML = html;
