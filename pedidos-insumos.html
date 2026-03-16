@@ -1824,22 +1824,32 @@ async function spPostRaw(listId, fields) {
 
 function mapPadronRows(padId, rows) {
   if (padId==="insumos") {
-    // SheetJS puede encodear "Tipo.1" de distintas formas — buscamos dinámicamente
+    if (!rows.length) return [];
+    // Detectar la clave del tipo buscando en todas las keys de la primera fila
+    var allKeys = Object.keys(rows[0]);
+    console.log("INSUMOS keys:", JSON.stringify(allKeys));
+    // Buscar la key que contenga el valor "Agroquimicos" o "Fertilizantes" o "Semillas"
     var tipoKey = null;
-    if (rows.length > 0) {
-      var keys = Object.keys(rows[0]);
-      console.log("Columnas Excel insumos:", keys);
-      tipoKey = keys.find(function(k){ return k==="Tipo.1"||k==="Tipo_1"||k==="Tipo__1"||k==="Tipo.1 "; });
-      if (!tipoKey) tipoKey = keys.find(function(k){ return /^Tipo/i.test(k) && k!=="Tipo"; });
-      console.log("TipoKey:", tipoKey);
-    }
+    var testRow = rows[0];
+    allKeys.forEach(function(k){
+      var v = String(testRow[k]||"");
+      if (v==="Agroquimicos"||v==="Fertilizantes"||v==="Semillas"||v==="Otros") tipoKey = k;
+    });
+    // Fallback: buscar key con "Tipo" que no sea exactamente "Tipo"
+    if (!tipoKey) tipoKey = allKeys.find(function(k){ return k.toLowerCase().indexOf("tipo")!==-1 && k!=="Tipo"; });
+    console.log("tipoKey:", tipoKey);
+    // Buscar key del nombre
+    var nombreKey = allKeys.find(function(k){ return k==="Nombre"||k==="nombre"||k==="NOMBRE"; }) || "Nombre";
+    var presKey   = allKeys.find(function(k){ return k.indexOf("Presentaci")!==-1||k==="Presentacion"; });
+    var unidadKey = allKeys.find(function(k){ return k==="Unidad"||k==="unidad"; });
+    console.log("nombreKey:", nombreKey, "presKey:", presKey, "unidadKey:", unidadKey);
     return rows.map(function(r){
-      var nombre = String(r["Nombre"]||r["nombre"]||r["NOMBRE"]||"").trim();
-      var tipo   = tipoKey ? String(r[tipoKey]||"").trim() : "";
-      if (!nombre || !tipo) return null;
-      var pres   = String(r["Presentación"]||r["Presentacion"]||r["presentacion"]||"").trim();
-      var unidad = String(r["Unidad"]||r["unidad"]||"").trim();
-      if (unidad && !isNaN(Number(unidad))) unidad = ""; // ignorar IDs numéricos
+      var nombre = String(r[nombreKey]||"").trim();
+      var tipo   = tipoKey ? String(r[tipoKey]||"").trim() : "Otros";
+      if (!nombre) return null;
+      var pres   = presKey   ? String(r[presKey]||"").trim()   : "";
+      var unidad = unidadKey ? String(r[unidadKey]||"").trim() : "";
+      if (unidad && !isNaN(Number(unidad))) unidad = "";
       return {
         Title:        nombre.substring(0,255),
         Categoria:    tipo,
