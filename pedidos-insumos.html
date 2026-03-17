@@ -1214,7 +1214,6 @@ async function enviarPedido() {
       Title:         nroPedido,
       NumeroPedido:  nroPedido,
       Operador:      currentUser,
-      OperadorEmail: currentUserEmail,
       Campo:         formState.campo,
       Insumo:        formState.insumo,
       Cantidad:      parseFloat(formState.cantidad)||0,
@@ -1263,7 +1262,7 @@ async function cargarMisPedidos() {
   container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
-    var mios = items.filter(function(i){ return i.fields.OperadorEmail === currentUserEmail || i.fields.Operador === currentUser; });
+    var mios = items.filter(function(i){ return i.fields.Operador === currentUser; });
     mios.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
     document.getElementById("mis-count").textContent = mios.length ? "("+mios.length+")" : "";
     if (!mios.length) {
