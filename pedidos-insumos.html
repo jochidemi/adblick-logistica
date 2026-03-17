@@ -1661,15 +1661,20 @@ function renderCamiones() {
   var html="";
   camiones.forEach(function(cam){
     var count = pedidosLogistica.filter(function(p){return p.fields.CamionId===cam.id;}).length;
-    html += '<div class="cam-row"><div style="min-width:0;flex:1;">';
-    html += '<div class="cam-id">'+cam.id+'</div>';
-    html += '<div class="cam-info">'+cam.chofer+'</div>';
-    html += '<div class="cam-sub">'+cam.patente+(cam.nViaje?' · Viaje '+cam.nViaje:'')+'</div>';
-    if (cam.tarifa) html += '<div class="cam-sub">Tarifa: $'+Number(cam.tarifa).toLocaleString("es-AR")+'</div>';
-    html += '</div><div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">';
-    html += '<span class="cam-count">'+count+'</span>';
-    html += '<button class="btn-ghost btn-sm" style="font-size:13px;" onclick="abrirModalCamion(\''+cam.id+'\')">✏</button>';
-    html += '</div></div>';
+    var tieneTransp = !!(cam.chofer && cam.nViaje);
+     html += '<div class="cam-row"><div style="min-width:0;flex:1;">';
+     html += '<div class="cam-id">'+cam.id+'</div>';
+     if (tieneTransp) {
+       html += '<div class="cam-info" style="font-size:12px;">'+cam.chofer+'</div>';
+       html += '<div class="cam-sub">'+cam.patente+(cam.nViaje?' · Viaje '+cam.nViaje:'')+'</div>';
+       if (cam.tarifa) html += '<div class="cam-sub">$'+Number(cam.tarifa).toLocaleString('es-AR')+'</div>';
+     } else {
+       html += '<div style="font-size:11px;font-weight:600;color:var(--orange);margin-top:2px;">⚠ Sin transportista</div>';
+     }
+     html += '</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">';
+     html += '<span class="cam-count">'+count+' ítems</span>';
+     html += '<button class="btn btn-'+(tieneTransp?'outline':'brand')+' btn-sm" style="font-size:11px;padding:5px 8px;" onclick="abrirModalCamion(\''+cam.id+'\')">'+(tieneTransp?'✏ Editar':'Asignar transp.')+'</button>';
+     html += '</div></div>';
   });
   list.innerHTML = html;
 }
@@ -1677,7 +1682,8 @@ function renderCamiones() {
 function abrirModalCamion(camId) {
   editingCamionId = camId;
   var cam = camId ? camiones.find(function(c){return c.id===camId;}) : null;
-  document.getElementById("modal-cam-title").textContent = cam ? "Editar " + cam.id : "Nuevo camión";
+  var sinTransp = cam && !cam.chofer;
+  document.getElementById("modal-cam-title").textContent = sinTransp ? "Asignar transportista — "+cam.id : (cam ? "Editar "+cam.id : "Nuevo camión");
   document.getElementById("btn-guardar-cam").textContent = cam ? "Guardar cambios" : "Crear camión →";
   document.getElementById("inp-chofer").value  = cam ? cam.chofer  : "";
   document.getElementById("inp-patente").value = cam ? cam.patente : "";
