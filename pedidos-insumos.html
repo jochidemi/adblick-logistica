@@ -1233,16 +1233,32 @@ async function enviarPedido() {
     try {
       await spPost(CONFIG.lists.pedidos, fields);
     } catch(spErr) {
-      // Fetch the actual error body to see which field is failing
       var errMsg = spErr.message || "";
       console.error("Error SP al enviar pedido:", errMsg);
       console.log("Fields enviados:", JSON.stringify(fields));
-      // Try to get more details from SP
-      var r400 = await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + CONFIG.lists.pedidos + "/items",
-        { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify({ fields }) });
-      var errBody = await r400.json().catch(function(){ return {}; });
-      console.error("SP error body:", JSON.stringify(errBody));
-      throw new Error(errBody.error ? errBody.error.message : errMsg);
+      // Reintentar excluyendo campos no reconocidos hasta que funcione
+      var maxRetries = 8;
+      for (var attempt = 0; attempt < maxRetries; attempt++) {
+        var r400 = await fetch(
+          "https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + CONFIG.lists.pedidos + "/items",
+          { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify({ fields }) }
+        );
+        if (r400.ok) { 
+          showToast("Pedido enviado ✓ (algunos campos ignorados)", "ok");
+          limpiarFormOperador(); subTab("operador","mispedidos"); cargarMisPedidos();
+          btn.disabled=false; btn.textContent="Enviar pedido →";
+          return;
+        }
+        var errBody = await r400.json().catch(function(){ return {}; });
+        var badField = errBody.error && errBody.error.message ? errBody.error.message.match(/Field '([^']+)' is not recognized/) : null;
+        if (badField) {
+          console.warn("Campo no reconocido en SP, excluyendo:", badField[1]);
+          delete fields[badField[1]];
+        } else {
+          throw new Error(errBody.error ? errBody.error.message : errMsg);
+        }
+      }
+      throw new Error("No se pudo enviar el pedido después de "+maxRetries+" intentos");
     }
     showToast("Pedido " + nroPedido + " enviado ✓", "ok");
     limpiarFormOperador();
