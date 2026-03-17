@@ -913,13 +913,21 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 async function loadAllMasterData() {
   setLoadingText("Cargando padrones...");
   try {
-    var [campos, insumos, transps, ops, snap] = await Promise.all([
-      spGet(CONFIG.lists.padronCampos),
-      spGet(CONFIG.lists.padronInsumos),
-      spGet(CONFIG.lists.padronTransp),
-      spGet(CONFIG.lists.padronOperadores),
-      spGet(CONFIG.lists.stockSnapshot, ""),
-    ]);
+    // Secuencial para no saturar Graph API y evitar crash de SharePoint
+    setLoadingText("Cargando campos...");
+    var campos = await spGet(CONFIG.lists.padronCampos);
+    await sleep(300);
+    setLoadingText("Cargando insumos...");
+    var insumos = await spGet(CONFIG.lists.padronInsumos);
+    await sleep(300);
+    setLoadingText("Cargando transportistas...");
+    var transps = await spGet(CONFIG.lists.padronTransp);
+    await sleep(300);
+    setLoadingText("Cargando operadores...");
+    var ops = await spGet(CONFIG.lists.padronOperadores);
+    await sleep(300);
+    setLoadingText("Cargando stock...");
+    var snap = await spGet(CONFIG.lists.stockSnapshot, "");
     padronCampos   = campos.map(function(i){ return (i.fields.NombreCampo||i.fields.Title||"").trim(); }).filter(Boolean).sort();
     console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0,3));
     padronInsumos  = insumos.map(function(i){ 
@@ -1196,24 +1204,44 @@ async function enviarPedido() {
     var maxNum = await spGetMaxConsecutivo();
     consecutivoPedido = maxNum + 1;
     var nroPedido = currentUserInitials + "-" + String(consecutivoPedido).padStart(4,"0");
+    // Solo mandamos los campos que sabemos que existen en PedidoItems
+    // Si algún campo no existe en SP, lo excluimos para evitar 400
     var fields = {
-      Title: nroPedido,
-      NumeroPedido: nroPedido,
-      Operador: currentUser,
+      Title:         nroPedido,
+      NumeroPedido:  nroPedido,
+      Operador:      currentUser,
       OperadorEmail: currentUserEmail,
-      Campana: formState.campaña,
-      Campo: formState.campo,
-      GrupoInsumo: formState.grupoInsumo,
-      TipoInsumo: formState.tipoInsumo,
-      Insumo: formState.insumo,
-      Cantidad: parseFloat(formState.cantidad)||0,
-      Presentacion: formState.presentacion,
-      FechaEntrega: formState.fechaEntrega,
-      Observaciones: formState.obs,
-      Estado: "Pendiente insumos",
-      FechaPedido: new Date().toISOString(),
+      Campo:         formState.campo,
+      Insumo:        formState.insumo,
+      Cantidad:      parseFloat(formState.cantidad)||0,
+      Estado:        "Pendiente insumos",
+      FechaPedido:   new Date().toISOString(),
     };
-    await spPost(CONFIG.lists.pedidos, fields);
+    // Campos opcionales - solo agregar si el valor no está vacío
+    if (formState.campaña)      fields.Campana      = formState.campaña;
+    if (formState.grupoInsumo)  fields.GrupoInsumo  = formState.grupoInsumo;
+    if (formState.tipoInsumo)   fields.TipoInsumo   = formState.tipoInsumo;
+    if (formState.presentacion) fields.Presentacion = formState.presentacion;
+    if (formState.unidad)       fields.Unidad       = formState.unidad;
+    if (formState.fechaEntrega) fields.FechaEntrega = formState.fechaEntrega;
+    if (formState.obs)          fields.Observaciones = formState.obs;
+    
+    // Intentar enviar - si falla por campo desconocido, reintenta con campos mínimos
+    try {
+      await spPost(CONFIG.lists.pedidos, fields);
+    } catch(spErr) {
+      console.warn("Primer intento falló, reintentando con campos mínimos:", spErr.message);
+      // Identificar qué campo causó el error y excluirlo
+      var errMsg = spErr.message || "";
+      var fieldMatch = errMsg.match(/Field '([^']+)' is not recognized/);
+      if (fieldMatch) {
+        console.warn("Campo rechazado:", fieldMatch[1], "- excluyendo y reintentando");
+        delete fields[fieldMatch[1]];
+        await spPost(CONFIG.lists.pedidos, fields);
+      } else {
+        throw spErr;
+      }
+    }
     showToast("Pedido " + nroPedido + " enviado ✓", "ok");
     limpiarFormOperador();
     subTab("operador","mispedidos");
