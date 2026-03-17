@@ -1110,9 +1110,13 @@ function setGrupo(g) {
   buildCombo("combo-insumo", filtrados, "", "Buscar insumo...", function(v, item){
     formState.insumo = v;
     formState.tipoInsumo = item ? item.tipo : "";
-    formState.presentacion = item ? item.presentacion : "";
+    formState.presentacion = item ? (item.presentacion||"") : "";
+    formState.unidad = item ? (item.unidad||"") : "";
     buildCombo("combo-insumo", filtrados, v, "Buscar insumo...", arguments.callee,
-      function(i){ return '<div><div style="font-weight:600;">'+i.nombre+'</div><div class="combo-item-sub">'+i.presentacion+'</div></div>'; },
+      function(i){ 
+        var sub = [i.unidad, i.presentacion].filter(Boolean).join(" · ");
+        return '<div><div style="font-weight:600;">'+i.nombre+'</div><div class="combo-item-sub">'+sub+'</div></div>'; 
+      },
       function(v){ return v; }
     );
     document.getElementById("fld-cantidad").style.display = "block";
@@ -1230,17 +1234,16 @@ async function enviarPedido() {
     try {
       await spPost(CONFIG.lists.pedidos, fields);
     } catch(spErr) {
-      console.warn("Primer intento falló, reintentando con campos mínimos:", spErr.message);
-      // Identificar qué campo causó el error y excluirlo
+      // Fetch the actual error body to see which field is failing
       var errMsg = spErr.message || "";
-      var fieldMatch = errMsg.match(/Field '([^']+)' is not recognized/);
-      if (fieldMatch) {
-        console.warn("Campo rechazado:", fieldMatch[1], "- excluyendo y reintentando");
-        delete fields[fieldMatch[1]];
-        await spPost(CONFIG.lists.pedidos, fields);
-      } else {
-        throw spErr;
-      }
+      console.error("Error SP al enviar pedido:", errMsg);
+      console.log("Fields enviados:", JSON.stringify(fields));
+      // Try to get more details from SP
+      var r400 = await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + CONFIG.lists.pedidos + "/items",
+        { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify({ fields }) });
+      var errBody = await r400.json().catch(function(){ return {}; });
+      console.error("SP error body:", JSON.stringify(errBody));
+      throw new Error(errBody.error ? errBody.error.message : errMsg);
     }
     showToast("Pedido " + nroPedido + " enviado ✓", "ok");
     limpiarFormOperador();
