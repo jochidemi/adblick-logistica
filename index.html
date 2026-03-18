@@ -775,19 +775,18 @@ async function fetchAllItems() {
 
 // ── DESCARGAS ──
 function downloadExcel(rows, filename) {
-  var ws = XLSX.utils.aoa_to_sheet(rows, { cellDates: true });
-  // Apply date format to any cell containing a Date object
-  var range = XLSX.utils.decode_range(ws["!ref"]);
-  for (var R = range.s.r; R <= range.e.r; R++) {
-    for (var C = range.s.c; C <= range.e.c; C++) {
-      var addr = XLSX.utils.encode_cell({ r: R, c: C });
-      var cell = ws[addr];
-      if (cell && cell.t === "d") { cell.z = "dd/mm/yyyy"; }
-    }
-  }
+  var ws = XLSX.utils.aoa_to_sheet(rows);
   var wb2 = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb2, ws, "Datos");
   XLSX.writeFile(wb2, filename);
+}
+
+function fmtDateExcel(dateStr) {
+  // dateStr es "YYYY-MM-DD", devuelve "DD/MM/YYYY" como string para evitar timezone bugs
+  if (!dateStr) return "";
+  var p = dateStr.split("-");
+  if (p.length !== 3) return dateStr;
+  return p[2] + "/" + p[1] + "/" + p[0];
 }
 
 async function descargarProyeccion() {
@@ -801,10 +800,9 @@ async function descargarProyeccion() {
     dates.forEach(function(d, i) { colMap[d] = i; });
     var cols = ["Responsable", "Campo", "Cultivo", "Zona", "Comentario Logística"];
     dates.forEach(function(d) {
-      var parts = d.split("-");
-      var dobj = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
-      cols.push(new Date(dobj));
-      cols.push(fmtDateShort(dobj) + " Embolsar");
+      cols.push(fmtDateExcel(d));
+      var p = d.split("-");
+      cols.push(p[2] + "/" + p[1] + " Embolsar");
     });
     var rowMap = {};
     items.forEach(function(item) {
@@ -850,8 +848,7 @@ async function descargarHistorico() {
         var cam = parseInt(item["Camiones" + di]) || 0;
         var fechaCamion = item["Fecha" + di] || "";
         if (cam === 0 && !fechaCamion) return;
-        var parts = fechaCamion ? fechaCamion.split("-") : null;
-        var fechaCamionVal = parts ? new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2])) : "";
+        var fechaCamionVal = fmtDateExcel(fechaCamion);
         excelRows.push([
           item.FechaPedido||"", item.Usuario||"", item.Campo||"", item.Cultivo||"",
           item.Zona||"", item.ComentarioLogistica||"", item.Comentarios||"",
