@@ -801,7 +801,8 @@ async function descargarProyeccion() {
     dates.forEach(function(d, i) { colMap[d] = i; });
     var cols = ["Responsable", "Campo", "Cultivo", "Zona", "Comentario Logística"];
     dates.forEach(function(d) {
-      var dobj = new Date(d + "T00:00:00");
+      var parts = d.split("-");
+      var dobj = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
       cols.push(new Date(dobj));
       cols.push(fmtDateShort(dobj) + " Embolsar");
     });
@@ -847,13 +848,14 @@ async function descargarHistorico() {
     items.forEach(function(item) {
       for (var di = 0; di < 7; di++) {
         var cam = parseInt(item["Camiones" + di]) || 0;
-        if (cam === 0) return;
         var fechaCamion = item["Fecha" + di] || "";
-        var fechaCamionVal = fechaCamion ? new Date(fechaCamion + "T00:00:00") : "";
+        if (cam === 0 && !fechaCamion) return;
+        var parts = fechaCamion ? fechaCamion.split("-") : null;
+        var fechaCamionVal = parts ? new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2])) : "";
         excelRows.push([
           item.FechaPedido||"", item.Usuario||"", item.Campo||"", item.Cultivo||"",
           item.Zona||"", item.ComentarioLogistica||"", item.Comentarios||"",
-          fechaCamionVal, cam, item["Embolsar" + di] ? "Si" : "No"
+          fechaCamionVal, cam||"", item["Embolsar" + di] ? "Si" : "No"
         ]);
       }
     });
