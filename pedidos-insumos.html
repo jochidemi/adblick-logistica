@@ -377,18 +377,28 @@ tr:hover td{background:var(--brand-light);}
             </div>
           </div>
 
-          <!-- 2 Dónde -->
+          <!-- 2 Dónde y cuándo -->
           <div class="sep">
-            <div class="sec-lbl">2 · Dónde se necesita</div>
-            <div class="fld">
-              <label class="lbl">Campo / Destino <span class="req">*</span></label>
-              <div class="combo-wrap" id="combo-campo"></div>
+            <div class="sec-lbl">2 · Dónde y cuándo</div>
+            <div class="g2">
+              <div class="fld">
+                <label class="lbl">Campo / Destino <span class="req">*</span></label>
+                <div class="combo-wrap" id="combo-campo"></div>
+              </div>
+              <div class="fld">
+                <label class="lbl">Fecha de entrega <span class="req">*</span></label>
+                <input type="date" id="inp-fecha" oninput="renderProgress();">
+              </div>
+            </div>
+            <div class="fld" style="margin-top:4px;">
+              <label class="lbl">Observaciones <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
+              <input type="text" id="inp-obs" placeholder="Urgencia, condición especial...">
             </div>
           </div>
 
-          <!-- 3 Qué -->
+          <!-- 3 Agregar productos -->
           <div class="sep">
-            <div class="sec-lbl">3 · Qué se necesita</div>
+            <div class="sec-lbl">3 · Agregar productos al pedido</div>
             <div class="fld">
               <label class="lbl">Categoría <span class="req">*</span></label>
               <div id="grupo-btns" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
@@ -407,7 +417,7 @@ tr:hover td{background:var(--brand-light);}
               <label class="lbl">Cantidad <span class="req">*</span></label>
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <input type="number" id="inp-cantidad" min="0.01" step="0.01" placeholder="ej: 200" style="max-width:120px;"
-                  oninput="renderProgress();renderResumen();">
+                  oninput="renderProgress();">
                 <div class="pres-tag" id="unidad-tag" style="display:none;">
                   <span class="pres-lbl">Unidad de medida</span>
                   <span id="unidad-val"></span>
@@ -416,6 +426,7 @@ tr:hover td{background:var(--brand-light);}
                   <span class="pres-lbl" style="color:#15803D;">Presentación</span>
                   <span id="pres-val" style="color:#15803D;"></span>
                 </div>
+                <button class="btn btn-outline btn-sm" id="btn-agregar-item" onclick="agregarAlCarrito()" disabled style="margin-left:4px;">+ Agregar</button>
               </div>
               <div style="font-size:11px;color:var(--light);margin-top:5px;">
                 Ingresá la cantidad en la unidad indicada. La presentación es referencia para logística.
@@ -423,29 +434,14 @@ tr:hover td{background:var(--brand-light);}
             </div>
           </div>
 
-          <!-- 4 Cuándo -->
-          <div class="sep">
-            <div class="sec-lbl">4 · Cuándo se necesita</div>
-            <div class="g2">
-              <div class="fld">
-                <label class="lbl">Fecha de entrega <span class="req">*</span></label>
-                <input type="date" id="inp-fecha" oninput="renderProgress();renderResumen();">
-              </div>
-              <div class="fld">
-                <label class="lbl">Observaciones <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
-                <input type="text" id="inp-obs" placeholder="Urgencia, condición especial...">
-              </div>
-            </div>
-          </div>
-
-          <!-- Resumen -->
-          <div class="resumen-box" id="resumen-box" style="display:none;">
-            <div class="r-title">Resumen del pedido</div>
-            <div class="g2" id="resumen-content" style="font-size:13px;gap:6px 24px;"></div>
+          <!-- Carrito de productos -->
+          <div id="carrito-box" style="display:none;margin:0 0 16px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--sub);margin-bottom:10px;padding-top:16px;border-top:1px solid var(--border);">Productos del pedido</div>
+            <div id="carrito-lista"></div>
           </div>
 
           <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:18px;border-top:1px solid var(--border);">
-            <button class="btn btn-outline" onclick="limpiarFormOperador()">Limpiar</button>
+            <button class="btn btn-outline" onclick="limpiarFormOperador()">Limpiar todo</button>
             <button class="btn btn-brand" id="btn-enviar" onclick="enviarPedido()" disabled>Enviar pedido →</button>
           </div>
         </div>
@@ -533,7 +529,7 @@ tr:hover td{background:var(--brand-light);}
           <p style="color:var(--sub);font-size:13px;margin-top:3px;">Asigná ítems a camiones y registrá el despacho.</p>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-outline" onclick="exportarCSVLogistica()">⬇ Exportar CSV</button>
+          <button class="btn btn-outline" onclick="exportarXLSXLogistica()">⬇ Exportar XLSX</button>
           <button class="btn btn-brand" onclick="abrirModalCamion(null)">+ Nuevo camión</button>
         </div>
       </div>
@@ -615,19 +611,23 @@ tr:hover td{background:var(--brand-light);}
           <input type="text" id="inp-chofer" placeholder="Nombre del chofer">
         </div>
         <div class="fld">
-          <label class="lbl">Patente <span class="req">*</span></label>
-          <input type="text" id="inp-patente" placeholder="AB 123 CD">
+          <label class="lbl">CUIT Chofer <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
+          <input type="text" id="inp-cuit-chofer" placeholder="20-12345678-9">
         </div>
       </div>
       <div class="g2">
         <div class="fld">
-          <label class="lbl">Número de viaje <span class="req">*</span></label>
-          <input type="text" id="inp-nviaje" placeholder="ej: V-001">
+          <label class="lbl">Patente Camión <span class="req">*</span></label>
+          <input type="text" id="inp-patente" placeholder="AB 123 CD">
         </div>
         <div class="fld">
-          <label class="lbl">Tarifa ($)</label>
-          <input type="number" id="inp-tarifa" placeholder="ej: 250000" min="0">
+          <label class="lbl">Patente Acoplado <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
+          <input type="text" id="inp-patente-acoplado" placeholder="AB 123 CD">
         </div>
+      </div>
+      <div class="fld">
+        <label class="lbl">Tarifa ($) <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
+        <input type="number" id="inp-tarifa" placeholder="ej: 250000" min="0">
       </div>
     </div>
     <div class="modal-footer">
@@ -685,6 +685,40 @@ tr:hover td{background:var(--brand-light);}
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="cerrarModal('modal-remito')">Cancelar</button>
       <button class="btn btn-brand" onclick="guardarRemito()">Cerrar pedido ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PEDIDO -->
+<div class="modal-overlay" id="modal-editar">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-hdr">
+      <div class="modal-title">Editar pedido</div>
+      <button class="btn-ghost" onclick="cerrarModal('modal-editar')" style="font-size:18px;padding:2px 8px;">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fld">
+        <label class="lbl">Campo / Destino</label>
+        <div class="combo-wrap" id="combo-campo-edit"></div>
+      </div>
+      <div class="g2">
+        <div class="fld">
+          <label class="lbl">Cantidad</label>
+          <input type="number" id="inp-edit-cantidad" min="0.01" step="0.01">
+        </div>
+        <div class="fld">
+          <label class="lbl">Fecha de entrega</label>
+          <input type="date" id="inp-edit-fecha">
+        </div>
+      </div>
+      <div class="fld">
+        <label class="lbl">Observaciones</label>
+        <input type="text" id="inp-edit-obs">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarModal('modal-editar')">Cancelar</button>
+      <button class="btn btn-brand" id="btn-guardar-editar" onclick="guardarEdicion()">Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -750,6 +784,8 @@ var stockTabActiva = "propio";
 var pedidosInsumos = [], pedidosLogistica = [];
 var pedidoOrigenActual = null; // {id, spId, insumo, cantidad, presentacion, campo}
 var pedidoRemitoActual = null;
+var carritoItems = []; // [{grupoInsumo, tipoInsumo, insumo, presentacion, unidad, cantidad}]
+var editandoPedidoSpId = null;
 
 // Logística
 var camiones = [];      // [{id, spId, chofer, patente, nViaje, tarifa, transportista, razonSocial, cuit}]
@@ -871,6 +907,13 @@ async function spPatch(listId, itemId, fields) {
   return r.ok;
 }
 
+async function spDelete(listId, itemId) {
+  var r = await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items/" + itemId,
+    { method:"DELETE", headers:{ Authorization:"Bearer "+graphToken } });
+  if (!r.ok && r.status !== 204) throw new Error("SP DELETE " + r.status);
+  return true;
+}
+
 async function spGetMaxConsecutivo() {
   // Leer todos los pedidos y obtener el máximo consecutivo global
   try {
@@ -989,7 +1032,7 @@ function subTab(parent, name) {
   if (parent === "insumos") pills = ["stock","pedidos"];
   pills.forEach(function(p){
     var pill = document.getElementById((parent==="operador"?"spill":"ipill")+"-"+p);
-    var panel = document.getElementById(parent==="operador"?"op-":"ins-"+p);
+    var panel = document.getElementById((parent==="operador"?"op-":"ins-")+p);
     if (!pill||!panel) return;
     if (p===name){ pill.className="sub-pill on"; panel.style.display="block"; }
     else { pill.className="sub-pill off"; panel.style.display="none"; }
@@ -1076,8 +1119,10 @@ function initOperadorForm() {
   buildCombo("combo-campo", padronCampos, formState.campo, "Buscar campo...", function(v){
     formState.campo = v;
     buildCombo("combo-campo", padronCampos, v, "Buscar campo...", arguments.callee);
-    renderProgress(); renderResumen();
+    renderProgress();
   });
+  var today = new Date().toISOString().split("T")[0];
+  document.getElementById("inp-fecha").min = today;
   renderGrupoBtns();
   renderProgress();
 }
@@ -1113,9 +1158,9 @@ function setGrupo(g) {
     formState.presentacion = item ? (item.presentacion||"") : "";
     formState.unidad = item ? (item.unidad||"") : "";
     buildCombo("combo-insumo", filtrados, v, "Buscar insumo...", arguments.callee,
-      function(i){ 
+      function(i){
         var sub = [i.unidad, i.presentacion].filter(Boolean).join(" · ");
-        return '<div><div style="font-weight:600;">'+i.nombre+'</div><div class="combo-item-sub">'+sub+'</div></div>'; 
+        return '<div><div style="font-weight:600;">'+i.nombre+'</div><div class="combo-item-sub">'+sub+'</div></div>';
       },
       function(v){ return v; }
     );
@@ -1132,7 +1177,9 @@ function setGrupo(g) {
     } else {
       document.getElementById("pres-tag").style.display = "none";
     }
-    renderProgress(); renderResumen();
+    document.getElementById("inp-cantidad").value = "";
+    document.getElementById("btn-agregar-item").disabled = true;
+    renderProgress();
   },
     function(i){ return '<div><div style="font-weight:600;">'+i.nombre+'</div><div class="combo-item-sub">'+i.presentacion+'</div></div>'; },
     function(v){ return v; }
@@ -1152,25 +1199,27 @@ function resetGrupo() {
 }
 
 function limpiarFormOperador() {
-  formState = { campo:"", grupoInsumo:"", tipoInsumo:"", insumo:"", presentacion:"", cantidad:"", campaña:"26/27", fechaEntrega:"", obs:"" };
+  formState = { campo:"", grupoInsumo:"", tipoInsumo:"", insumo:"", presentacion:"", unidad:"", cantidad:"", campaña:"26/27", fechaEntrega:"", obs:"" };
+  carritoItems = [];
   document.getElementById("inp-cantidad").value="";
   document.getElementById("inp-fecha").value="";
   document.getElementById("inp-obs").value="";
   document.getElementById("pres-tag").style.display="none";
+  if (document.getElementById("unidad-tag")) document.getElementById("unidad-tag").style.display="none";
   document.getElementById("fld-cantidad").style.display="none";
   document.getElementById("fld-insumo").style.display="none";
+  renderCarrito();
   initOperadorForm();
   resetGrupo();
 }
 
 function renderProgress() {
-  formState.cantidad = document.getElementById("inp-cantidad").value;
   formState.fechaEntrega = document.getElementById("inp-fecha").value;
   var pasos = [
-    {n:1, label:"Operador", ok:true},
-    {n:2, label:"Destino",  ok:!!formState.campo},
-    {n:3, label:"Insumo",   ok:!!formState.insumo && !!formState.cantidad},
-    {n:4, label:"Entrega",  ok:!!formState.fechaEntrega},
+    {n:1, label:"Operador",   ok:true},
+    {n:2, label:"Destino",    ok:!!formState.campo},
+    {n:3, label:"Fecha",      ok:!!formState.fechaEntrega},
+    {n:4, label:"Productos",  ok:carritoItems.length>0},
   ];
   var html="";
   pasos.forEach(function(p,i){
@@ -1179,88 +1228,115 @@ function renderProgress() {
     if (i<3) html += '<div class="prog-line"></div>';
   });
   document.getElementById("op-progress").innerHTML = html;
-  var valido = formState.campo && formState.grupoInsumo && formState.insumo && formState.cantidad && formState.fechaEntrega;
+  var valido = formState.campo && formState.fechaEntrega && carritoItems.length > 0;
   document.getElementById("btn-enviar").disabled = !valido;
+  // Habilitar botón agregar si hay insumo y cantidad
+  var cantidad = parseFloat((document.getElementById("inp-cantidad")||{}).value||"0");
+  var btnAgregar = document.getElementById("btn-agregar-item");
+  if (btnAgregar) btnAgregar.disabled = !(formState.insumo && cantidad > 0);
 }
 
-function renderResumen() {
-  formState.cantidad = document.getElementById("inp-cantidad").value;
-  formState.fechaEntrega = document.getElementById("inp-fecha").value;
-  formState.obs = document.getElementById("inp-obs").value;
-  var valido = formState.campo && formState.grupoInsumo && formState.insumo && formState.cantidad && formState.fechaEntrega;
-  var box = document.getElementById("resumen-box");
-  if (!valido) { box.style.display="none"; return; }
+function agregarAlCarrito() {
+  var cantidad = parseFloat(document.getElementById("inp-cantidad").value);
+  if (!formState.insumo || !cantidad || cantidad <= 0) { showToast("Completá insumo y cantidad","error"); return; }
+  carritoItems.push({
+    grupoInsumo:  formState.grupoInsumo,
+    tipoInsumo:   formState.tipoInsumo,
+    insumo:       formState.insumo,
+    presentacion: formState.presentacion,
+    unidad:       formState.unidad,
+    cantidad:     cantidad,
+  });
+  // Reset sólo la parte de producto
+  formState.grupoInsumo=""; formState.insumo=""; formState.presentacion=""; formState.tipoInsumo=""; formState.unidad="";
+  document.getElementById("inp-cantidad").value="";
+  document.getElementById("pres-tag").style.display="none";
+  if (document.getElementById("unidad-tag")) document.getElementById("unidad-tag").style.display="none";
+  document.getElementById("fld-cantidad").style.display="none";
+  document.getElementById("fld-insumo").style.display="none";
+  document.getElementById("grupo-btns").style.display="flex";
+  document.getElementById("grupo-lock").style.display="none";
+  document.getElementById("btn-agregar-item").disabled=true;
+  renderCarrito();
+  renderProgress();
+  showToast("Producto agregado al pedido ✓","ok");
+}
+
+function renderCarrito() {
+  var box = document.getElementById("carrito-box");
+  if (!carritoItems.length) { box.style.display="none"; return; }
   box.style.display="block";
-  document.getElementById("resumen-content").innerHTML =
-    '<span><b>Operador:</b> '+currentUser+'</span>' +
-    '<span><b>Campaña:</b> '+formState.campaña+'</span>' +
-    '<span><b>Campo:</b> '+formState.campo+'</span>' +
-    '<span><b>Insumo:</b> '+formState.insumo+'</span>' +
-    '<span><b>Cantidad:</b> '+formState.cantidad+' × '+formState.presentacion+'</span>' +
-    '<span><b>Entrega:</b> '+formState.fechaEntrega+'</span>' +
-    (formState.obs ? '<span style="grid-column:1/-1"><b>Obs:</b> '+formState.obs+'</span>' : '');
+  var html = '<div class="tbl-wrap"><table>';
+  html += '<thead><tr><th>Categoría</th><th>Insumo</th><th>Cantidad</th><th>Presentación</th><th style="width:32px;"></th></tr></thead><tbody>';
+  carritoItems.forEach(function(item, idx) {
+    html += '<tr>';
+    html += '<td><span style="font-size:11px;font-weight:700;color:var(--sub);">'+item.grupoInsumo+'</span></td>';
+    html += '<td style="font-weight:600;">'+item.insumo+'</td>';
+    html += '<td>'+item.cantidad+' '+(item.unidad||'')+'</td>';
+    html += '<td style="font-size:12px;color:var(--light);">'+(item.presentacion||'-')+'</td>';
+    html += '<td><button class="btn-ghost" style="color:var(--red);padding:3px 6px;font-size:13px;" onclick="quitarItemCarrito('+idx+')">✕</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById("carrito-lista").innerHTML = html;
+}
+
+function quitarItemCarrito(idx) {
+  carritoItems.splice(idx, 1);
+  renderCarrito();
+  renderProgress();
+}
+
+async function enviarUnItem(fields) {
+  // Intenta POST; si SP rechaza un campo, lo elimina y reintenta (hasta 8 veces)
+  for (var attempt = 0; attempt < 8; attempt++) {
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + CONFIG.lists.pedidos + "/items",
+      { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify({ fields:fields }) }
+    );
+    if (r.ok) return true;
+    var errBody = await r.json().catch(function(){ return {}; });
+    var badField = errBody.error && errBody.error.message ? errBody.error.message.match(/Field '([^']+)' is not recognized/) : null;
+    if (badField) { delete fields[badField[1]]; }
+    else { throw new Error(errBody.error ? errBody.error.message : "SP POST " + r.status); }
+  }
+  throw new Error("No se pudo enviar después de varios intentos");
 }
 
 async function enviarPedido() {
+  if (!carritoItems.length || !formState.campo || !formState.fechaEntrega) return;
   var btn = document.getElementById("btn-enviar");
   btn.disabled=true; btn.textContent="Enviando...";
   try {
     var maxNum = await spGetMaxConsecutivo();
     consecutivoPedido = maxNum + 1;
     var nroPedido = currentUserInitials + "-" + String(consecutivoPedido).padStart(4,"0");
-    // Solo mandamos los campos que sabemos que existen en PedidoItems
-    // Si algún campo no existe en SP, lo excluimos para evitar 400
-    var fields = {
-      Title:         nroPedido,
-      NumeroPedido:  nroPedido,
-      Operador:      currentUser,
-      Campo:         formState.campo,
-      Insumo:        formState.insumo,
-      Cantidad:      parseFloat(formState.cantidad)||0,
-      Estado:        "Pendiente insumos",
-      FechaPedido:   new Date().toISOString(),
-    };
-    // Campos opcionales - solo agregar si el valor no está vacío
-    if (formState.campaña)      fields.Campana      = formState.campaña;
-    if (formState.grupoInsumo)  fields.GrupoInsumo  = formState.grupoInsumo;
-    if (formState.tipoInsumo)   fields.TipoInsumo   = formState.tipoInsumo;
-    if (formState.presentacion) fields.Presentacion = formState.presentacion;
-    if (formState.unidad)       fields.Unidad       = formState.unidad;
-    if (formState.fechaEntrega) fields.FechaEntrega = formState.fechaEntrega;
-    if (formState.obs)          fields.Observaciones = formState.obs;
-    
-    // Intentar enviar - si falla por campo desconocido, reintenta con campos mínimos
-    try {
-      await spPost(CONFIG.lists.pedidos, fields);
-    } catch(spErr) {
-      var errMsg = spErr.message || "";
-      console.error("Error SP al enviar pedido:", errMsg);
-      console.log("Fields enviados:", JSON.stringify(fields));
-      // Reintentar excluyendo campos no reconocidos hasta que funcione
-      var maxRetries = 8;
-      for (var attempt = 0; attempt < maxRetries; attempt++) {
-        var r400 = await fetch(
-          "https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + CONFIG.lists.pedidos + "/items",
-          { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify({ fields }) }
-        );
-        if (r400.ok) { 
-          showToast("Pedido enviado ✓ (algunos campos ignorados)", "ok");
-          limpiarFormOperador(); subTab("operador","mispedidos"); cargarMisPedidos();
-          btn.disabled=false; btn.textContent="Enviar pedido →";
-          return;
-        }
-        var errBody = await r400.json().catch(function(){ return {}; });
-        var badField = errBody.error && errBody.error.message ? errBody.error.message.match(/Field '([^']+)' is not recognized/) : null;
-        if (badField) {
-          console.warn("Campo no reconocido en SP, excluyendo:", badField[1]);
-          delete fields[badField[1]];
-        } else {
-          throw new Error(errBody.error ? errBody.error.message : errMsg);
-        }
-      }
-      throw new Error("No se pudo enviar el pedido después de "+maxRetries+" intentos");
+    var obs = document.getElementById("inp-obs").value.trim();
+
+    for (var li = 0; li < carritoItems.length; li++) {
+      var item = carritoItems[li];
+      var fields = {
+        Title:        nroPedido,
+        NumeroPedido: nroPedido,
+        Operador:     currentUser,
+        Campo:        formState.campo,
+        Insumo:       item.insumo,
+        Cantidad:     item.cantidad,
+        Estado:       "Pendiente insumos",
+        FechaPedido:  new Date().toISOString(),
+      };
+      if (formState.campaña)      fields.Campana      = formState.campaña;
+      if (item.grupoInsumo)       fields.GrupoInsumo  = item.grupoInsumo;
+      if (item.tipoInsumo)        fields.TipoInsumo   = item.tipoInsumo;
+      if (item.presentacion)      fields.Presentacion = item.presentacion;
+      if (item.unidad)            fields.Unidad       = item.unidad;
+      if (formState.fechaEntrega) fields.FechaEntrega = formState.fechaEntrega;
+      if (obs)                    fields.Observaciones = obs;
+      await enviarUnItem(fields);
     }
-    showToast("Pedido " + nroPedido + " enviado ✓", "ok");
+
+    var n = carritoItems.length;
+    showToast("Pedido " + nroPedido + " enviado ✓ (" + n + " producto" + (n>1?"s":"") + ")", "ok");
     limpiarFormOperador();
     subTab("operador","mispedidos");
     cargarMisPedidos();
@@ -1285,36 +1361,131 @@ async function cargarMisPedidos() {
       container.innerHTML = '<div class="card" style="text-align:center;padding:48px 32px;"><div style="font-size:36px;margin-bottom:12px;">📋</div><div style="font-size:17px;font-weight:800;color:var(--sub);margin-bottom:16px;">No hay pedidos todavía</div><button class="btn btn-brand" onclick="subTab(\'operador\',\'nuevo\')">+ Nuevo pedido</button></div>';
       return;
     }
+    // Agrupar por NumeroPedido
+    var grupos = {};
+    var ordenGrupos = [];
+    mios.forEach(function(item) {
+      var num = item.fields.NumeroPedido || item.id;
+      if (!grupos[num]) { grupos[num] = []; ordenGrupos.push(num); }
+      grupos[num].push(item);
+    });
     var html = "";
-    mios.forEach(function(item){
-      var f = item.fields; var spId = item.id;
-      var estadoBadge = badgeEstado(f.Estado||"Pendiente insumos");
-      var enCamino = f.Estado==="En camino";
+    ordenGrupos.forEach(function(nro) {
+      var lineas = grupos[nro];
+      var f0 = lineas[0].fields;
+      var estado = f0.Estado || "Pendiente insumos";
+      var estadoBadge = badgeEstado(estado);
+      var editable = estado === "Pendiente insumos" || estado === "Pendiente logística";
+      var enCamino = estado === "En camino";
+
       html += '<div class="pedido-card">';
+      // Header del pedido
       html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">';
-      html += '<div><div style="font-weight:700;font-size:15px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:13px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?'<span style="font-size:11px;color:var(--light);margin-left:5px;">('+f.Presentacion+')</span>':'')+' </div></div>';
-      html += '<div style="font-size:13px;color:var(--sub);margin-top:3px;">📍 '+f.Campo+' · 🌾 '+f.Campa_x00f1_a+'</div>';
-      html += '<div style="font-size:12px;color:var(--light);margin-top:2px;">N° '+f.NumeroPedido+' · '+new Date(f.FechaPedido).toLocaleDateString("es-AR")+'</div></div>';
-      html += estadoBadge+'</div>';
-      if (f.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">📦 Origen: '+f.OrigenAsignado+'</div>';
-      if (enCamino && f.Chofer) {
+      html += '<div>';
+      html += '<div style="font-weight:800;font-size:15px;">Pedido '+nro+'</div>';
+      html += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f0.Campo+' · 🌾 '+(f0.Campa_x00f1_a||f0.Campana||"")+'</div>';
+      html += '<div style="font-size:12px;color:var(--light);margin-top:1px;">'+new Date(f0.FechaPedido).toLocaleDateString("es-AR")+(f0.FechaEntrega?' · Entrega: '+f0.FechaEntrega:'')+'</div>';
+      html += '</div>';
+      html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">';
+      html += estadoBadge;
+      if (editable) {
+        html += '<div style="display:flex;gap:6px;margin-top:2px;">';
+        var idsStr = lineas.map(function(l){return l.id;}).join(",");
+        html += '<button class="btn btn-danger btn-sm" onclick="eliminarPedido(\''+idsStr+'\')">🗑 Eliminar</button>';
+        if (lineas.length === 1) {
+          var l0 = lineas[0]; var lf = l0.fields;
+          html += '<button class="btn btn-outline btn-sm" onclick="abrirEditarPedido(\''+l0.id+'\',\''+esc(lf.Campo||'')+'\',\''+lf.Cantidad+'\',\''+lf.FechaEntrega+'\',\''+esc(lf.Observaciones||'')+'\')">✏ Editar</button>';
+        }
+        html += '</div>';
+      }
+      html += '</div></div>';
+
+      // Líneas de productos
+      if (lineas.length > 1) {
+        html += '<div class="tbl-wrap" style="margin-bottom:8px;"><table>';
+        html += '<thead><tr><th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+(enCamino?'<th></th>':'')+'</tr></thead><tbody>';
+        lineas.forEach(function(item) {
+          var f = item.fields;
+          html += '<tr><td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Cantidad+' '+(f.Unidad||'')+'</td><td style="font-size:12px;color:var(--light);">'+(f.Presentacion||'-')+'</td>';
+          if (enCamino) {
+            if (!f.NroRemito) html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Remito</button></td>';
+            else html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</span></td>';
+          }
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      } else {
+        var f = lineas[0].fields;
+        html += '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="font-size:11px;color:var(--light);">('+f.Presentacion+')</span>':'')+'</div>';
+      }
+
+      if (f0.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">📦 Origen: '+f0.OrigenAsignado+'</div>';
+
+      if (enCamino && f0.Chofer) {
         html += '<div class="info-box" style="margin:10px 0;font-size:12px;">';
-        html += '<b>🚛 En camino</b><br>';
-        html += 'Transportista: '+f.Transportista+' · Chofer: '+f.Chofer+' · Patente: '+f.Patente+'<br>';
-        html += 'N° Viaje: '+(f.NroViaje||"-")+(f.Tarifa?' · Tarifa: $'+Number(f.Tarifa).toLocaleString("es-AR"):"")+'</div>';
-        if (!f.NroRemito) {
-          html += '<div style="display:flex;gap:10px;margin-top:10px;">';
-          html += '<input type="text" id="remito-'+spId+'" placeholder="Número de remito" style="flex:1;font-size:13px;">';
-          html += '<button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+spId+'\',\''+f.Insumo+'\',\''+f.Campo+'\')">Cargar remito</button></div>';
+        html += '<b>🚛 En camino</b> · Transportista: '+(f0.Transportista||'-')+' · Chofer: '+f0.Chofer+' · Patente: '+f0.Patente;
+        if (f0.PatenteAcoplado) html += ' / Acoplado: '+f0.PatenteAcoplado;
+        if (f0.Tarifa) html += ' · Tarifa: $'+Number(f0.Tarifa).toLocaleString("es-AR");
+        html += '</div>';
+        // Remito para pedido de 1 línea
+        if (lineas.length === 1) {
+          var f = lineas[0].fields;
+          if (!f.NroRemito) {
+            html += '<button class="btn btn-brand btn-sm" style="margin-top:4px;" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
+          } else {
+            html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
+          }
         }
       }
-      if (f.NroRemito) html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
       html += '</div>';
     });
     container.innerHTML = html;
   } catch(e) {
     container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
   }
+}
+
+async function eliminarPedido(idsStr) {
+  var ids = idsStr.split(",").filter(Boolean);
+  if (!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
+  try {
+    for (var i=0; i<ids.length; i++) await spDelete(CONFIG.lists.pedidos, ids[i]);
+    showToast("Pedido eliminado","ok");
+    cargarMisPedidos();
+  } catch(e){ showToast("Error: "+e.message,"error"); }
+}
+
+function abrirEditarPedido(spId, campo, cantidad, fechaEntrega, obs) {
+  editandoPedidoSpId = spId;
+  buildCombo("combo-campo-edit", padronCampos, campo, "Buscar campo...", function(v){
+    buildCombo("combo-campo-edit", padronCampos, v, "Buscar campo...", arguments.callee);
+  });
+  var today = new Date().toISOString().split("T")[0];
+  document.getElementById("inp-edit-cantidad").value = cantidad;
+  document.getElementById("inp-edit-fecha").min = today;
+  document.getElementById("inp-edit-fecha").value = fechaEntrega;
+  document.getElementById("inp-edit-obs").value = obs;
+  document.getElementById("modal-editar").classList.add("open");
+}
+
+async function guardarEdicion() {
+  var campoEl = document.querySelector("#combo-campo-edit .combo-val");
+  var campo = (campoEl && !campoEl.classList.contains("placeholder")) ? campoEl.textContent.trim() : "";
+  var cantidad = parseFloat(document.getElementById("inp-edit-cantidad").value)||0;
+  var fecha = document.getElementById("inp-edit-fecha").value;
+  var obs = document.getElementById("inp-edit-obs").value.trim();
+  if (!campo||!cantidad||!fecha) { showToast("Completá todos los campos","error"); return; }
+  var btn = document.getElementById("btn-guardar-editar");
+  btn.disabled=true; btn.textContent="Guardando...";
+  try {
+    var fields = { Campo:campo, Cantidad:cantidad, FechaEntrega:fecha };
+    if (obs) fields.Observaciones = obs;
+    await spPatch(CONFIG.lists.pedidos, editandoPedidoSpId, fields);
+    cerrarModal("modal-editar");
+    showToast("Pedido actualizado ✓","ok");
+    cargarMisPedidos();
+  } catch(e){ showToast("Error: "+e.message,"error"); }
+  btn.disabled=false; btn.textContent="Guardar cambios";
 }
 
 function badgeEstado(e) {
@@ -1499,14 +1670,24 @@ function abrirModalOrigen(spId, insumo, cantPres, campo) {
   var matchP = stockPropio.filter(function(r){ return r.nombre.toLowerCase().includes(q.split(" ")[0]); });
   var matchOC = stockPendiente.filter(function(r){ return r.insumo.toLowerCase().includes(q.split(" ")[0]); });
 
-  var hP = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">📦 Existencia propia</div>';
+  var hP = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">📦 Existencia propia <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar)</span></div>';
   if (!matchP.length) hP += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin coincidencias en stock propio</div>';
-  else matchP.forEach(function(r){ hP += '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);margin-bottom:6px;"><div><div style="font-weight:600;font-size:13px;">'+r.nombre+'</div><div style="font-size:11px;color:var(--light);">'+r.categoria+'</div></div><div style="text-align:right;"><div style="font-weight:800;font-size:15px;color:var(--green);">'+r.existencia.toLocaleString("es-AR",{maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--light);">'+r.unidad+'</div></div></div>'; });
+  else matchP.forEach(function(r){
+    var texto = 'Stock propio — ' + r.nombre + ' (' + r.existencia.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' ' + r.unidad + ')';
+    hP += '<div onclick="seleccionarOrigen(\''+texto.replace(/'/g,"&#39;")+'\') " style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.borderColor=\'var(--brand)\';this.style.background=\'var(--brand-light)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg)\'">';
+    hP += '<div><div style="font-weight:600;font-size:13px;">'+r.nombre+'</div><div style="font-size:11px;color:var(--light);">'+r.categoria+'</div></div>';
+    hP += '<div style="text-align:right;"><div style="font-weight:800;font-size:15px;color:var(--green);">'+r.existencia.toLocaleString("es-AR",{maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--light);">'+r.unidad+'</div></div></div>';
+  });
   document.getElementById("stock-propio-match").innerHTML = hP;
 
-  var hOC = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">🚛 Pendiente de remitir (por proveedor)</div>';
+  var hOC = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">🚛 Pendiente de remitir <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar)</span></div>';
   if (!matchOC.length) hOC += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin OC pendientes</div>';
-  else matchOC.forEach(function(r){ hOC += '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);margin-bottom:6px;"><div><div style="font-weight:600;font-size:13px;">'+r.insumo+'</div><div style="font-size:11px;color:var(--light);">'+r.proveedor+'</div></div><div style="text-align:right;"><div style="font-weight:800;font-size:15px;color:var(--blue);">'+r.pendiente.toLocaleString("es-AR",{maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--light);">pendiente</div></div></div>'; });
+  else matchOC.forEach(function(r){
+    var texto = 'Pendiente remito — ' + r.proveedor + ' — ' + r.insumo + ' (' + r.pendiente.toLocaleString("es-AR",{maximumFractionDigits:2}) + ')';
+    hOC += '<div onclick="seleccionarOrigen(\''+texto.replace(/'/g,"&#39;")+'\') " style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.borderColor=\'var(--brand)\';this.style.background=\'var(--brand-light)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg)\'">';
+    hOC += '<div><div style="font-weight:600;font-size:13px;">'+r.insumo+'</div><div style="font-size:11px;color:var(--light);">'+r.proveedor+'</div></div>';
+    hOC += '<div style="text-align:right;"><div style="font-weight:800;font-size:15px;color:var(--blue);">'+r.pendiente.toLocaleString("es-AR",{maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--light);">pendiente</div></div></div>';
+  });
   document.getElementById("stock-pend-match").innerHTML = hOC;
 
   document.getElementById("modal-origen").classList.add("open");
@@ -1528,6 +1709,11 @@ async function confirmarOrigen() {
     cargarPedidosInsumos();
   } catch(e) { showToast("Error: "+e.message,"error"); }
   btn.disabled=false; btn.textContent="Confirmar origen →";
+}
+
+function seleccionarOrigen(texto) {
+  document.getElementById("inp-origen").value = texto;
+  document.getElementById("inp-origen").focus();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1606,12 +1792,15 @@ function renderItemsLogistica() {
   if (selCount > 0) {
     bar.style.display="flex";
     document.getElementById("assign-bar-label").textContent = selCount+" ítem"+(selCount>1?"s":"")+" seleccionado"+(selCount>1?"s":"");
-    buildCombo("combo-cam-destino-wrap", camiones.map(function(c){return c.id;}), camDestinoActual, "Asignar a camión...",
-      function(v){ camDestinoActual=v; document.getElementById("btn-confirm-assign").disabled=!v; buildCombo("combo-cam-destino-wrap",camiones.map(function(c){return c.id;}),v,"Asignar a camión...",arguments.callee,
-        function(id){ var c=camiones.find(function(x){return x.id===id;}); return '<div><b>'+id+'</b>'+(c?' · '+c.chofer+' · Viaje '+(c.nViaje||"-"):"")+'</div>'; },
-        function(v){ return v; }
-      ); },
-      function(id){ var c=camiones.find(function(x){return x.id===id;}); return '<div><b>'+id+'</b>'+(c?' · '+c.chofer+' · Viaje '+(c.nViaje||"-"):"")+'</div>'; },
+    var camionesActivos = camiones.filter(function(c){return !c.cerrado;});
+    buildCombo("combo-cam-destino-wrap", camionesActivos.map(function(c){return c.id;}), camDestinoActual, "Asignar a camión...",
+      function(v){ camDestinoActual=v; document.getElementById("btn-confirm-assign").disabled=!v;
+        var ca2 = camiones.filter(function(c){return !c.cerrado;});
+        buildCombo("combo-cam-destino-wrap",ca2.map(function(c){return c.id;}),v,"Asignar a camión...",arguments.callee,
+          function(id){ var c=camiones.find(function(x){return x.id===id;}); return '<div><b>'+id+'</b>'+(c?' · '+c.chofer+(c.patente?' · '+c.patente:''):"")+'</div>'; },
+          function(v){ return v; }
+        ); },
+      function(id){ var c=camiones.find(function(x){return x.id===id;}); return '<div><b>'+id+'</b>'+(c?' · '+c.chofer+(c.patente?' · '+c.patente:''):"")+'</div>'; },
       function(v){ return v; }
     );
     document.getElementById("btn-confirm-assign").disabled=!camDestinoActual;
@@ -1643,14 +1832,26 @@ async function confirmarAsignacion() {
   var btn = document.getElementById("btn-confirm-assign");
   btn.disabled=true; btn.textContent="Guardando...";
   try {
-    await Promise.all(ids.map(function(spId){
-      return spPatch(CONFIG.lists.pedidos, spId, {
-        CamionId:cam.id, Transportista:cam.transportista||cam.chofer,
-        Chofer:cam.chofer, Patente:cam.patente, CUIT:cam.cuit||"",
-        RazonSocial:cam.razonSocial||"", NroViaje:cam.nViaje, Tarifa:cam.tarifa||0,
-        Estado:"En camino",
-      });
-    }));
+    for (var i=0; i<ids.length; i++) {
+      var spId = ids[i];
+      // Campos mínimos garantizados; campos opcionales se agregan si existen
+      var fields = { CamionId:cam.id, Chofer:cam.chofer, Patente:cam.patente, Estado:"En camino" };
+      if (cam.transportista)    fields.Transportista    = cam.transportista;
+      if (cam.cuit)             fields.CUIT             = cam.cuit;
+      if (cam.cuitChofer)       fields.CUITChofer       = cam.cuitChofer;
+      if (cam.patenteAcoplado)  fields.PatenteAcoplado  = cam.patenteAcoplado;
+      if (cam.tarifa)           fields.Tarifa           = cam.tarifa;
+      // Retry: eliminar campos no reconocidos por SP
+      for (var attempt=0; attempt<8; attempt++) {
+        var r = await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+CONFIG.lists.pedidos+"/items/"+spId+"/fields",
+          {method:"PATCH",headers:{Authorization:"Bearer "+graphToken,"Content-Type":"application/json"},body:JSON.stringify(fields)});
+        if (r.ok) break;
+        var errBody = await r.json().catch(function(){return{};});
+        var badField = errBody.error&&errBody.error.message?errBody.error.message.match(/Field '([^']+)' is not recognized/):null;
+        if (badField) { delete fields[badField[1]]; }
+        else { throw new Error(errBody.error?errBody.error.message:"SP PATCH "+r.status); }
+      }
+    }
     selItems={}; camDestinoActual="";
     showToast("Asignación confirmada ✓","ok");
     cargarPedidosLogistica();
@@ -1676,22 +1877,33 @@ function renderCamiones() {
   var html="";
   camiones.forEach(function(cam){
     var count = pedidosLogistica.filter(function(p){return p.fields.CamionId===cam.id;}).length;
-    var tieneTransp = !!(cam.chofer && cam.nViaje);
-     html += '<div class="cam-row"><div style="min-width:0;flex:1;">';
-     html += '<div class="cam-id">'+cam.id+'</div>';
-     if (tieneTransp) {
-       html += '<div class="cam-info" style="font-size:12px;">'+cam.chofer+'</div>';
-       html += '<div class="cam-sub">'+cam.patente+(cam.nViaje?' · Viaje '+cam.nViaje:'')+'</div>';
-       if (cam.tarifa) html += '<div class="cam-sub">$'+Number(cam.tarifa).toLocaleString('es-AR')+'</div>';
-     } else {
-       html += '<div style="font-size:11px;font-weight:600;color:var(--orange);margin-top:2px;">⚠ Sin transportista</div>';
-     }
-     html += '</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">';
-     html += '<span class="cam-count">'+count+' ítems</span>';
-     html += '<button class="btn btn-'+(tieneTransp?'outline':'brand')+' btn-sm" style="font-size:11px;padding:5px 8px;" onclick="abrirModalCamion(\''+cam.id+'\')">'+(tieneTransp?'✏ Editar':'Asignar transp.')+'</button>';
-     html += '</div></div>';
+    var tieneChofer = !!(cam.chofer && cam.patente);
+    html += '<div class="cam-row" style="'+(cam.cerrado?'opacity:0.6;':'')+'"><div style="min-width:0;flex:1;">';
+    html += '<div class="cam-id">'+cam.id+(cam.cerrado?' <span style="font-size:10px;background:var(--green-light);color:var(--green);border-radius:10px;padding:1px 6px;font-weight:700;">CERRADO</span>':'')+'</div>';
+    if (tieneChofer) {
+      html += '<div class="cam-info" style="font-size:12px;">'+cam.chofer+(cam.cuitChofer?' · CUIT: '+cam.cuitChofer:'')+'</div>';
+      html += '<div class="cam-sub">'+cam.patente+(cam.patenteAcoplado?' / '+cam.patenteAcoplado:'')+'</div>';
+      if (cam.tarifa) html += '<div class="cam-sub">$'+Number(cam.tarifa).toLocaleString('es-AR')+'</div>';
+    } else {
+      html += '<div style="font-size:11px;font-weight:600;color:var(--orange);margin-top:2px;">⚠ Sin chofer asignado</div>';
+    }
+    html += '</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">';
+    html += '<span class="cam-count">'+count+' ítems</span>';
+    if (!cam.cerrado) {
+      html += '<button class="btn btn-'+(tieneChofer?'outline':'brand')+' btn-sm" style="font-size:11px;padding:5px 8px;" onclick="abrirModalCamion(\''+cam.id+'\')">'+(tieneChofer?'✏ Editar':'Asignar chofer')+'</button>';
+      if (count > 0) html += '<button class="btn btn-sm" style="font-size:11px;padding:5px 8px;background:var(--green-light);color:var(--green);border:1px solid #86EFAC;" onclick="cerrarCamion(\''+cam.id+'\')">✓ Cerrar viaje</button>';
+    }
+    html += '</div></div>';
   });
   list.innerHTML = html;
+}
+
+function cerrarCamion(camId) {
+  if (!confirm('¿Cerrar este viaje? Ya no aparecerá en las opciones de asignación.')) return;
+  camiones = camiones.map(function(c){ return c.id===camId ? Object.assign({},c,{cerrado:true}) : c; });
+  renderCamiones();
+  renderItemsLogistica();
+  showToast("Viaje cerrado ✓","ok");
 }
 
 function abrirModalCamion(camId) {
@@ -1700,10 +1912,11 @@ function abrirModalCamion(camId) {
   var sinTransp = cam && !cam.chofer;
   document.getElementById("modal-cam-title").textContent = sinTransp ? "Asignar transportista — "+cam.id : (cam ? "Editar "+cam.id : "Nuevo camión");
   document.getElementById("btn-guardar-cam").textContent = cam ? "Guardar cambios" : "Crear camión →";
-  document.getElementById("inp-chofer").value  = cam ? cam.chofer  : "";
-  document.getElementById("inp-patente").value = cam ? cam.patente : "";
-  document.getElementById("inp-nviaje").value  = cam ? cam.nViaje  : "";
-  document.getElementById("inp-tarifa").value  = cam ? (cam.tarifa||"") : "";
+  document.getElementById("inp-chofer").value          = cam ? (cam.chofer||"")          : "";
+  document.getElementById("inp-cuit-chofer").value     = cam ? (cam.cuitChofer||"")      : "";
+  document.getElementById("inp-patente").value         = cam ? (cam.patente||"")         : "";
+  document.getElementById("inp-patente-acoplado").value= cam ? (cam.patenteAcoplado||"") : "";
+  document.getElementById("inp-tarifa").value          = cam ? (cam.tarifa||"")          : "";
   document.getElementById("transp-info").style.display="none";
   // Combo transportista
   buildCombo("combo-transportista", padronTransp, cam?cam.transportista:"", "Buscar transportista...",
@@ -1732,11 +1945,12 @@ function abrirModalCamion(camId) {
 }
 
 function guardarCamion() {
-  var chofer  = document.getElementById("inp-chofer").value.trim();
-  var patente = document.getElementById("inp-patente").value.trim();
-  var nViaje  = document.getElementById("inp-nviaje").value.trim();
-  var tarifa  = parseFloat(document.getElementById("inp-tarifa").value)||0;
-  if (!chofer||!patente||!nViaje) { showToast("Completá chofer, patente y N° de viaje","error"); return; }
+  var chofer          = document.getElementById("inp-chofer").value.trim();
+  var cuitChofer      = document.getElementById("inp-cuit-chofer").value.trim();
+  var patente         = document.getElementById("inp-patente").value.trim();
+  var patenteAcoplado = document.getElementById("inp-patente-acoplado").value.trim();
+  var tarifa          = parseFloat(document.getElementById("inp-tarifa").value)||0;
+  if (!chofer||!patente) { showToast("Completá chofer y patente del camión","error"); return; }
 
   var transpEl = document.querySelector("#combo-transportista .combo-val");
   var transpNombre = (transpEl&&!transpEl.classList.contains("placeholder")) ? transpEl.textContent.trim() : "";
@@ -1747,10 +1961,10 @@ function guardarCamion() {
   if (editingCamionId) {
     camiones = camiones.map(function(c){
       if (c.id!==editingCamionId) return c;
-      return {...c, chofer, patente, nViaje, tarifa, transportista:transpNombre, razonSocial, cuit};
+      return Object.assign({},c,{ chofer, cuitChofer, patente, patenteAcoplado, tarifa, transportista:transpNombre, razonSocial, cuit });
     });
   } else {
-    camiones.push({ id:nuevoCamId(), chofer, patente, nViaje, tarifa, transportista:transpNombre, razonSocial, cuit });
+    camiones.push({ id:nuevoCamId(), chofer, cuitChofer, patente, patenteAcoplado, tarifa, transportista:transpNombre, razonSocial, cuit, cerrado:false });
   }
   cerrarModal("modal-camion");
   renderCamiones();
@@ -1758,16 +1972,16 @@ function guardarCamion() {
   showToast(editingCamionId?"Camión actualizado":"Camión creado ✓","ok");
 }
 
-function exportarCSVLogistica() {
-  var headers=["N° Pedido","Operador","Campo","Insumo","Cantidad","Unidad","Presentación","Fecha Entrega","Estado","Origen","Camión","Transportista","Chofer","Patente","N° Viaje","Tarifa","CUIT","Remito"];
+function exportarXLSXLogistica() {
+  var headers=["N° Pedido","Operador","Campo","Insumo","Cantidad","Unidad","Presentación","Fecha Entrega","Estado","Origen","Camión","Transportista","Chofer","CUIT Chofer","Patente Camión","Patente Acoplado","Tarifa","CUIT Transp.","Remito"];
   var rows = pedidosLogistica.map(function(item){
     var f=item.fields;
-    return [f.NumeroPedido||"",f.Operador||"",f.Campo||"",f.Insumo||"",f.Cantidad||"",f.Unidad||"",f.Presentacion||"",f.FechaEntrega||"",f.Estado||"",f.OrigenAsignado||"",f.CamionId||"",f.Transportista||"",f.Chofer||"",f.Patente||"",f.NroViaje||"",f.Tarifa||"",f.CUIT||"",f.NroRemito||""];
+    return [f.NumeroPedido||"",f.Operador||"",f.Campo||"",f.Insumo||"",f.Cantidad||"",f.Unidad||"",f.Presentacion||"",f.FechaEntrega||"",f.Estado||"",f.OrigenAsignado||"",f.CamionId||"",f.Transportista||"",f.Chofer||"",f.CUITChofer||"",f.Patente||"",f.PatenteAcoplado||"",f.Tarifa||"",f.CUIT||"",f.NroRemito||""];
   });
-  var csv = [headers,...rows].map(function(r){return r.map(function(v){return '"'+String(v||"").replace(/"/g,'""')+'"';}).join(",");}).join("\n");
-  var blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
-  var url=URL.createObjectURL(blob); var a=document.createElement("a");
-  a.href=url; a.download="logistica_pedidos_"+new Date().toISOString().slice(0,10)+".csv"; a.click(); URL.revokeObjectURL(url);
+  var ws = XLSX.utils.aoa_to_sheet([headers].concat(rows));
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Logística");
+  XLSX.writeFile(wb, "logistica_pedidos_"+new Date().toISOString().slice(0,10)+".xlsx");
 }
 
 // ═══════════════════════════════════════════════════════════════
