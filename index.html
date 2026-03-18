@@ -668,7 +668,7 @@ async function cargarMisPedidos() {
         var fechaKey = f["Fecha" + d];
         var fechaLabel = "";
         if (fechaKey) {
-          var dp = new Date(fechaKey + "T00:00:00");
+          var fkp = fechaKey.split("-"); var dp = new Date(parseInt(fkp[0]), parseInt(fkp[1])-1, parseInt(fkp[2]));
           fechaLabel = fmtDateShort(dp);
         } else {
           fechaLabel = fmtDateShort(dates[d]);
@@ -903,7 +903,7 @@ async function cargarPreview() {
 
     var th = "<tr><th>Campo</th><th>Cultivo</th><th>Zona</th><th>Coment. Logística</th><th>Responsables</th>";
     for (var di = 0; di < dates.length; di++) {
-      var dobj = new Date(dates[di] + "T00:00:00");
+      var parts_d = dates[di].split("-"); var dobj = new Date(parseInt(parts_d[0]), parseInt(parts_d[1])-1, parseInt(parts_d[2]));
       th += "<th>" + fmtDateShort(dobj) + "</th>";
     }
     th += "</tr>";
