@@ -793,6 +793,7 @@ var camiones = [];      // [{id, spId, chofer, patente, nViaje, tarifa, transpor
 var selItems = {};      // {spId: true}
 var editingCamionId = null;
 var camDestinoActual = "";
+var stockAjustes = {}; // {key: cantidadConsumida} — se acumula en sesión
 
 // Grupos de insumos
 var GRUPOS = {
@@ -1002,10 +1003,22 @@ async function loadAllMasterData() {
     var opEntry = padronOperadores.find(function(o){ return o.email && o.email.toLowerCase()===currentUserEmail.toLowerCase(); });
 
     if (opEntry && opEntry.iniciales) currentUserInitials = opEntry.iniciales;
-    // Stock snapshot más reciente
+    // Stock snapshot — reconstruir stockPropio y stockPendiente para persistencia entre sesiones
     if (snap && snap.length) {
-      var f = snap[0].fields;
-      document.getElementById("stock-last-update").textContent = "Último snapshot: " + (f.CargadoPor||"") + " · " + new Date(f.Modified).toLocaleString("es-AR");
+      var snapSorted = snap.slice().sort(function(a,b){ return (b.fields.Modified||"").localeCompare(a.fields.Modified||""); });
+      var f0 = snapSorted[0].fields;
+      document.getElementById("stock-last-update").textContent = "Último snapshot: " + (f0.CargadoPor||"") + " · " + new Date(f0.Modified).toLocaleString("es-AR");
+      stockPropio = [];
+      stockPendiente = [];
+      snap.forEach(function(s) {
+        var sf = s.fields;
+        if (sf.TipoStock === "ExistenciaPropia") {
+          stockPropio.push({ categoria: sf.Categoria||"", codigo:"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0 });
+        } else if (sf.TipoStock === "CuboOC") {
+          stockPendiente.push({ proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0 });
+        }
+      });
+      renderStockTable();
     }
     renderPadronesPanel();
   } catch(e) {
@@ -1025,7 +1038,7 @@ function switchTab(name) {
   });
   document.getElementById("tab-" + name).classList.add("active");
   if (name === "insumos")   { subTab("insumos","pedidos"); cargarPedidosInsumos(); }
-  if (name === "logistica") { cargarPedidosLogistica(); renderCamiones(); }
+  if (name === "logistica") { cargarPedidosLogistica(); }
 }
 
 function subTab(parent, name) {
@@ -1611,10 +1624,9 @@ async function guardarStockEnSP() {
   if (!stockPropio.length && !stockPendiente.length) { showToast("Cargá al menos un archivo primero","error"); return; }
   showToast("Guardando snapshot en SharePoint...","");
   try {
-    // Borrar snapshots anteriores del día para no acumular
-    var hoy = new Date().toISOString().split("T")[0];
-    var existing = await spGet(CONFIG.lists.stockSnapshot, "");
-    // Borrar y re-escribir (SP no tiene bulk delete, escribimos sobre el mismo día)
+    // Borrar snapshot anterior completo para reemplazarlo
+    showToast("Borrando snapshot anterior...","");
+    await spDeleteAll(CONFIG.lists.stockSnapshot);
     var allRows = [];
     stockPropio.forEach(function(r){ allRows.push({TipoStock:"ExistenciaPropia",Title:r.nombre.substring(0,255),Insumo:r.nombre,Categoria:r.categoria,Unidad:r.unidad,Cantidad:r.existencia,Proveedor:"",CargadoPor:currentUser}); });
     stockPendiente.forEach(function(r){ allRows.push({TipoStock:"CuboOC",Title:r.insumo.substring(0,255),Insumo:r.insumo,Categoria:r.tipo,Unidad:"",Cantidad:r.pendiente,Proveedor:r.proveedor,CargadoPor:currentUser}); });
@@ -1742,15 +1754,26 @@ function seleccionarOrigen(texto, itemDataStr) {
 // ═══════════════════════════════════════════════════════════════
 // LOGÍSTICA
 // ═══════════════════════════════════════════════════════════════
-function nuevoCamId() {
-  var nums = camiones.map(function(c){ return parseInt((c.id||"").replace(/\D/g,"")||"0"); }).filter(function(n){return !isNaN(n);});
-  var next = nums.length ? Math.max.apply(null,nums)+1 : 1;
-  return "CA"+String(next).padStart(2,"0");
+// Calcula el próximo ID de camión leyendo todos los CamionId existentes en SP
+async function getNextCamionId() {
+  try {
+    var items = await spGet(CONFIG.lists.pedidos, "");
+    var ids = items.map(function(i){ return i.fields.CamionId||""; }).filter(Boolean);
+    var numsRemoto = ids.map(function(id){ return parseInt(id.replace(/\D/g,"")||"0"); }).filter(function(n){ return !isNaN(n)&&n>0; });
+    var numsLocal  = camiones.map(function(c){ return parseInt((c.id||"").replace(/\D/g,"")||"0"); }).filter(function(n){ return !isNaN(n)&&n>0; });
+    var all = numsRemoto.concat(numsLocal);
+    var next = all.length ? Math.max.apply(null,all)+1 : 1;
+    return "CA"+String(next).padStart(2,"0");
+  } catch(e) {
+    var numsLocal = camiones.map(function(c){ return parseInt((c.id||"").replace(/\D/g,"")||"0"); }).filter(function(n){ return !isNaN(n)&&n>0; });
+    var next = numsLocal.length ? Math.max.apply(null,numsLocal)+1 : 1;
+    return "CA"+String(next).padStart(2,"0");
+  }
 }
 
-// Crea un camión nuevo con numeración automática (sin abrir modal)
-function crearCamionNuevo() {
-  var id = nuevoCamId();
+// Crea un camión nuevo con ID único persistente entre sesiones
+async function crearCamionNuevo() {
+  var id = await getNextCamionId();
   camiones.push({ id:id, cerrado:false });
   renderCamiones();
   renderItemsLogistica();
@@ -1761,6 +1784,35 @@ async function cargarPedidosLogistica() {
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
     pedidosLogistica = items.filter(function(i){ return i.fields.Estado==="Pendiente logística"||i.fields.Estado==="En camino"; });
+
+    // Reconstruir camiones desde los pedidos SP (persistencia entre sesiones)
+    var camIdsSeen = {};
+    var reconstructed = [];
+    pedidosLogistica.forEach(function(item) {
+      var f = item.fields;
+      if (f.CamionId && !camIdsSeen[f.CamionId]) {
+        camIdsSeen[f.CamionId] = true;
+        reconstructed.push({
+          id:              f.CamionId,
+          chofer:          f.Chofer||"",
+          cuitChofer:      f.CUITChofer||"",
+          patente:         f.Patente||"",
+          patenteAcoplado: f.PatenteAcoplado||"",
+          tarifa:          f.Tarifa||0,
+          transportista:   f.Transportista||"",
+          razonSocial:     "",
+          cuit:            f.CUIT||"",
+          cerrado:         f.Estado==="En camino",
+        });
+      }
+    });
+    // Conservar camiones locales aún sin ítems asignados
+    camiones.forEach(function(c) {
+      if (!camIdsSeen[c.id]) reconstructed.push(c);
+    });
+    camiones = reconstructed;
+
+    renderCamiones();
     renderItemsLogistica();
   } catch(e) { showToast("Error cargando pedidos: "+e.message,"error"); }
 }
@@ -1793,7 +1845,7 @@ function renderItemsLogistica() {
 
   // Agrupados por camión
   var byCam = document.getElementById("log-by-cam");
-  var asignados = pedidosLogistica.filter(function(p){ return p.fields.CamionId; });
+  var asignados = pedidosLogistica.filter(function(p){ return p.fields.CamionId && p.fields.Estado==="Pendiente logística"; });
   var camIdsUsados = [...new Set(asignados.map(function(p){ return p.fields.CamionId; }))];
   var html2="";
   camIdsUsados.forEach(function(camId){
@@ -1882,14 +1934,15 @@ async function quitarDeCamion(spId) {
 }
 
 function renderCamiones() {
-  document.getElementById("cam-count").textContent = camiones.length;
+  var activos = camiones.filter(function(c){ return !c.cerrado; });
+  document.getElementById("cam-count").textContent = activos.length;
   var list = document.getElementById("cam-list");
-  if (!camiones.length) {
+  if (!activos.length) {
     list.innerHTML='<div style="padding:32px 16px;text-align:center;color:var(--light);font-size:13px;">🚛<br><br>Creá un camión para empezar</div>';
     return;
   }
   var html="";
-  camiones.forEach(function(cam){
+  activos.forEach(function(cam){
     var count = pedidosLogistica.filter(function(p){return p.fields.CamionId===cam.id;}).length;
     var tieneChofer = !!(cam.chofer && cam.patente);
     html += '<div class="cam-row" style="'+(cam.cerrado?'opacity:0.6;':'')+'"><div style="min-width:0;flex:1;">';
@@ -2038,7 +2091,18 @@ async function guardarRemito() {
   var remito = document.getElementById("inp-remito").value.trim();
   if (!remito||!remitoSpId) return;
   try {
-    await spPatch(CONFIG.lists.pedidos, remitoSpId, { NroRemito:remito, Estado:"Cerrado" });
+    var fields = { NroRemito: remito, Estado: "Cerrado" };
+    for (var attempt = 0; attempt < 8; attempt++) {
+      var r = await fetch(
+        "https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+CONFIG.lists.pedidos+"/items/"+remitoSpId+"/fields",
+        { method:"PATCH", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify(fields) }
+      );
+      if (r.ok) break;
+      var errBody = await r.json().catch(function(){return{};});
+      var badField = errBody.error&&errBody.error.message ? errBody.error.message.match(/Field '([^']+)' is not recognized/) : null;
+      if (badField) { delete fields[badField[1]]; }
+      else { throw new Error(errBody.error ? errBody.error.message : "PATCH "+r.status); }
+    }
     cerrarModal("modal-remito");
     showToast("Remito registrado. Pedido cerrado ✓","ok");
     cargarMisPedidos();
