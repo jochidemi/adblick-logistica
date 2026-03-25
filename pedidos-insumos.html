@@ -843,7 +843,13 @@ async function acquireToken() {
     var r = await msalInstance.acquireTokenSilent({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
     graphToken = r.accessToken;
   } catch(e) {
-    await msalInstance.acquireTokenRedirect({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+    // acquireTokenRedirect no funciona en iframes → usamos popup
+    try {
+      var r2 = await msalInstance.acquireTokenPopup({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+      graphToken = r2.accessToken;
+    } catch(e2) {
+      throw new Error("No se pudo renovar el token. Por favor recargá la página. (" + e2.message + ")");
+    }
   }
 }
 
@@ -1554,18 +1560,35 @@ function processStockFile(file, tipo) {
 }
 
 function parsearExistencia(ws) {
+  // El archivo tiene columnas vacías entre código (col B) y nombre (col E).
+  // Usamos los valores filtrados (sin vacíos) para no depender de offsets fijos.
+  // Estructura filtrada por fila de dato: vals[0]=código, vals[1]=nombre, vals[2]=unidad, vals[3]=existencia
   var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
-  var SKIP = new Set(["Adblick Granos","Existencia de Insumos","Condiciones de filtro","Insumos","Unidad","Existencia","Granos","Otros"]);
-  var items = [], cat="";
-  raw.forEach(function(row){
+  var SKIP = new Set(["Adblick Granos","Existencia de Insumos","Condiciones de filtro",
+    "Insumos","Unidad","Existencia","Granos","Otros",
+    "Pendiente OC","Comprometido OV","Comprometido < 30 dias","Comprometido > 30 dias",
+    "Disponible","Disp + Pend OC","Pesos","En Ejecucion","Existencia Real"]);
+  // Categorías conocidas (para distinguirlas de nombres de punto de stock)
+  var CATS = new Set(["Semillas","Agroquimicos","Fertilizantes","Herbicidas","Insecticidas","Fungicidas"]);
+  var items = [], cat = "";
+  raw.forEach(function(row) {
     var vals = row.map(function(v){ return String(v||"").trim(); }).filter(Boolean);
     if (!vals.length) return;
-    if (vals.length===1 && !/^\d/.test(vals[0]) && !SKIP.has(vals[0])) { cat=vals[0]; return; }
-    if (/^\d/.test(vals[0]) && vals.length>=4) {
-      var rowArr = row.map(function(v){ return String(v||"").trim(); });
-      var idx = rowArr.findIndex(function(v){ return /^\d/.test(v) && v===vals[0]; });
-      var ex = parseFloat(rowArr[idx+3])||0;
-      if (rowArr[idx+1] && ex>0) items.push({categoria:cat, codigo:vals[0], nombre:rowArr[idx+1], unidad:rowArr[idx+2]||"", existencia:ex});
+    if (SKIP.has(vals[0])) return;
+    // Fila de categoría o punto de stock (un solo valor no numérico)
+    if (vals.length === 1 && !/^\d/.test(vals[0])) {
+      if (CATS.has(vals[0])) cat = vals[0];
+      // punto de stock (ej. "3810 Belgrano") → no cambia la categoría
+      return;
+    }
+    // Fila de dato: primer valor empieza con dígito (código), mínimo 4 valores filtrados
+    if (/^\d/.test(vals[0]) && vals.length >= 4) {
+      var nombre   = vals[1];
+      var unidad   = vals[2];
+      var ex       = parseFloat(vals[3]) || 0;
+      if (nombre && ex > 0) {
+        items.push({ categoria: cat, codigo: vals[0], nombre: nombre, unidad: unidad, existencia: ex });
+      }
     }
   });
   return items;
@@ -1630,14 +1653,20 @@ async function guardarStockEnSP() {
     var allRows = [];
     stockPropio.forEach(function(r){ allRows.push({TipoStock:"ExistenciaPropia",Title:r.nombre.substring(0,255),Insumo:r.nombre,Categoria:r.categoria,Unidad:r.unidad,Cantidad:r.existencia,Proveedor:"",CargadoPor:currentUser}); });
     stockPendiente.forEach(function(r){ allRows.push({TipoStock:"CuboOC",Title:r.insumo.substring(0,255),Insumo:r.insumo,Categoria:r.tipo,Unidad:"",Cantidad:r.pendiente,Proveedor:r.proveedor,CargadoPor:currentUser}); });
-    // Lote de 20
+    // Lote de 20, renovando token cada 100 ítems para evitar 401
+    var lote = 0;
     for (var i=0;i<allRows.length;i+=20) {
       var batch=allRows.slice(i,i+20);
       await Promise.all(batch.map(function(fields){ return spPost(CONFIG.lists.stockSnapshot, fields); }));
       await sleep(200);
+      lote++;
+      if (lote % 5 === 0) {
+        showToast("Guardando... "+(i+20)+"/"+allRows.length+" registros","");
+        await acquireToken(); // renovar token cada 100 ítems
+      }
     }
     document.getElementById("stock-last-update").textContent = "Último snapshot: "+currentUser+" · "+new Date().toLocaleString("es-AR");
-    showToast("Stock guardado en SharePoint ✓","ok");
+    showToast("Stock guardado en SharePoint ✓ ("+allRows.length+" registros)","ok");
   } catch(e) { showToast("Error: "+e.message,"error"); }
 }
 
