@@ -782,6 +782,8 @@ var padronCampos = [], padronInsumos = [], padronTransp = [], padronOperadores =
 // Stock (en memoria sesión)
 var stockPropio = [], stockPendiente = [];
 var stockTabActiva = "propio";
+// Matches del modal "Asignar origen" (evita pasar JSON en atributos onclick)
+var _origenMatchP = [], _origenMatchOC = [];
 
 // Pedidos
 var pedidosInsumos = [], pedidosLogistica = [];
@@ -1720,39 +1722,73 @@ function abrirModalOrigen(spId, insumo, cantPres, campo) {
   if (manualBtn) { manualBtn.style.display = ""; }
   document.getElementById("inp-nota-origen").value = "";
 
-  // Coincidencias en stock (fuzzy)
-  var q = insumo.toLowerCase().split(" ").slice(0,2).join(" ");
-  var matchP = stockPropio.filter(function(r){ return r.nombre.toLowerCase().includes(q.split(" ")[0]); });
-  var matchOC = stockPendiente.filter(function(r){ return r.insumo.toLowerCase().includes(q.split(" ")[0]); });
+  // Coincidencias en stock (fuzzy por primera palabra)
+  var q0 = insumo.toLowerCase().split(" ")[0];
+  var matchP  = stockPropio.filter(function(r){ return r.nombre.toLowerCase().includes(q0); });
+  var matchOC = stockPendiente.filter(function(r){ return r.insumo.toLowerCase().includes(q0); });
 
-  var hP = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">📦 Existencia propia <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar)</span></div>';
-  if (!matchP.length) hP += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin coincidencias en stock propio</div>';
-  else matchP.forEach(function(r){
-    // Descontar lo ya asignado a otros pedidos (consumo de stock)
-    var consumido = stockAjustes[r.nombre] || 0;
+  // Guardar en arrays globales para que el onclick use índice (evita problemas de escaping con JSON)
+  _origenMatchP  = matchP.map(function(r){
+    var consumido  = stockAjustes[r.nombre] || 0;
     var disponible = Math.max(0, r.existencia - consumido);
-    var sinStock = disponible <= 0;
-    var ptoLabel = r.puntoStock ? r.puntoStock + ' — ' : '';
-    var texto = 'Stock propio — ' + ptoLabel + r.nombre + ' (' + disponible.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' ' + r.unidad + ' disponibles)';
-    var itemData = JSON.stringify({nombre:r.nombre, disponible:disponible, tipo:'propio'}).replace(/'/g,"&#39;");
-    hP += '<div onclick="'+(sinStock?'showToast(\'Sin stock disponible\',\'error\')':"seleccionarOrigen('"+texto.replace(/'/g,"&#39;")+"','"+itemData+"',this)")+'" data-origen-item="1" style="cursor:'+(sinStock?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStock?'#fafafa':'var(--bg)')+';margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+';">';
-    hP += '<div><div style="font-weight:600;font-size:13px;">'+r.nombre+'</div><div style="font-size:11px;color:var(--sub);">'+(r.puntoStock?'📍 '+r.puntoStock+' · ':'')+r.categoria+(consumido>0?' · <span style="color:var(--orange);">'+consumido.toLocaleString("es-AR",{maximumFractionDigits:2})+' asignados</span>':'')+'</div></div>';
-    hP += '<div style="text-align:right;"><div style="font-weight:800;font-size:15px;color:'+(sinStock?'var(--red)':'var(--green)')+';">'+disponible.toLocaleString("es-AR",{maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--light);">'+r.unidad+' disponibles</div></div></div>';
+    var ptoLabel   = r.puntoStock ? r.puntoStock + ' — ' : '';
+    var texto      = 'Stock propio — ' + ptoLabel + r.nombre +
+                     ' (' + disponible.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' ' + r.unidad + ' disponibles)';
+    return { r: r, consumido: consumido, disponible: disponible, texto: texto,
+             stockKey: r.nombre, tipo: 'propio' };
   });
+  _origenMatchOC = matchOC.map(function(r){
+    var consumidoOC  = stockAjustes['OC_'+r.proveedor+'_'+r.insumo] || 0;
+    var disponibleOC = Math.max(0, r.pendiente - consumidoOC);
+    var texto        = 'Pendiente remito — ' + r.proveedor + ' — ' + r.insumo +
+                       ' (' + disponibleOC.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' pendientes)';
+    return { r: r, consumidoOC: consumidoOC, disponible: disponibleOC, texto: texto,
+             stockKey: 'OC_'+r.proveedor+'_'+r.insumo, tipo: 'oc' };
+  });
+
+  // ── Existencia propia ──
+  var hP = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">📦 Existencia propia <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar)</span></div>';
+  if (!_origenMatchP.length) {
+    hP += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin coincidencias en stock propio</div>';
+  } else {
+    _origenMatchP.forEach(function(m, i){
+      var sinStock   = m.disponible <= 0;
+      var subtitulo  = m.r.puntoStock ? '📍 ' + m.r.puntoStock : (m.r.categoria || '');
+      var consumidoTxt = m.consumido > 0 ? ' · <span style="color:var(--orange);">' + m.consumido.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' asignados</span>' : '';
+      hP += '<div onclick="seleccionarOrigenIdx(\'P\',' + i + ',this)" data-origen-item="1"' +
+            ' style="cursor:'+(sinStock?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;' +
+            'padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStock?'#fafafa':'var(--bg)')+';' +
+            'margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+';">';
+      hP += '<div><div style="font-weight:600;font-size:13px;">' + m.r.nombre + '</div>' +
+            '<div style="font-size:11px;color:var(--sub);">' + subtitulo + consumidoTxt + '</div></div>';
+      hP += '<div style="text-align:right;">' +
+            '<div style="font-weight:800;font-size:15px;color:'+(sinStock?'var(--red)':'var(--green)')+';">' +
+            m.disponible.toLocaleString("es-AR",{maximumFractionDigits:2}) + '</div>' +
+            '<div style="font-size:11px;color:var(--light);">' + m.r.unidad + ' disponibles</div></div></div>';
+    });
+  }
   document.getElementById("stock-propio-match").innerHTML = hP;
 
+  // ── Pendiente de remitir ──
   var hOC = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">🚛 Pendiente de remitir <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar)</span></div>';
-  if (!matchOC.length) hOC += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin OC pendientes</div>';
-  else matchOC.forEach(function(r){
-    var consumidoOC = stockAjustes['OC_'+r.proveedor+'_'+r.insumo] || 0;
-    var disponibleOC = Math.max(0, r.pendiente - consumidoOC);
-    var sinStockOC = disponibleOC <= 0;
-    var texto = 'Pendiente remito — ' + r.proveedor + ' — ' + r.insumo + ' (' + disponibleOC.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' pendientes)';
-    var itemDataOC = JSON.stringify({nombre:'OC_'+r.proveedor+'_'+r.insumo, disponible:disponibleOC, tipo:'oc'}).replace(/'/g,"&#39;");
-    hOC += '<div onclick="'+(sinStockOC?'showToast(\'Sin pendiente disponible\',\'error\')':"seleccionarOrigen('"+texto.replace(/'/g,"&#39;")+"','"+itemDataOC+"',this)")+'" data-origen-item="1" style="cursor:'+(sinStockOC?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStockOC?'#fafafa':'var(--bg)')+';margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStockOC?'0.5':'1')+';">';
-    hOC += '<div><div style="font-weight:600;font-size:13px;">'+r.insumo+'</div><div style="font-size:11px;color:var(--light);">'+r.proveedor+(consumidoOC>0?' · <span style="color:var(--orange);">'+consumidoOC.toLocaleString("es-AR",{maximumFractionDigits:2})+' asignados</span>':'')+'</div></div>';
-    hOC += '<div style="text-align:right;"><div style="font-weight:800;font-size:15px;color:'+(sinStockOC?'var(--red)':'var(--blue)')+';">'+disponibleOC.toLocaleString("es-AR",{maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--light);">disponibles</div></div></div>';
-  });
+  if (!_origenMatchOC.length) {
+    hOC += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin OC pendientes</div>';
+  } else {
+    _origenMatchOC.forEach(function(m, i){
+      var sinStockOC    = m.disponible <= 0;
+      var consumidoTxt  = m.consumidoOC > 0 ? ' · <span style="color:var(--orange);">' + m.consumidoOC.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' asignados</span>' : '';
+      hOC += '<div onclick="seleccionarOrigenIdx(\'OC\',' + i + ',this)" data-origen-item="1"' +
+             ' style="cursor:'+(sinStockOC?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;' +
+             'padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStockOC?'#fafafa':'var(--bg)')+';' +
+             'margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStockOC?'0.5':'1')+';">';
+      hOC += '<div><div style="font-weight:600;font-size:13px;">' + m.r.insumo + '</div>' +
+             '<div style="font-size:11px;color:var(--light);">' + m.r.proveedor + consumidoTxt + '</div></div>';
+      hOC += '<div style="text-align:right;">' +
+             '<div style="font-weight:800;font-size:15px;color:'+(sinStockOC?'var(--red)':'var(--blue)')+';">' +
+             m.disponible.toLocaleString("es-AR",{maximumFractionDigits:2}) + '</div>' +
+             '<div style="font-size:11px;color:var(--light);">disponibles</div></div></div>';
+    });
+  }
   document.getElementById("stock-pend-match").innerHTML = hOC;
 
   document.getElementById("modal-origen").classList.add("open");
@@ -1782,31 +1818,33 @@ async function confirmarOrigen() {
   btn.disabled=false; btn.textContent="Confirmar origen →";
 }
 
-function seleccionarOrigen(texto, itemDataStr, el) {
+function seleccionarOrigenIdx(grupo, idx, el) {
+  var m = grupo === 'P' ? _origenMatchP[idx] : _origenMatchOC[idx];
+  if (!m) return;
+  if (m.disponible <= 0) { showToast('Sin stock disponible', 'error'); return; }
+
   // Quitar selección visual de todos los cards
   document.querySelectorAll('[data-origen-item]').forEach(function(e) {
     e.style.borderColor = 'var(--border)';
-    e.style.background = 'var(--bg)';
-    e.style.boxShadow = '';
+    e.style.background  = 'var(--bg)';
+    e.style.boxShadow   = '';
   });
   // Marcar el card clickeado
   if (el) {
     el.style.borderColor = 'var(--brand)';
-    el.style.background = 'var(--brand-light)';
-    el.style.boxShadow = '0 0 0 3px rgba(var(--brand-rgb,34,139,34),0.12)';
+    el.style.background  = 'var(--brand-light)';
+    el.style.boxShadow   = '0 0 0 3px rgba(34,139,34,0.12)';
   }
-  // Llenar el campo de origen (el valor se setea programáticamente aunque sea readonly)
+  // Llenar el campo de origen (readonly no impide set programático)
   var inp = document.getElementById("inp-origen");
   inp.setAttribute("readonly","readonly");
-  inp.style.background = "var(--bg)";
-  inp.style.cursor = "default";
-  inp.style.fontStyle = "normal";
-  inp.style.color = "var(--text)";
-  inp.value = texto;
-  selectedStockItem = null;
-  if (itemDataStr) {
-    try { selectedStockItem = JSON.parse(itemDataStr.replace(/&#39;/g,"'")); } catch(e){}
-  }
+  inp.style.background  = "var(--bg)";
+  inp.style.cursor      = "default";
+  inp.style.fontStyle   = "normal";
+  inp.style.color       = "var(--text)";
+  inp.value = m.texto;
+
+  selectedStockItem = { nombre: m.stockKey, disponible: m.disponible, tipo: m.tipo };
 }
 
 // ═══════════════════════════════════════════════════════════════
