@@ -654,7 +654,10 @@ tr:hover td{background:var(--brand-light);}
       <hr class="divider">
       <div class="fld">
         <label class="lbl">Origen asignado <span class="req">*</span></label>
-        <input type="text" id="inp-origen" placeholder="Ej: Galpón Belgrano / AGROPACK pendiente remito...">
+        <input type="text" id="inp-origen" readonly placeholder="Seleccioná un origen de las opciones de arriba" style="background:var(--bg);cursor:default;font-style:italic;">
+        <div style="margin-top:5px;">
+          <button type="button" id="btn-manual-origen" onclick="var i=document.getElementById('inp-origen');i.removeAttribute('readonly');i.style.background='';i.style.cursor='';i.style.fontStyle='';i.placeholder='Ej: Galpón Belgrano / pendiente remito...';i.focus();this.style.display='none';" style="font-size:11px;color:var(--sub);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">✏ Ingresar origen manualmente</button>
+        </div>
       </div>
       <div class="fld">
         <label class="lbl">Nota interna <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
@@ -1019,7 +1022,7 @@ async function loadAllMasterData() {
       snap.forEach(function(s) {
         var sf = s.fields;
         if (sf.TipoStock === "ExistenciaPropia") {
-          stockPropio.push({ categoria: sf.Categoria||"", codigo:"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0 });
+          stockPropio.push({ categoria: sf.Categoria||"", puntoStock: sf.Proveedor||"", codigo:"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0 });
         } else if (sf.TipoStock === "CuboOC") {
           stockPendiente.push({ proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0 });
         }
@@ -1570,15 +1573,15 @@ function parsearExistencia(ws) {
     "Disponible","Disp + Pend OC","Pesos","En Ejecucion","Existencia Real"]);
   // Categorías conocidas (para distinguirlas de nombres de punto de stock)
   var CATS = new Set(["Semillas","Agroquimicos","Fertilizantes","Herbicidas","Insecticidas","Fungicidas"]);
-  var items = [], cat = "";
+  var items = [], cat = "", puntoStock = "";
   raw.forEach(function(row) {
     var vals = row.map(function(v){ return String(v||"").trim(); }).filter(Boolean);
     if (!vals.length) return;
     if (SKIP.has(vals[0])) return;
     // Fila de categoría o punto de stock (un solo valor no numérico)
     if (vals.length === 1 && !/^\d/.test(vals[0])) {
-      if (CATS.has(vals[0])) cat = vals[0];
-      // punto de stock (ej. "3810 Belgrano") → no cambia la categoría
+      if (CATS.has(vals[0])) { cat = vals[0]; puntoStock = ""; }
+      else puntoStock = vals[0]; // ej. "3810 Belgrano", "Agropack"
       return;
     }
     // Fila de dato: primer valor empieza con dígito (código), mínimo 4 valores filtrados
@@ -1587,7 +1590,7 @@ function parsearExistencia(ws) {
       var unidad   = vals[2];
       var ex       = parseFloat(vals[3]) || 0;
       if (nombre && ex > 0) {
-        items.push({ categoria: cat, codigo: vals[0], nombre: nombre, unidad: unidad, existencia: ex });
+        items.push({ categoria: cat, puntoStock: puntoStock, codigo: vals[0], nombre: nombre, unidad: unidad, existencia: ex });
       }
     }
   });
@@ -1633,8 +1636,8 @@ function renderStockTable() {
   var filtered = q ? rows.filter(function(r){ return JSON.stringify(r).toLowerCase().includes(q.toLowerCase()); }) : rows;
   var html = '<div class="tbl-wrap"><table>';
   if (stockTabActiva==="propio") {
-    html += '<thead><tr><th>Categoría</th><th>Insumo</th><th>Unidad</th><th class="r">Existencia</th></tr></thead><tbody>';
-    filtered.forEach(function(r){ html += '<tr><td>'+r.categoria+'</td><td style="font-weight:600;">'+r.nombre+'</td><td>'+r.unidad+'</td><td class="r" style="font-weight:700;color:var(--green);">'+r.existencia.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>'; });
+    html += '<thead><tr><th>Categoría</th><th>Punto de Stock</th><th>Insumo</th><th>Unidad</th><th class="r">Existencia</th></tr></thead><tbody>';
+    filtered.forEach(function(r){ html += '<tr><td>'+r.categoria+'</td><td style="font-size:12px;color:var(--sub);">'+(r.puntoStock||'—')+'</td><td style="font-weight:600;">'+r.nombre+'</td><td>'+r.unidad+'</td><td class="r" style="font-weight:700;color:var(--green);">'+r.existencia.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>'; });
   } else {
     html += '<thead><tr><th>Tipo</th><th>Insumo</th><th>Proveedor</th><th class="r">Pend. Remitir</th></tr></thead><tbody>';
     filtered.forEach(function(r){ html += '<tr><td>'+r.tipo+'</td><td style="font-weight:600;">'+r.insumo+'</td><td style="font-size:12px;color:var(--sub);">'+r.proveedor+'</td><td class="r" style="font-weight:700;color:var(--blue);">'+r.pendiente.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>'; });
@@ -1651,7 +1654,7 @@ async function guardarStockEnSP() {
     showToast("Borrando snapshot anterior...","");
     await spDeleteAll(CONFIG.lists.stockSnapshot);
     var allRows = [];
-    stockPropio.forEach(function(r){ allRows.push({TipoStock:"ExistenciaPropia",Title:r.nombre.substring(0,255),Insumo:r.nombre,Categoria:r.categoria,Unidad:r.unidad,Cantidad:r.existencia,Proveedor:"",CargadoPor:currentUser}); });
+    stockPropio.forEach(function(r){ allRows.push({TipoStock:"ExistenciaPropia",Title:r.nombre.substring(0,255),Insumo:r.nombre,Categoria:r.categoria,Unidad:r.unidad,Cantidad:r.existencia,Proveedor:r.puntoStock||"",CargadoPor:currentUser}); });
     stockPendiente.forEach(function(r){ allRows.push({TipoStock:"CuboOC",Title:r.insumo.substring(0,255),Insumo:r.insumo,Categoria:r.tipo,Unidad:"",Cantidad:r.pendiente,Proveedor:r.proveedor,CargadoPor:currentUser}); });
     // Lote de 20, renovando token cada 100 ítems para evitar 401
     var lote = 0;
@@ -1707,7 +1710,14 @@ function abrirModalOrigen(spId, insumo, cantPres, campo) {
   pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo};
   document.getElementById("modal-origen-titulo").textContent = insumo;
   document.getElementById("modal-origen-sub").textContent = cantPres + " · 📍 " + campo;
-  document.getElementById("inp-origen").value = "";
+  var inpOrigen = document.getElementById("inp-origen");
+  inpOrigen.value = "";
+  inpOrigen.setAttribute("readonly","readonly");
+  inpOrigen.style.background = "var(--bg)";
+  inpOrigen.style.color = "";
+  inpOrigen.style.fontStyle = "italic";
+  var manualBtn = document.getElementById("btn-manual-origen");
+  if (manualBtn) { manualBtn.style.display = ""; }
   document.getElementById("inp-nota-origen").value = "";
 
   // Coincidencias en stock (fuzzy)
@@ -1722,10 +1732,11 @@ function abrirModalOrigen(spId, insumo, cantPres, campo) {
     var consumido = stockAjustes[r.nombre] || 0;
     var disponible = Math.max(0, r.existencia - consumido);
     var sinStock = disponible <= 0;
-    var texto = 'Stock propio — ' + r.nombre + ' (' + disponible.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' ' + r.unidad + ' disponibles)';
+    var ptoLabel = r.puntoStock ? r.puntoStock + ' — ' : '';
+    var texto = 'Stock propio — ' + ptoLabel + r.nombre + ' (' + disponible.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' ' + r.unidad + ' disponibles)';
     var itemData = JSON.stringify({nombre:r.nombre, disponible:disponible, tipo:'propio'}).replace(/'/g,"&#39;");
-    hP += '<div onclick="'+(sinStock?'showToast(\'Sin stock disponible\',\'error\')':"seleccionarOrigen('"+texto.replace(/'/g,"&#39;")+"','"+itemData+"')")+'" style="cursor:'+(sinStock?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStock?'#fafafa':'var(--bg)')+';margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+';" '+(sinStock?'':' onmouseover="this.style.borderColor=\'var(--brand)\';this.style.background=\'var(--brand-light)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg)\'"')+'>';
-    hP += '<div><div style="font-weight:600;font-size:13px;">'+r.nombre+'</div><div style="font-size:11px;color:var(--light);">'+r.categoria+(consumido>0?' · <span style="color:var(--orange);">'+consumido.toLocaleString("es-AR",{maximumFractionDigits:2})+' asignados</span>':'')+'</div></div>';
+    hP += '<div onclick="'+(sinStock?'showToast(\'Sin stock disponible\',\'error\')':"seleccionarOrigen('"+texto.replace(/'/g,"&#39;")+"','"+itemData+"',this)")+'" data-origen-item="1" style="cursor:'+(sinStock?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStock?'#fafafa':'var(--bg)')+';margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+';">';
+    hP += '<div><div style="font-weight:600;font-size:13px;">'+r.nombre+'</div><div style="font-size:11px;color:var(--sub);">'+(r.puntoStock?'📍 '+r.puntoStock+' · ':'')+r.categoria+(consumido>0?' · <span style="color:var(--orange);">'+consumido.toLocaleString("es-AR",{maximumFractionDigits:2})+' asignados</span>':'')+'</div></div>';
     hP += '<div style="text-align:right;"><div style="font-weight:800;font-size:15px;color:'+(sinStock?'var(--red)':'var(--green)')+';">'+disponible.toLocaleString("es-AR",{maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--light);">'+r.unidad+' disponibles</div></div></div>';
   });
   document.getElementById("stock-propio-match").innerHTML = hP;
@@ -1738,7 +1749,7 @@ function abrirModalOrigen(spId, insumo, cantPres, campo) {
     var sinStockOC = disponibleOC <= 0;
     var texto = 'Pendiente remito — ' + r.proveedor + ' — ' + r.insumo + ' (' + disponibleOC.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' pendientes)';
     var itemDataOC = JSON.stringify({nombre:'OC_'+r.proveedor+'_'+r.insumo, disponible:disponibleOC, tipo:'oc'}).replace(/'/g,"&#39;");
-    hOC += '<div onclick="'+(sinStockOC?'showToast(\'Sin pendiente disponible\',\'error\')':"seleccionarOrigen('"+texto.replace(/'/g,"&#39;")+"','"+itemDataOC+"')")+'" style="cursor:'+(sinStockOC?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStockOC?'#fafafa':'var(--bg)')+';margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStockOC?'0.5':'1')+';" '+(sinStockOC?'':'onmouseover="this.style.borderColor=\'var(--brand)\';this.style.background=\'var(--brand-light)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--bg)\'"')+'>';
+    hOC += '<div onclick="'+(sinStockOC?'showToast(\'Sin pendiente disponible\',\'error\')':"seleccionarOrigen('"+texto.replace(/'/g,"&#39;")+"','"+itemDataOC+"',this)")+'" data-origen-item="1" style="cursor:'+(sinStockOC?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStockOC?'#fafafa':'var(--bg)')+';margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStockOC?'0.5':'1')+';">';
     hOC += '<div><div style="font-weight:600;font-size:13px;">'+r.insumo+'</div><div style="font-size:11px;color:var(--light);">'+r.proveedor+(consumidoOC>0?' · <span style="color:var(--orange);">'+consumidoOC.toLocaleString("es-AR",{maximumFractionDigits:2})+' asignados</span>':'')+'</div></div>';
     hOC += '<div style="text-align:right;"><div style="font-weight:800;font-size:15px;color:'+(sinStockOC?'var(--red)':'var(--blue)')+';">'+disponibleOC.toLocaleString("es-AR",{maximumFractionDigits:2})+'</div><div style="font-size:11px;color:var(--light);">disponibles</div></div></div>';
   });
@@ -1771,9 +1782,27 @@ async function confirmarOrigen() {
   btn.disabled=false; btn.textContent="Confirmar origen →";
 }
 
-function seleccionarOrigen(texto, itemDataStr) {
-  document.getElementById("inp-origen").value = texto;
-  document.getElementById("inp-origen").focus();
+function seleccionarOrigen(texto, itemDataStr, el) {
+  // Quitar selección visual de todos los cards
+  document.querySelectorAll('[data-origen-item]').forEach(function(e) {
+    e.style.borderColor = 'var(--border)';
+    e.style.background = 'var(--bg)';
+    e.style.boxShadow = '';
+  });
+  // Marcar el card clickeado
+  if (el) {
+    el.style.borderColor = 'var(--brand)';
+    el.style.background = 'var(--brand-light)';
+    el.style.boxShadow = '0 0 0 3px rgba(var(--brand-rgb,34,139,34),0.12)';
+  }
+  // Llenar el campo de origen (el valor se setea programáticamente aunque sea readonly)
+  var inp = document.getElementById("inp-origen");
+  inp.setAttribute("readonly","readonly");
+  inp.style.background = "var(--bg)";
+  inp.style.cursor = "default";
+  inp.style.fontStyle = "normal";
+  inp.style.color = "var(--text)";
+  inp.value = texto;
   selectedStockItem = null;
   if (itemDataStr) {
     try { selectedStockItem = JSON.parse(itemDataStr.replace(/&#39;/g,"'")); } catch(e){}
