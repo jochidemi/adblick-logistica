@@ -1024,9 +1024,9 @@ async function loadAllMasterData() {
       snap.forEach(function(s) {
         var sf = s.fields;
         if (sf.TipoStock === "ExistenciaPropia") {
-          stockPropio.push({ categoria: sf.Categoria||"", puntoStock: sf.Proveedor||"", codigo:"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0 });
+          stockPropio.push({ spId: s.id, categoria: sf.Categoria||"", puntoStock: sf.Proveedor||"", codigo:"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0 });
         } else if (sf.TipoStock === "CuboOC") {
-          stockPendiente.push({ proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0 });
+          stockPendiente.push({ spId: s.id, proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0 });
         }
       });
       renderStockTable();
@@ -1699,7 +1699,7 @@ async function cargarPedidosInsumos() {
               '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
       html += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
       html += '<span class="badge badge-pending">Pendiente</span>';
-      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\')">Asignar origen</button>';
+      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+')">Asignar origen</button>';
       html += '</div></div>';
     });
     container.innerHTML = '<div style="overflow:hidden;">'+html+'</div>';
@@ -1708,8 +1708,8 @@ async function cargarPedidosInsumos() {
   }
 }
 
-function abrirModalOrigen(spId, insumo, cantPres, campo) {
-  pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo};
+function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad) {
+  pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0};
   document.getElementById("modal-origen-titulo").textContent = insumo;
   document.getElementById("modal-origen-sub").textContent = cantPres + " · 📍 " + campo;
   var inpOrigen = document.getElementById("inp-origen");
@@ -1800,19 +1800,46 @@ async function confirmarOrigen() {
   var btn = document.getElementById("btn-confirmar-origen");
   btn.disabled=true; btn.textContent="Guardando...";
   try {
+    // 1. Marcar el pedido con origen y pasar a logística
     await spPatch(CONFIG.lists.pedidos, pedidoOrigenActual.spId, {
       OrigenAsignado: origen,
       NotaInsumos: document.getElementById("inp-nota-origen").value.trim(),
       Estado: "Pendiente logística",
     });
-    // Descontar del stock si se seleccionó un ítem de existencia propia
-    if (selectedStockItem && pedidoOrigenActual.cantidad) {
-      var key = selectedStockItem.nombre;
-      stockAjustes[key] = (stockAjustes[key]||0) + pedidoOrigenActual.cantidad;
+
+    // 2. Descontar del stock en SP y en memoria
+    var cant = pedidoOrigenActual.cantidad;
+    if (selectedStockItem && cant > 0) {
+      if (selectedStockItem.tipo === 'propio') {
+        // Buscar por spId para mayor precisión (distingue mismo producto en distintos puntos de stock)
+        var stockItem = selectedStockItem.spId
+          ? stockPropio.find(function(r){ return r.spId === selectedStockItem.spId; })
+          : stockPropio.find(function(r){ return r.nombre === selectedStockItem.nombre; });
+        if (stockItem) {
+          var nueva = Math.max(0, stockItem.existencia - cant);
+          if (stockItem.spId) {
+            await spPatch(CONFIG.lists.stockSnapshot, stockItem.spId, { Cantidad: nueva });
+          }
+          stockItem.existencia = nueva; // actualizar en memoria
+        }
+      } else if (selectedStockItem.tipo === 'oc') {
+        var ocItem = selectedStockItem.spId
+          ? stockPendiente.find(function(r){ return r.spId === selectedStockItem.spId; })
+          : stockPendiente.find(function(r){ return ('OC_'+r.proveedor+'_'+r.insumo) === selectedStockItem.nombre; });
+        if (ocItem) {
+          var nuevaOC = Math.max(0, ocItem.pendiente - cant);
+          if (ocItem.spId) {
+            await spPatch(CONFIG.lists.stockSnapshot, ocItem.spId, { Cantidad: nuevaOC });
+          }
+          ocItem.pendiente = nuevaOC; // actualizar en memoria
+        }
+      }
     }
+
     selectedStockItem = null;
     cerrarModal("modal-origen");
-    showToast("Origen asignado ✓","ok");
+    renderStockTable(); // refrescar tabla de stock
+    showToast("Origen asignado ✓ — stock actualizado","ok");
     cargarPedidosInsumos();
   } catch(e) { showToast("Error: "+e.message,"error"); }
   btn.disabled=false; btn.textContent="Confirmar origen →";
@@ -1844,7 +1871,7 @@ function seleccionarOrigenIdx(grupo, idx, el) {
   inp.style.color       = "var(--text)";
   inp.value = m.texto;
 
-  selectedStockItem = { nombre: m.stockKey, disponible: m.disponible, tipo: m.tipo };
+  selectedStockItem = { spId: m.r.spId, nombre: m.stockKey, disponible: m.disponible, tipo: m.tipo };
 }
 
 // ═══════════════════════════════════════════════════════════════
