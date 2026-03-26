@@ -117,6 +117,7 @@ textarea{resize:vertical;min-height:72px;}
 .badge-insumos{background:var(--blue-light);color:var(--blue);}
 .badge-logistica{background:var(--purple-light);color:var(--purple);}
 .badge-transit{background:#FEF3C7;color:#92400E;}
+.badge-retiro{background:#EDE9FE;color:#6D28D9;}
 .badge-done{background:var(--green-light);color:var(--green);}
 
 /* ── COMBOBOX ── */
@@ -440,9 +441,16 @@ tr:hover td{background:var(--brand-light);}
             <div id="carrito-lista"></div>
           </div>
 
-          <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:18px;border-top:1px solid var(--border);">
-            <button class="btn btn-outline" onclick="limpiarFormOperador()">Limpiar todo</button>
-            <button class="btn btn-brand" id="btn-enviar" onclick="enviarPedido()" disabled>Enviar pedido →</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:18px;border-top:1px solid var(--border);flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);user-select:none;">
+              <input type="checkbox" id="chk-retiro" style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer;">
+              🏃 Retiro Personalmente
+              <span style="font-weight:400;font-size:11px;color:var(--light);">(saltea logística)</span>
+            </label>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-outline" onclick="limpiarFormOperador()">Limpiar todo</button>
+              <button class="btn btn-brand" id="btn-enviar" onclick="enviarPedido()" disabled>Enviar pedido →</button>
+            </div>
           </div>
         </div>
       </div>
@@ -500,8 +508,10 @@ tr:hover td{background:var(--brand-light);}
             <button id="stab-propio" onclick="switchStockTab('propio')" style="flex:1;padding:11px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:var(--white);color:var(--text);border-bottom:2px solid var(--brand);transition:all 0.15s;">📦 Existencia Propia</button>
             <button id="stab-pendiente" onclick="switchStockTab('pendiente')" style="flex:1;padding:11px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">🚛 Pendiente de Remitir</button>
           </div>
-          <div style="padding:8px 12px;border-bottom:1px solid var(--border);">
-            <input type="text" id="inp-stock-search" placeholder="Buscar insumo..." style="font-size:13px;" oninput="renderStockTable()">
+          <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+            <input type="text" id="inp-stock-search" placeholder="Buscar..." style="font-size:13px;flex:1;min-width:120px;" oninput="renderStockTable()">
+            <select id="inp-stock-prov" style="font-size:12px;flex:1;min-width:120px;display:none;" onchange="renderStockTable()"><option value="">Todos los proveedores</option></select>
+            <select id="inp-stock-ins"  style="font-size:12px;flex:1;min-width:120px;display:none;" onchange="renderStockTable()"><option value="">Todos los insumos</option></select>
           </div>
           <div id="stock-table-container"><div style="padding:32px;text-align:center;color:var(--light);font-size:13px;">Subí el archivo Excel para ver el stock</div></div>
         </div>
@@ -548,7 +558,12 @@ tr:hover td{background:var(--brand-light);}
           <div class="cam-hdr">
             <span>Camiones (<span id="cam-count">0</span>)</span>
           </div>
+          <div style="display:flex;border-bottom:1px solid var(--border);">
+            <button id="ctab-activos"  onclick="switchCamTab('activos')"  style="flex:1;padding:8px 4px;border:none;cursor:pointer;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:var(--white);color:var(--text);border-bottom:2px solid var(--brand);font-family:'Montserrat',sans-serif;">Activos</button>
+            <button id="ctab-enviados" onclick="switchCamTab('enviados')" style="flex:1;padding:8px 4px;border:none;cursor:pointer;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:transparent;color:var(--sub);border-bottom:2px solid transparent;font-family:'Montserrat',sans-serif;">Enviados</button>
+          </div>
           <div id="cam-list"><div style="padding:32px 16px;text-align:center;color:var(--light);font-size:13px;">🚛<br><br>Creá un camión para empezar</div></div>
+          <div id="cam-enviados-list" style="display:none;"></div>
         </div>
 
         <!-- Items panel -->
@@ -625,14 +640,21 @@ tr:hover td{background:var(--brand-light);}
           <input type="text" id="inp-patente-acoplado" placeholder="AB 123 CD">
         </div>
       </div>
-      <div class="fld">
-        <label class="lbl">Tarifa ($) <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
-        <input type="number" id="inp-tarifa" placeholder="ej: 250000" min="0">
+      <div class="g2">
+        <div class="fld">
+          <label class="lbl">Tarifa ($) <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
+          <input type="number" id="inp-tarifa" placeholder="ej: 250000" min="0">
+        </div>
+        <div class="fld">
+          <label class="lbl">Cupo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--light);margin-left:6px;">(opcional)</span></label>
+          <input type="text" id="inp-cupo" placeholder="ej: 28 tn">
+        </div>
       </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="gap:8px;">
       <button class="btn btn-outline" onclick="cerrarModal('modal-camion')">Cancelar</button>
-      <button class="btn btn-brand" id="btn-guardar-cam" onclick="guardarCamion()">Guardar y despachar →</button>
+      <button class="btn btn-outline" id="btn-solo-guardar-cam" onclick="guardarDatosCamion()">💾 Guardar datos</button>
+      <button class="btn btn-brand" id="btn-guardar-cam" onclick="despacharCamion()">🚛 Despachar →</button>
     </div>
   </div>
 </div>
@@ -791,7 +813,9 @@ var pedidoOrigenActual = null; // {id, spId, insumo, cantidad, presentacion, cam
 var pedidoRemitoActual = null;
 var carritoItems = []; // [{grupoInsumo, tipoInsumo, insumo, presentacion, unidad, cantidad}]
 var editandoPedidoSpId = null;
-var selectedStockItem = null; // {nombre, disponible, tipo:'propio'|'oc'} — stock clickeado en modal origen
+var selectedStockItem = null;   // item propio seleccionado (single-select)
+var selectedOCItems   = [];    // [{idx, cantidadAsignada}] — OC items seleccionados (multi-select)
+var comprometidoPorOC = {};    // {referencia: cantidadComprometida} — comprometido sin remito
 
 // Logística
 var camiones = [];      // [{id, spId, chofer, patente, nViaje, tarifa, transportista, razonSocial, cuit}]
@@ -1026,7 +1050,7 @@ async function loadAllMasterData() {
         if (sf.TipoStock === "ExistenciaPropia") {
           stockPropio.push({ spId: s.id, categoria: sf.Categoria||"", puntoStock: sf.Proveedor||"", codigo:"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0 });
         } else if (sf.TipoStock === "CuboOC") {
-          stockPendiente.push({ spId: s.id, proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0 });
+          stockPendiente.push({ spId: s.id, proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Unidad||"", referencia: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0 });
         }
       });
       renderStockTable();
@@ -1353,13 +1377,15 @@ async function enviarPedido() {
         Estado:       "Pendiente insumos",
         FechaPedido:  new Date().toISOString(),
       };
-      if (formState.campaña)      fields.Campana      = formState.campaña;
-      if (item.grupoInsumo)       fields.GrupoInsumo  = item.grupoInsumo;
-      if (item.tipoInsumo)        fields.TipoInsumo   = item.tipoInsumo;
-      if (item.presentacion)      fields.Presentacion = item.presentacion;
-      if (item.unidad)            fields.Unidad       = item.unidad;
-      if (formState.fechaEntrega) fields.FechaEntrega = formState.fechaEntrega;
+      if (formState.campaña)      fields.Campana       = formState.campaña;
+      if (item.grupoInsumo)       fields.GrupoInsumo   = item.grupoInsumo;
+      if (item.tipoInsumo)        fields.TipoInsumo    = item.tipoInsumo;
+      if (item.presentacion)      fields.Presentacion  = item.presentacion;
+      if (item.unidad)            fields.Unidad        = item.unidad;
+      if (formState.fechaEntrega) fields.FechaEntrega  = formState.fechaEntrega;
       if (obs)                    fields.Observaciones = obs;
+      var esRetiro = document.getElementById("chk-retiro") && document.getElementById("chk-retiro").checked;
+      if (esRetiro)               fields.RetiroPersonal = "SI";
       await enviarUnItem(fields);
     }
 
@@ -1403,8 +1429,9 @@ async function cargarMisPedidos() {
       var f0 = lineas[0].fields;
       var estado = f0.Estado || "Pendiente insumos";
       var estadoBadge = badgeEstado(estado);
-      var editable = estado === "Pendiente insumos" || estado === "Pendiente logística";
-      var enCamino = estado === "En camino";
+      var editable     = estado === "Pendiente insumos" || estado === "Pendiente logística";
+      var enCamino     = estado === "En camino";
+      var listoRetirar = estado === "Listo para retirar";
 
       html += '<div class="pedido-card">';
       // Header del pedido
@@ -1431,11 +1458,11 @@ async function cargarMisPedidos() {
       // Líneas de productos
       if (lineas.length > 1) {
         html += '<div class="tbl-wrap" style="margin-bottom:8px;"><table>';
-        html += '<thead><tr><th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+(enCamino?'<th></th>':'')+'</tr></thead><tbody>';
+        html += '<thead><tr><th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+((enCamino||listoRetirar)?'<th></th>':'')+'</tr></thead><tbody>';
         lineas.forEach(function(item) {
           var f = item.fields;
           html += '<tr><td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Cantidad+' '+(f.Unidad||'')+'</td><td style="font-size:12px;color:var(--light);">'+(f.Presentacion||'-')+'</td>';
-          if (enCamino) {
+          if (enCamino || listoRetirar) {
             if (!f.NroRemito) html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Remito</button></td>';
             else html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</span></td>';
           }
@@ -1449,20 +1476,28 @@ async function cargarMisPedidos() {
 
       if (f0.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">📦 Origen: '+f0.OrigenAsignado+'</div>';
 
+      if (listoRetirar) {
+        html += '<div class="info-box" style="margin:10px 0;font-size:12px;background:#EDE9FE;border-color:#A78BFA;">';
+        html += '<b>🏃 Listo para retirar</b>';
+        if (f0.OrigenAsignado) html += ' · 📦 '+f0.OrigenAsignado;
+        if (f0.OrdenCompra) html += ' · OC: '+f0.OrdenCompra;
+        html += '</div>';
+        if (lineas.length === 1) {
+          var f = lineas[0].fields;
+          if (!f.NroRemito) html += '<button class="btn btn-brand btn-sm" style="margin-top:4px;" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
+          else html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
+        }
+      }
       if (enCamino && f0.Chofer) {
         html += '<div class="info-box" style="margin:10px 0;font-size:12px;">';
         html += '<b>🚛 En camino</b> · Transportista: '+(f0.Transportista||'-')+' · Chofer: '+f0.Chofer+' · Patente: '+f0.Patente;
         if (f0.PatenteAcoplado) html += ' / Acoplado: '+f0.PatenteAcoplado;
         if (f0.Tarifa) html += ' · Tarifa: $'+Number(f0.Tarifa).toLocaleString("es-AR");
         html += '</div>';
-        // Remito para pedido de 1 línea
         if (lineas.length === 1) {
           var f = lineas[0].fields;
-          if (!f.NroRemito) {
-            html += '<button class="btn btn-brand btn-sm" style="margin-top:4px;" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
-          } else {
-            html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
-          }
+          if (!f.NroRemito) html += '<button class="btn btn-brand btn-sm" style="margin-top:4px;" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
+          else html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
         }
       }
       html += '</div>';
@@ -1518,10 +1553,11 @@ async function guardarEdicion() {
 
 function badgeEstado(e) {
   var map = {
-    "Pendiente insumos":  "badge-pending",
-    "Pendiente logística":"badge-insumos",
-    "En camino":          "badge-transit",
-    "Cerrado":            "badge-done",
+    "Pendiente insumos":   "badge-pending",
+    "Pendiente logística": "badge-insumos",
+    "Listo para retirar":  "badge-retiro",
+    "En camino":           "badge-transit",
+    "Cerrado":             "badge-done",
   };
   return '<span class="badge '+(map[e]||"badge-pending")+'">'+e+'</span>';
 }
@@ -1600,18 +1636,25 @@ function parsearExistencia(ws) {
 }
 
 function parsearCuboOC(ws) {
+  // Mantiene líneas individuales por OC (referencia = col J).
+  // Cada fila del cubo con la misma OC+insumo+proveedor se acumula en la misma entrada.
   var rows = XLSX.utils.sheet_to_json(ws, {defval:""});
-  var mapa={};
+  var mapa = {};
   rows.forEach(function(row){
-    var pend=parseFloat(row["Pendiente Stock"])||0;
-    if (pend<=0) return;
-    var ins=String(row["Insumo"]||"").trim(), tipo=String(row["Tipo de insumo"]||"").trim(), prov=String(row["Proveedor"]||"").trim();
-    if (!ins||!prov) return;
-    var key=prov+"||"+ins;
-    if (!mapa[key]) mapa[key]={proveedor:prov,insumo:ins,tipo:tipo,pendiente:0};
-    mapa[key].pendiente+=pend;
+    var pend = parseFloat(row["Pendiente Stock"]) || 0;
+    if (pend <= 0) return;
+    var ins  = String(row["Insumo"]||"").trim();
+    var tipo = String(row["Tipo de insumo"]||"").trim();
+    var prov = String(row["Proveedor"]||"").trim();
+    var ref  = String(row["Referencia"]||"").trim(); // col J
+    if (!ins || !prov) return;
+    var key = prov + "||" + ins + "||" + ref;
+    if (!mapa[key]) mapa[key] = { proveedor:prov, insumo:ins, tipo:tipo, referencia:ref, pendiente:0 };
+    mapa[key].pendiente += pend;
   });
-  return Object.values(mapa).filter(function(r){return r.pendiente>0;}).sort(function(a,b){return b.pendiente-a.pendiente;});
+  return Object.values(mapa)
+    .filter(function(r){ return r.pendiente > 0; })
+    .sort(function(a,b){ return a.insumo.localeCompare(b.insumo) || a.proveedor.localeCompare(b.proveedor); });
 }
 
 function switchStockTab(tab) {
@@ -1620,31 +1663,84 @@ function switchStockTab(tab) {
   if (tab==="propio") {
     tabPropio.style.background="var(--white)"; tabPropio.style.color="var(--text)"; tabPropio.style.borderBottom="2px solid var(--brand)";
     tabPend.style.background="transparent"; tabPend.style.color="var(--sub)"; tabPend.style.borderBottom="2px solid transparent";
+    document.getElementById("inp-stock-prov").style.display="none";
+    document.getElementById("inp-stock-ins").style.display="none";
   } else {
     tabPend.style.background="var(--white)"; tabPend.style.color="var(--text)"; tabPend.style.borderBottom="2px solid var(--brand)";
     tabPropio.style.background="transparent"; tabPropio.style.color="var(--sub)"; tabPropio.style.borderBottom="2px solid transparent";
+    // Poblar filtros con valores únicos
+    var provSel = document.getElementById("inp-stock-prov");
+    var insSel  = document.getElementById("inp-stock-ins");
+    var provs = [...new Set(stockPendiente.map(function(r){return r.proveedor;}))].sort();
+    var inss  = [...new Set(stockPendiente.map(function(r){return r.insumo;}))].sort();
+    provSel.innerHTML = '<option value="">Todos los proveedores</option>' + provs.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
+    insSel.innerHTML  = '<option value="">Todos los insumos</option>'     + inss.map(function(i){return '<option value="'+i+'">'+i+'</option>';}).join('');
+    provSel.style.display=""; insSel.style.display="";
+    cargarComprometidoSinRemito(); // Cargar comprometido al cambiar a tab OC
   }
   renderStockTable();
 }
 
+async function cargarComprometidoSinRemito() {
+  // Pedidos con origen asignado pero sin remito → comprometido por referencia OC
+  try {
+    var items = await spGet(CONFIG.lists.pedidos, "");
+    comprometidoPorOC = {};
+    items.forEach(function(item) {
+      var f = item.fields;
+      if (!f.OrigenAsignado || f.NroRemito || f.Estado === "Cerrado") return;
+      var ocField = String(f.OrdenCompra || "").trim();
+      if (!ocField) return;
+      ocField.split(",").forEach(function(part) {
+        var sep = part.lastIndexOf(":");
+        if (sep < 0) return;
+        var ref = part.substring(0, sep).trim();
+        var qty = parseFloat(part.substring(sep+1)) || 0;
+        if (ref && qty > 0) comprometidoPorOC[ref] = (comprometidoPorOC[ref] || 0) + qty;
+      });
+    });
+    renderStockTable();
+  } catch(e) { console.warn("Error cargando comprometido:", e.message); }
+}
+
 function renderStockTable() {
-  var q = (document.getElementById("inp-stock-search")||{}).value||"";
+  var q         = (document.getElementById("inp-stock-search")||{}).value||"";
+  var filtProv  = (document.getElementById("inp-stock-prov")||{}).value||"";
+  var filtIns   = (document.getElementById("inp-stock-ins")||{}).value||"";
   var container = document.getElementById("stock-table-container");
   var rows = stockTabActiva==="propio" ? stockPropio : stockPendiente;
   if (!rows.length) {
     container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);font-size:13px;">Subí el archivo para ver el stock</div>';
     return;
   }
-  var filtered = q ? rows.filter(function(r){ return JSON.stringify(r).toLowerCase().includes(q.toLowerCase()); }) : rows;
+  var filtered = rows.filter(function(r){
+    if (q && !JSON.stringify(r).toLowerCase().includes(q.toLowerCase())) return false;
+    if (stockTabActiva === "pendiente") {
+      if (filtProv && r.proveedor !== filtProv) return false;
+      if (filtIns  && r.insumo   !== filtIns)  return false;
+    }
+    return true;
+  });
   var html = '<div class="tbl-wrap"><table>';
   if (stockTabActiva==="propio") {
     html += '<thead><tr><th>Categoría</th><th>Punto de Stock</th><th>Insumo</th><th>Unidad</th><th class="r">Existencia</th></tr></thead><tbody>';
     filtered.forEach(function(r){ html += '<tr><td>'+r.categoria+'</td><td style="font-size:12px;color:var(--sub);">'+(r.puntoStock||'—')+'</td><td style="font-weight:600;">'+r.nombre+'</td><td>'+r.unidad+'</td><td class="r" style="font-weight:700;color:var(--green);">'+r.existencia.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>'; });
   } else {
-    html += '<thead><tr><th>Tipo</th><th>Insumo</th><th>Proveedor</th><th class="r">Pend. Remitir</th></tr></thead><tbody>';
-    filtered.forEach(function(r){ html += '<tr><td>'+r.tipo+'</td><td style="font-weight:600;">'+r.insumo+'</td><td style="font-size:12px;color:var(--sub);">'+r.proveedor+'</td><td class="r" style="font-weight:700;color:var(--blue);">'+r.pendiente.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>'; });
+    html += '<thead><tr><th>Insumo</th><th>Proveedor</th><th>OC (Referencia)</th><th class="r" style="color:var(--blue);">Importado</th><th class="r" style="color:var(--orange);">Comprometido</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
+    filtered.forEach(function(r){
+      var comp = comprometidoPorOC[r.referencia] || 0;
+      var disp = Math.max(0, r.pendiente - comp);
+      html += '<tr>' +
+        '<td style="font-weight:600;">'+r.insumo+'</td>' +
+        '<td style="font-size:12px;color:var(--sub);">'+r.proveedor+'</td>' +
+        '<td style="font-size:11px;color:var(--light);">'+(r.referencia||'—')+'</td>' +
+        '<td class="r" style="color:var(--blue);">'+r.pendiente.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td>' +
+        '<td class="r" style="color:'+(comp>0?'var(--orange)':'var(--light)')+';">'+(comp>0?comp.toLocaleString("es-AR",{maximumFractionDigits:2}):'—')+'</td>' +
+        '<td class="r" style="font-weight:700;color:'+(disp>0?'var(--green)':'var(--red)')+';">'+disp.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td>' +
+        '</tr>';
+    });
   }
-  html += '</tbody></table><div class="tbl-footer">'+filtered.length+' registros'+(q&&rows.length!==filtered.length?" (de "+rows.length+")":"")+'</div></div>';
+  html += '</tbody></table><div class="tbl-footer">'+filtered.length+' registros'+(rows.length!==filtered.length?" (de "+rows.length+")":"")+'</div></div>';
   container.innerHTML = html;
 }
 
@@ -1657,7 +1753,8 @@ async function guardarStockEnSP() {
     await spDeleteAll(CONFIG.lists.stockSnapshot);
     var allRows = [];
     stockPropio.forEach(function(r){ allRows.push({TipoStock:"ExistenciaPropia",Title:r.nombre.substring(0,255),Insumo:r.nombre,Categoria:r.categoria,Unidad:r.unidad,Cantidad:r.existencia,Proveedor:r.puntoStock||"",CargadoPor:currentUser}); });
-    stockPendiente.forEach(function(r){ allRows.push({TipoStock:"CuboOC",Title:r.insumo.substring(0,255),Insumo:r.insumo,Categoria:r.tipo,Unidad:"",Cantidad:r.pendiente,Proveedor:r.proveedor,CargadoPor:currentUser}); });
+    // CuboOC: Categoria guarda la referencia OC (col J del cubo); Proveedor guarda el proveedor
+    stockPendiente.forEach(function(r){ allRows.push({TipoStock:"CuboOC",Title:(r.insumo+" "+r.referencia).substring(0,255),Insumo:r.insumo,Categoria:r.referencia||"",Unidad:r.tipo||"",Cantidad:r.pendiente,Proveedor:r.proveedor,CargadoPor:currentUser}); });
     // Lote de 20, renovando token cada 100 ítems para evitar 401
     var lote = 0;
     for (var i=0;i<allRows.length;i+=20) {
@@ -1699,7 +1796,8 @@ async function cargarPedidosInsumos() {
               '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
       html += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
       html += '<span class="badge badge-pending">Pendiente</span>';
-      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+')">Asignar origen</button>';
+      var retiroFlag = (f.RetiroPersonal||"").toUpperCase()==="SI" ? "SI" : "";
+      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
       html += '</div></div>';
     });
     container.innerHTML = '<div style="overflow:hidden;">'+html+'</div>';
@@ -1708,8 +1806,8 @@ async function cargarPedidosInsumos() {
   }
 }
 
-function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad) {
-  pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0};
+function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersonal) {
+  pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0, retiroPersonal: retiroPersonal||""};
   document.getElementById("modal-origen-titulo").textContent = insumo;
   document.getElementById("modal-origen-sub").textContent = cantPres + " · 📍 " + campo;
   var inpOrigen = document.getElementById("inp-origen");
@@ -1721,6 +1819,8 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad) {
   var manualBtn = document.getElementById("btn-manual-origen");
   if (manualBtn) { manualBtn.style.display = ""; }
   document.getElementById("inp-nota-origen").value = "";
+  selectedStockItem = null;
+  selectedOCItems = [];
 
   // Coincidencias en stock (fuzzy por primera palabra)
   var q0 = insumo.toLowerCase().split(" ")[0];
@@ -1738,12 +1838,12 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad) {
              stockKey: r.nombre, tipo: 'propio' };
   });
   _origenMatchOC = matchOC.map(function(r){
-    var consumidoOC  = stockAjustes['OC_'+r.proveedor+'_'+r.insumo] || 0;
-    var disponibleOC = Math.max(0, r.pendiente - consumidoOC);
-    var texto        = 'Pendiente remito — ' + r.proveedor + ' — ' + r.insumo +
-                       ' (' + disponibleOC.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' pendientes)';
-    return { r: r, consumidoOC: consumidoOC, disponible: disponibleOC, texto: texto,
-             stockKey: 'OC_'+r.proveedor+'_'+r.insumo, tipo: 'oc' };
+    var comprometido  = comprometidoPorOC[r.referencia] || 0;
+    var sesion        = stockAjustes['OC_'+r.proveedor+'_'+r.insumo+'_'+r.referencia] || 0;
+    var disponibleOC  = Math.max(0, r.pendiente - comprometido - sesion);
+    var texto         = r.proveedor + ' — OC: ' + (r.referencia||'s/ref') + ' (' + disponibleOC.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' disp.)';
+    return { r: r, comprometido: comprometido, sesion: sesion, disponible: disponibleOC, texto: texto,
+             stockKey: 'OC_'+r.proveedor+'_'+r.insumo+'_'+r.referencia, tipo: 'oc' };
   });
 
   // ── Existencia propia ──
@@ -1755,7 +1855,7 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad) {
       var sinStock   = m.disponible <= 0;
       var subtitulo  = m.r.puntoStock ? '📍 ' + m.r.puntoStock : (m.r.categoria || '');
       var consumidoTxt = m.consumido > 0 ? ' · <span style="color:var(--orange);">' + m.consumido.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' asignados</span>' : '';
-      hP += '<div onclick="seleccionarOrigenIdx(\'P\',' + i + ',this)" data-origen-item="1"' +
+      hP += '<div onclick="seleccionarOrigenIdx(\'P\',' + i + ',this)" data-origen-item="1" data-origen-propio="1"' +
             ' style="cursor:'+(sinStock?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;' +
             'padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStock?'#fafafa':'var(--bg)')+';' +
             'margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+';">';
@@ -1769,29 +1869,91 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad) {
   }
   document.getElementById("stock-propio-match").innerHTML = hP;
 
-  // ── Pendiente de remitir ──
-  var hOC = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">🚛 Pendiente de remitir <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar)</span></div>';
+  renderOCCards();
+  document.getElementById("modal-origen").classList.add("open");
+}
+
+function renderOCCards() {
+  var hOC = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">🚛 Pendiente de remitir <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar — podés elegir varias OCs)</span></div>';
   if (!_origenMatchOC.length) {
     hOC += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin OC pendientes</div>';
   } else {
     _origenMatchOC.forEach(function(m, i){
-      var sinStockOC    = m.disponible <= 0;
-      var consumidoTxt  = m.consumidoOC > 0 ? ' · <span style="color:var(--orange);">' + m.consumidoOC.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' asignados</span>' : '';
-      hOC += '<div onclick="seleccionarOrigenIdx(\'OC\',' + i + ',this)" data-origen-item="1"' +
-             ' style="cursor:'+(sinStockOC?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;' +
-             'padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStockOC?'#fafafa':'var(--bg)')+';' +
-             'margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStockOC?'0.5':'1')+';">';
-      hOC += '<div><div style="font-weight:600;font-size:13px;">' + m.r.insumo + '</div>' +
-             '<div style="font-size:11px;color:var(--light);">' + m.r.proveedor + consumidoTxt + '</div></div>';
-      hOC += '<div style="text-align:right;">' +
-             '<div style="font-weight:800;font-size:15px;color:'+(sinStockOC?'var(--red)':'var(--blue)')+';">' +
+      var sinStock  = m.disponible <= 0;
+      var selItem   = selectedOCItems.find(function(s){ return s.idx === i; });
+      var isSel     = !!selItem;
+      var compTxt   = m.comprometido > 0 ? ' · <span style="color:var(--orange);">' + m.comprometido.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' comprometidos</span>' : '';
+      hOC += '<div onclick="toggleOCItem('+i+',this)" data-origen-item="1"' +
+             ' style="cursor:'+(sinStock?'not-allowed':'pointer')+';padding:9px 12px;border-radius:8px;' +
+             'border:1.5px solid '+(isSel?'var(--brand)':'var(--border)')+';' +
+             'background:'+(isSel?'var(--brand-light)':(sinStock?'#fafafa':'var(--bg)'))+';' +
+             'margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+(isSel?';box-shadow:0 0 0 3px rgba(34,139,34,0.12)':'')+'">';
+      hOC += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+      hOC += '<div>' +
+             '<div style="font-weight:600;font-size:13px;">' + m.r.insumo + '</div>' +
+             '<div style="font-size:11px;color:var(--sub);">'+m.r.proveedor+'</div>' +
+             '<div style="font-size:11px;color:var(--light);margin-top:1px;">OC: <b>' + (m.r.referencia||'s/ref') + '</b>' + compTxt + '</div>' +
+             '</div>';
+      hOC += '<div style="text-align:right;flex-shrink:0;margin-left:12px;">' +
+             '<div style="font-weight:800;font-size:15px;color:'+(sinStock?'var(--red)':'var(--blue)')+';">' +
              m.disponible.toLocaleString("es-AR",{maximumFractionDigits:2}) + '</div>' +
-             '<div style="font-size:11px;color:var(--light);">disponibles</div></div></div>';
+             '<div style="font-size:11px;color:var(--light);">disponibles</div></div>';
+      hOC += '</div>';
+      if (isSel) {
+        hOC += '<div style="margin-top:8px;display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation();">' +
+               '<label style="font-size:12px;font-weight:600;white-space:nowrap;">Cantidad a asignar:</label>' +
+               '<input type="number" id="oc-qty-'+i+'" value="'+selItem.cantidadAsignada+'" min="0" max="'+m.disponible+'" ' +
+               'style="width:80px;font-size:13px;font-weight:700;" ' +
+               'oninput="actualizarOCQty('+i+',this.value)">' +
+               '<span style="font-size:11px;color:var(--sub);">'+m.r.tipo+'</span></div>';
+      }
+      hOC += '</div>';
     });
   }
   document.getElementById("stock-pend-match").innerHTML = hOC;
+}
 
-  document.getElementById("modal-origen").classList.add("open");
+function toggleOCItem(idx, el) {
+  var m = _origenMatchOC[idx];
+  if (!m) return;
+  if (m.disponible <= 0) { showToast('Sin stock disponible', 'error'); return; }
+  var pos = selectedOCItems.findIndex(function(s){ return s.idx === idx; });
+  if (pos >= 0) {
+    selectedOCItems.splice(pos, 1); // deseleccionar
+  } else {
+    var restante = pedidoOrigenActual.cantidad - selectedOCItems.reduce(function(acc,s){ return acc + s.cantidadAsignada; }, 0);
+    var defQty   = Math.min(Math.max(0, restante), m.disponible);
+    selectedOCItems.push({ idx: idx, cantidadAsignada: defQty });
+  }
+  // Limpiar selección propio al seleccionar OC
+  if (selectedOCItems.length > 0) {
+    selectedStockItem = null;
+    document.querySelectorAll('[data-origen-item="1"]').forEach(function(e){
+      if (!e.dataset.origenPropio) { e.style.borderColor=''; e.style.background=''; e.style.boxShadow=''; }
+    });
+  }
+  renderOCCards();
+  actualizarTextoOrigen();
+}
+
+function actualizarOCQty(idx, val) {
+  var m   = _origenMatchOC[idx];
+  var sel = selectedOCItems.find(function(s){ return s.idx === idx; });
+  if (!m || !sel) return;
+  sel.cantidadAsignada = Math.min(parseFloat(val)||0, m.disponible);
+  actualizarTextoOrigen();
+}
+
+function actualizarTextoOrigen() {
+  var partes = [];
+  if (selectedStockItem) partes.push(selectedStockItem.texto||selectedStockItem.nombre);
+  selectedOCItems.forEach(function(s){
+    var m = _origenMatchOC[s.idx];
+    if (m) partes.push(m.r.proveedor + ' — OC: ' + (m.r.referencia||'s/ref') + ' (' + s.cantidadAsignada + ' ' + m.r.tipo + ')');
+  });
+  var inp = document.getElementById("inp-origen");
+  inp.value = partes.join(" + ") || "";
+  inp.style.fontStyle = inp.value ? "normal" : "italic";
 }
 
 async function confirmarOrigen() {
@@ -1800,78 +1962,87 @@ async function confirmarOrigen() {
   var btn = document.getElementById("btn-confirmar-origen");
   btn.disabled=true; btn.textContent="Guardando...";
   try {
-    // 1. Marcar el pedido con origen y pasar a logística
+    // 1. Determinar estado destino según RetiroPersonal
+    var esRetiro = pedidoOrigenActual.retiroPersonal === "SI";
+    var estadoDestino = esRetiro ? "Listo para retirar" : "Pendiente logística";
+
+    // 2. Construir campo OrdenCompra desde OC items seleccionados ("ref:qty,ref:qty")
+    var ordenCompra = selectedOCItems
+      .filter(function(s){ return s.cantidadAsignada > 0; })
+      .map(function(s){ var m=_origenMatchOC[s.idx]; return m ? (m.r.referencia+":"+s.cantidadAsignada) : ""; })
+      .filter(Boolean).join(",");
+
+    // 3. Guardar en SP
     await spPatch(CONFIG.lists.pedidos, pedidoOrigenActual.spId, {
       OrigenAsignado: origen,
-      NotaInsumos: document.getElementById("inp-nota-origen").value.trim(),
-      Estado: "Pendiente logística",
+      NotaInsumos:    document.getElementById("inp-nota-origen").value.trim(),
+      Estado:         estadoDestino,
+      OrdenCompra:    ordenCompra,
     });
 
-    // 2. Descontar del stock en SP y en memoria
+    // 4. Descontar stock propio (si aplica)
     var cant = pedidoOrigenActual.cantidad;
-    if (selectedStockItem && cant > 0) {
-      if (selectedStockItem.tipo === 'propio') {
-        // Buscar por spId para mayor precisión (distingue mismo producto en distintos puntos de stock)
-        var stockItem = selectedStockItem.spId
-          ? stockPropio.find(function(r){ return r.spId === selectedStockItem.spId; })
-          : stockPropio.find(function(r){ return r.nombre === selectedStockItem.nombre; });
-        if (stockItem) {
-          var nueva = Math.max(0, stockItem.existencia - cant);
-          if (stockItem.spId) {
-            await spPatch(CONFIG.lists.stockSnapshot, stockItem.spId, { Cantidad: nueva });
-          }
-          stockItem.existencia = nueva; // actualizar en memoria
-        }
-      } else if (selectedStockItem.tipo === 'oc') {
-        var ocItem = selectedStockItem.spId
-          ? stockPendiente.find(function(r){ return r.spId === selectedStockItem.spId; })
-          : stockPendiente.find(function(r){ return ('OC_'+r.proveedor+'_'+r.insumo) === selectedStockItem.nombre; });
-        if (ocItem) {
-          var nuevaOC = Math.max(0, ocItem.pendiente - cant);
-          if (ocItem.spId) {
-            await spPatch(CONFIG.lists.stockSnapshot, ocItem.spId, { Cantidad: nuevaOC });
-          }
-          ocItem.pendiente = nuevaOC; // actualizar en memoria
-        }
+    if (selectedStockItem && selectedStockItem.tipo === 'propio' && cant > 0) {
+      var stockItem = selectedStockItem.spId
+        ? stockPropio.find(function(r){ return r.spId === selectedStockItem.spId; })
+        : stockPropio.find(function(r){ return r.nombre === selectedStockItem.nombre; });
+      if (stockItem) {
+        var nueva = Math.max(0, stockItem.existencia - cant);
+        if (stockItem.spId) await spPatch(CONFIG.lists.stockSnapshot, stockItem.spId, { Cantidad: nueva });
+        stockItem.existencia = nueva;
+      }
+    }
+
+    // 5. Descontar OC items seleccionados (multi-OC)
+    for (var si = 0; si < selectedOCItems.length; si++) {
+      var s   = selectedOCItems[si];
+      var mOC = _origenMatchOC[s.idx];
+      if (!mOC || s.cantidadAsignada <= 0) continue;
+      var ocItem = mOC.r.spId
+        ? stockPendiente.find(function(r){ return r.spId === mOC.r.spId; })
+        : stockPendiente.find(function(r){ return r.referencia === mOC.r.referencia && r.proveedor === mOC.r.proveedor && r.insumo === mOC.r.insumo; });
+      if (ocItem) {
+        var nuevaOC = Math.max(0, ocItem.pendiente - s.cantidadAsignada);
+        if (ocItem.spId) await spPatch(CONFIG.lists.stockSnapshot, ocItem.spId, { Cantidad: nuevaOC });
+        ocItem.pendiente = nuevaOC;
+        // Actualizar comprometido en sesión (para reflejar inmediatamente en modal)
+        comprometidoPorOC[mOC.r.referencia] = (comprometidoPorOC[mOC.r.referencia]||0) + s.cantidadAsignada;
       }
     }
 
     selectedStockItem = null;
+    selectedOCItems   = [];
     cerrarModal("modal-origen");
-    renderStockTable(); // refrescar tabla de stock
-    showToast("Origen asignado ✓ — stock actualizado","ok");
+    renderStockTable();
+    showToast("Origen asignado ✓"+(esRetiro?" — vuelve al operador para remito":""),"ok");
     cargarPedidosInsumos();
   } catch(e) { showToast("Error: "+e.message,"error"); }
   btn.disabled=false; btn.textContent="Confirmar origen →";
 }
 
 function seleccionarOrigenIdx(grupo, idx, el) {
-  var m = grupo === 'P' ? _origenMatchP[idx] : _origenMatchOC[idx];
+  // Solo para existencia propia (grupo === 'P')
+  var m = _origenMatchP[idx];
   if (!m) return;
   if (m.disponible <= 0) { showToast('Sin stock disponible', 'error'); return; }
 
-  // Quitar selección visual de todos los cards
-  document.querySelectorAll('[data-origen-item]').forEach(function(e) {
+  // Limpiar selección OC al elegir propio
+  selectedOCItems = [];
+  renderOCCards();
+
+  // Quitar selección visual de otros cards propio
+  document.querySelectorAll('[data-origen-propio]').forEach(function(e) {
     e.style.borderColor = 'var(--border)';
     e.style.background  = 'var(--bg)';
     e.style.boxShadow   = '';
   });
-  // Marcar el card clickeado
   if (el) {
     el.style.borderColor = 'var(--brand)';
     el.style.background  = 'var(--brand-light)';
     el.style.boxShadow   = '0 0 0 3px rgba(34,139,34,0.12)';
   }
-  // Llenar el campo de origen (readonly no impide set programático)
-  var inp = document.getElementById("inp-origen");
-  inp.setAttribute("readonly","readonly");
-  inp.style.background  = "var(--bg)";
-  inp.style.cursor      = "default";
-  inp.style.fontStyle   = "normal";
-  inp.style.color       = "var(--text)";
-  inp.value = m.texto;
-
-  selectedStockItem = { spId: m.r.spId, nombre: m.stockKey, disponible: m.disponible, tipo: m.tipo };
+  selectedStockItem = { spId: m.r.spId, nombre: m.stockKey, texto: m.texto, disponible: m.disponible, tipo: m.tipo };
+  actualizarTextoOrigen();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1906,7 +2077,7 @@ async function crearCamionNuevo() {
 async function cargarPedidosLogistica() {
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
-    pedidosLogistica = items.filter(function(i){ return i.fields.Estado==="Pendiente logística"||i.fields.Estado==="En camino"; });
+    pedidosLogistica = items.filter(function(i){ return i.fields.Estado==="Pendiente logística"||i.fields.Estado==="En camino"||i.fields.Estado==="Listo para retirar"; });
 
     // Reconstruir camiones desde los pedidos SP (persistencia entre sesiones)
     var camIdsSeen = {};
@@ -1941,13 +2112,33 @@ async function cargarPedidosLogistica() {
 }
 
 function renderItemsLogistica() {
-  var sinAsignar = pedidosLogistica.filter(function(p){ return !p.fields.CamionId; });
+  var retiroPersonal = pedidosLogistica.filter(function(p){ return p.fields.Estado === "Listo para retirar"; });
+  var sinAsignar = pedidosLogistica.filter(function(p){ return !p.fields.CamionId && p.fields.Estado !== "Listo para retirar"; });
   var container = document.getElementById("log-items-list");
 
+  var html = "";
+  // Retiros personales — read-only, sólo visible
+  if (retiroPersonal.length) {
+    html += '<div style="padding:10px 14px;background:#EDE9FE;border-bottom:1px solid #C4B5FD;font-size:12px;color:#6D28D9;font-weight:700;">🏃 Retiro Personalmente ('+retiroPersonal.length+') — sin acción requerida de logística</div>';
+    retiroPersonal.forEach(function(item){
+      var f=item.fields;
+      html += '<div class="item-row" style="opacity:0.7;cursor:default;pointer-events:none;">'+
+        '<div class="checkbox" style="background:#C4B5FD;color:#6D28D9;">🏃</div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span></div>'+
+          '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
+            '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span>'+
+            (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<span class="badge badge-retiro" style="flex-shrink:0;">Retiro personal</span>'+
+      '</div>';
+    });
+  }
   if (!sinAsignar.length) {
-    container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);font-size:13px;">Todos los ítems tienen camión asignado ✓</div>';
+    html += '<div style="padding:32px;text-align:center;color:var(--light);font-size:13px;">Todos los ítems tienen camión asignado ✓</div>';
+    container.innerHTML = html;
   } else {
-    var html="";
     sinAsignar.forEach(function(item){
       var f=item.fields; var spId=item.id;
       var sel=!!selItems[spId];
@@ -2056,6 +2247,26 @@ async function quitarDeCamion(spId) {
   } catch(e){ showToast("Error: "+e.message,"error"); }
 }
 
+var camTabActiva = "activos";
+
+function switchCamTab(tab) {
+  camTabActiva = tab;
+  var tActivos  = document.getElementById("ctab-activos");
+  var tEnviados = document.getElementById("ctab-enviados");
+  var lActivos  = document.getElementById("cam-list");
+  var lEnviados = document.getElementById("cam-enviados-list");
+  if (tab === "activos") {
+    tActivos.style.background="var(--white)";  tActivos.style.color="var(--text)";  tActivos.style.borderBottom="2px solid var(--brand)";
+    tEnviados.style.background="transparent";  tEnviados.style.color="var(--sub)";  tEnviados.style.borderBottom="2px solid transparent";
+    lActivos.style.display=""; lEnviados.style.display="none";
+  } else {
+    tEnviados.style.background="var(--white)"; tEnviados.style.color="var(--text)"; tEnviados.style.borderBottom="2px solid var(--brand)";
+    tActivos.style.background="transparent";   tActivos.style.color="var(--sub)";   tActivos.style.borderBottom="2px solid transparent";
+    lActivos.style.display="none"; lEnviados.style.display="";
+    renderCamionesEnviados();
+  }
+}
+
 function renderCamiones() {
   var activos = camiones.filter(function(c){ return !c.cerrado; });
   document.getElementById("cam-count").textContent = activos.length;
@@ -2066,22 +2277,50 @@ function renderCamiones() {
   }
   var html="";
   activos.forEach(function(cam){
-    var count = pedidosLogistica.filter(function(p){return p.fields.CamionId===cam.id;}).length;
+    var count = pedidosLogistica.filter(function(p){return p.fields.CamionId===cam.id && p.fields.Estado==="Pendiente logística";}).length;
     var tieneChofer = !!(cam.chofer && cam.patente);
-    html += '<div class="cam-row" style="'+(cam.cerrado?'opacity:0.6;':'')+'"><div style="min-width:0;flex:1;">';
-    html += '<div class="cam-id">'+cam.id+(cam.cerrado?' <span style="font-size:10px;background:var(--green-light);color:var(--green);border-radius:10px;padding:1px 6px;font-weight:700;">CERRADO</span>':'')+'</div>';
+    html += '<div class="cam-row"><div style="min-width:0;flex:1;">';
+    html += '<div class="cam-id">'+cam.id+'</div>';
     if (tieneChofer) {
       html += '<div class="cam-info" style="font-size:12px;">'+cam.chofer+(cam.cuitChofer?' · CUIT: '+cam.cuitChofer:'')+'</div>';
       html += '<div class="cam-sub">'+cam.patente+(cam.patenteAcoplado?' / '+cam.patenteAcoplado:'')+'</div>';
-      if (cam.tarifa) html += '<div class="cam-sub">$'+Number(cam.tarifa).toLocaleString('es-AR')+'</div>';
+      if (cam.tarifa) html += '<div class="cam-sub">$'+Number(cam.tarifa).toLocaleString('es-AR')+(cam.cupo?' · Cupo: '+cam.cupo:'')+'</div>';
     } else {
       html += '<div style="font-size:11px;font-weight:600;color:var(--orange);margin-top:2px;">⚠ Sin chofer asignado</div>';
     }
     html += '</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">';
     html += '<span class="cam-count">'+count+' ítems</span>';
-    if (!cam.cerrado) {
-      html += '<button class="btn btn-brand btn-sm" style="font-size:11px;padding:5px 8px;" onclick="abrirModalCamion(\''+cam.id+'\')">📋 Datos / Despachar</button>';
+    html += '<button class="btn btn-brand btn-sm" style="font-size:11px;padding:5px 8px;" onclick="abrirModalCamion(\''+cam.id+'\')">📋 Datos / Despachar</button>';
+    html += '</div></div>';
+  });
+  list.innerHTML = html;
+}
+
+function renderCamionesEnviados() {
+  // Camiones ya despachados (cerrado:true) — reconstruidos desde pedidos En camino
+  var enviados = camiones.filter(function(c){ return c.cerrado; });
+  var list = document.getElementById("cam-enviados-list");
+  if (!enviados.length) {
+    list.innerHTML='<div style="padding:32px 16px;text-align:center;color:var(--light);font-size:13px;">Sin camiones enviados aún</div>';
+    return;
+  }
+  var html="";
+  enviados.forEach(function(cam){
+    var itemsCam = pedidosLogistica.filter(function(p){return p.fields.CamionId===cam.id && p.fields.Estado==="En camino";});
+    html += '<div class="cam-row" style="opacity:0.85;"><div style="min-width:0;flex:1;">';
+    html += '<div class="cam-id">'+cam.id+' <span style="font-size:10px;background:var(--green-light);color:var(--green);border-radius:10px;padding:1px 6px;font-weight:700;">EN CAMINO</span></div>';
+    if (cam.chofer) {
+      html += '<div class="cam-info" style="font-size:12px;">'+(cam.transportista||'')+' · '+cam.chofer+'</div>';
+      html += '<div class="cam-sub">'+cam.patente+(cam.patenteAcoplado?' / '+cam.patenteAcoplado:'')+(cam.cupo?' · Cupo: '+cam.cupo:'')+'</div>';
     }
+    html += '<div style="font-size:11px;color:var(--sub);margin-top:4px;">';
+    itemsCam.forEach(function(p){
+      var f=p.fields;
+      html += '<div>'+f.Insumo+' <span style="color:var(--light);">'+f.Cantidad+' '+(f.Unidad||'')+'</span> — 📍 '+f.Campo+'</div>';
+    });
+    html += '</div>';
+    html += '</div><div style="text-align:right;flex-shrink:0;">';
+    html += '<span class="cam-count">'+itemsCam.length+' ítems</span>';
     html += '</div></div>';
   });
   list.innerHTML = html;
@@ -2101,12 +2340,13 @@ function abrirModalCamion(camId) {
   var sinTransp = cam && !cam.chofer;
   var countItems = pedidosLogistica.filter(function(p){return p.fields.CamionId===camId && p.fields.Estado==="Pendiente logística";}).length;
   document.getElementById("modal-cam-title").textContent = "Datos del viaje — " + (cam ? cam.id : "");
-  document.getElementById("btn-guardar-cam").textContent = "Guardar y despachar ("+countItems+" ítems) →";
-  document.getElementById("inp-chofer").value          = cam ? (cam.chofer||"")          : "";
-  document.getElementById("inp-cuit-chofer").value     = cam ? (cam.cuitChofer||"")      : "";
-  document.getElementById("inp-patente").value         = cam ? (cam.patente||"")         : "";
-  document.getElementById("inp-patente-acoplado").value= cam ? (cam.patenteAcoplado||"") : "";
-  document.getElementById("inp-tarifa").value          = cam ? (cam.tarifa||"")          : "";
+  document.getElementById("btn-guardar-cam").textContent  = "🚛 Despachar ("+countItems+" ítems) →";
+  document.getElementById("inp-chofer").value           = cam ? (cam.chofer||"")          : "";
+  document.getElementById("inp-cuit-chofer").value      = cam ? (cam.cuitChofer||"")      : "";
+  document.getElementById("inp-patente").value          = cam ? (cam.patente||"")         : "";
+  document.getElementById("inp-patente-acoplado").value = cam ? (cam.patenteAcoplado||"") : "";
+  document.getElementById("inp-tarifa").value           = cam ? (cam.tarifa||"")          : "";
+  document.getElementById("inp-cupo").value             = cam ? (cam.cupo||"")            : "";
   document.getElementById("transp-info").style.display="none";
   // Combo transportista
   buildCombo("combo-transportista", padronTransp, cam?cam.transportista:"", "Buscar transportista...",
@@ -2134,41 +2374,58 @@ function abrirModalCamion(camId) {
   document.getElementById("modal-camion").classList.add("open");
 }
 
-async function guardarCamion() {
-  var chofer          = document.getElementById("inp-chofer").value.trim();
-  var cuitChofer      = document.getElementById("inp-cuit-chofer").value.trim();
-  var patente         = document.getElementById("inp-patente").value.trim();
-  var patenteAcoplado = document.getElementById("inp-patente-acoplado").value.trim();
-  var tarifa          = parseFloat(document.getElementById("inp-tarifa").value)||0;
-  if (!chofer||!patente) { showToast("Completá chofer y patente del camión","error"); return; }
-
+function leerDatosCamionModal() {
   var transpEl = document.querySelector("#combo-transportista .combo-val");
   var transpNombre = (transpEl&&!transpEl.classList.contains("placeholder")) ? transpEl.textContent.trim() : "";
   var transpItem = padronTransp.find(function(t){return t.nombre===transpNombre;});
-  var razonSocial = transpItem ? transpItem.razonSocial : "";
-  var cuit = transpItem ? transpItem.cuit : "";
+  return {
+    chofer:          document.getElementById("inp-chofer").value.trim(),
+    cuitChofer:      document.getElementById("inp-cuit-chofer").value.trim(),
+    patente:         document.getElementById("inp-patente").value.trim(),
+    patenteAcoplado: document.getElementById("inp-patente-acoplado").value.trim(),
+    tarifa:          parseFloat(document.getElementById("inp-tarifa").value)||0,
+    cupo:            document.getElementById("inp-cupo").value.trim(),
+    transportista:   transpNombre,
+    razonSocial:     transpItem ? transpItem.razonSocial : "",
+    cuit:            transpItem ? transpItem.cuit : "",
+  };
+}
 
-  // Actualizar datos en local
+async function guardarDatosCamion() {
+  var d = leerDatosCamionModal();
+  if (!d.chofer || !d.patente) { showToast("Completá chofer y patente","error"); return; }
   var camId = editingCamionId;
   camiones = camiones.map(function(c){
-    if (c.id!==camId) return c;
-    return Object.assign({},c,{ chofer, cuitChofer, patente, patenteAcoplado, tarifa, transportista:transpNombre, razonSocial, cuit, cerrado:true });
+    if (c.id !== camId) return c;
+    return Object.assign({}, c, d);
   });
+  cerrarModal("modal-camion");
+  renderCamiones();
+  showToast("Datos del camión guardados ✓ — aún podés editar antes de despachar","ok");
+}
 
-  // Despachar todos los ítems de este camión → Estado "En camino"
+async function despacharCamion() {
+  var d = leerDatosCamionModal();
+  if (!d.chofer || !d.patente) { showToast("Completá chofer y patente antes de despachar","error"); return; }
+  var camId = editingCamionId;
+  // Cerrar camión localmente
+  camiones = camiones.map(function(c){
+    if (c.id !== camId) return c;
+    return Object.assign({}, c, d, { cerrado: true });
+  });
   var btn = document.getElementById("btn-guardar-cam");
   btn.disabled=true; btn.textContent="Despachando...";
   try {
     var itemsDelCamion = pedidosLogistica.filter(function(p){ return p.fields.CamionId===camId && p.fields.Estado==="Pendiente logística"; });
     for (var i=0; i<itemsDelCamion.length; i++) {
       var spId = itemsDelCamion[i].id;
-      var fields = { CamionId:camId, Chofer:chofer, Patente:patente, Estado:"En camino" };
-      if (transpNombre)   fields.Transportista   = transpNombre;
-      if (cuit)           fields.CUIT            = cuit;
-      if (cuitChofer)     fields.CUITChofer      = cuitChofer;
-      if (patenteAcoplado) fields.PatenteAcoplado = patenteAcoplado;
-      if (tarifa)         fields.Tarifa          = tarifa;
-      // Retry eliminando campos no reconocidos por SP
+      var fields = { CamionId:camId, Chofer:d.chofer, Patente:d.patente, Estado:"En camino" };
+      if (d.transportista)   fields.Transportista   = d.transportista;
+      if (d.cuit)            fields.CUIT            = d.cuit;
+      if (d.cuitChofer)      fields.CUITChofer      = d.cuitChofer;
+      if (d.patenteAcoplado) fields.PatenteAcoplado = d.patenteAcoplado;
+      if (d.tarifa)          fields.Tarifa          = d.tarifa;
+      if (d.cupo)            fields.Cupo            = d.cupo;
       for (var attempt=0; attempt<8; attempt++) {
         var r = await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+CONFIG.lists.pedidos+"/items/"+spId+"/fields",
           {method:"PATCH",headers:{Authorization:"Bearer "+graphToken,"Content-Type":"application/json"},body:JSON.stringify(fields)});
@@ -2179,25 +2436,33 @@ async function guardarCamion() {
       }
     }
     cerrarModal("modal-camion");
-    showToast("Camión "+camId+" cerrado ✓ — "+itemsDelCamion.length+" ítems despachados","ok");
+    showToast("Camión "+camId+" despachado ✓ — "+itemsDelCamion.length+" ítems en camino","ok");
     renderCamiones();
     cargarPedidosLogistica();
-  } catch(e) {
-    showToast("Error al despachar: "+e.message,"error");
-  }
-  btn.disabled=false; btn.textContent="Guardar y despachar →";
+  } catch(e) { showToast("Error al despachar: "+e.message,"error"); }
+  btn.disabled=false; btn.textContent="🚛 Despachar →";
 }
 
-function exportarXLSXLogistica() {
-  var headers=["N° Pedido","Operador","Campo","Insumo","Cantidad","Unidad","Presentación","Fecha Entrega","Estado","Origen","Camión","Transportista","Chofer","CUIT Chofer","Patente Camión","Patente Acoplado","Tarifa","CUIT Transp.","Remito"];
-  var rows = pedidosLogistica.map(function(item){
+async function exportarXLSXLogistica() {
+  var headers = ["N° Pedido","Operador","Campo","Insumo","Cantidad","Unidad","Presentación","Fecha Entrega","Estado","Origen","OC","Camión","Transportista","Chofer","CUIT Chofer","Patente Camión","Patente Acoplado","Tarifa","Cupo","CUIT Transp.","Remito"];
+  function toRow(item) {
     var f=item.fields;
-    return [f.NumeroPedido||"",f.Operador||"",f.Campo||"",f.Insumo||"",f.Cantidad||"",f.Unidad||"",f.Presentacion||"",f.FechaEntrega||"",f.Estado||"",f.OrigenAsignado||"",f.CamionId||"",f.Transportista||"",f.Chofer||"",f.CUITChofer||"",f.Patente||"",f.PatenteAcoplado||"",f.Tarifa||"",f.CUIT||"",f.NroRemito||""];
-  });
-  var ws = XLSX.utils.aoa_to_sheet([headers].concat(rows));
+    return [f.NumeroPedido||"",f.Operador||"",f.Campo||"",f.Insumo||"",f.Cantidad||"",f.Unidad||"",f.Presentacion||"",f.FechaEntrega||"",f.Estado||"",f.OrigenAsignado||"",f.OrdenCompra||"",f.CamionId||"",f.Transportista||"",f.Chofer||"",f.CUITChofer||"",f.Patente||"",f.PatenteAcoplado||"",f.Tarifa||"",f.Cupo||"",f.CUIT||"",f.NroRemito||""];
+  }
+  // Hoja 1: Pendientes (no cerrados)
+  var pendientes = pedidosLogistica.filter(function(i){ return i.fields.Estado !== "Cerrado"; });
+  var wsPend = XLSX.utils.aoa_to_sheet([headers].concat(pendientes.map(toRow)));
+  // Hoja 2: Historial — necesita cargar cerrados también
+  var historial = [];
+  try {
+    var allItems = await spGet(CONFIG.lists.pedidos, "");
+    historial = allItems.filter(function(i){ return i.fields.Estado === "Cerrado" || i.fields.Estado === "En camino"; });
+  } catch(e) { historial = pedidosLogistica.filter(function(i){ return i.fields.Estado === "En camino"; }); }
+  var wsHist = XLSX.utils.aoa_to_sheet([headers].concat(historial.map(toRow)));
   var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Logística");
-  XLSX.writeFile(wb, "logistica_pedidos_"+new Date().toISOString().slice(0,10)+".xlsx");
+  XLSX.utils.book_append_sheet(wb, wsPend, "Pendientes");
+  XLSX.utils.book_append_sheet(wb, wsHist, "Historial");
+  XLSX.writeFile(wb, "logistica_"+new Date().toISOString().slice(0,10)+".xlsx");
 }
 
 // ═══════════════════════════════════════════════════════════════
