@@ -510,10 +510,14 @@ tr:hover td{background:var(--brand-light);}
           </div>
           <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <input type="text" id="inp-stock-search" placeholder="Buscar..." style="font-size:13px;flex:1;min-width:120px;" oninput="renderStockTable()">
-            <!-- Filtro propio: punto de stock -->
+            <!-- Filtros propio: punto de stock + insumo -->
             <div id="wrap-stock-pto" style="display:none;align-items:center;gap:2px;">
               <select id="inp-stock-pto" style="font-size:12px;min-width:130px;" onchange="renderStockTable()"><option value="">Todos los puntos</option></select>
               <button onclick="limpiarFiltro('inp-stock-pto')" title="Limpiar" style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+            </div>
+            <div id="wrap-stock-ins-propio" style="display:none;align-items:center;gap:2px;">
+              <select id="inp-stock-ins-propio" style="font-size:12px;min-width:130px;" onchange="renderStockTable()"><option value="">Todos los insumos</option></select>
+              <button onclick="limpiarFiltro('inp-stock-ins-propio')" title="Limpiar" style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
             </div>
             <!-- Filtros OC: proveedor + insumo -->
             <div id="wrap-stock-prov" style="display:none;align-items:center;gap:2px;">
@@ -1655,11 +1659,13 @@ function processStockFile(file, tipo) {
 }
 
 function parsearExistencia(ws) {
-  // Usa posiciones fijas de columnas (0-indexed, header:1):
-  //   B=1 → código de ítem o nombre de categoría/punto de stock
-  //   E=4 → nombre del insumo (vacío en filas de categoría/punto)
+  // Columnas (0-indexed, con header:1 y defval:""):
+  //   B=1 → código numérico de ítem (ej "0086") ó nombre de categoría/punto de stock
+  //   E=4 → nombre del insumo
   //   H=7 → unidad
   //   I=8 → existencia
+  // Discriminador: si col B es puramente numérica → fila de ítem; si no → fila de cabecera.
+  // (No se usa col H porque las celdas fusionadas B:R pueden llenar col H con el mismo texto.)
   var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
   var SKIP_B = new Set(["Adblick Granos","Existencia de Insumos","Condiciones de filtro",
     "Insumos","Unidad","Existencia","Granos","Otros",
@@ -1668,24 +1674,21 @@ function parsearExistencia(ws) {
   var CATS = new Set(["Semillas","Agroquimicos","Fertilizantes","Herbicidas","Insecticidas","Fungicidas"]);
   var items = [], cat = "", puntoStock = "";
   raw.forEach(function(row) {
-    var b = String(row[1]||"").trim(); // Col B: código, categoría o punto de stock
-    var e = String(row[4]||"").trim(); // Col E: nombre del insumo (vacío en header rows)
-    var h = String(row[7]||"").trim(); // Col H: unidad
-    var ex = parseFloat(row[8]) || 0;  // Col I: existencia
+    var b = String(row[1]||"").trim(); // Col B
     if (!b) return;
     if (SKIP_B.has(b)) return;
-    if (CATS.has(b)) {
-      cat = b; puntoStock = "";
-      return;
-    }
-    // Fila de dato: col B = código (empieza con dígito), col E = nombre
-    if (/^\d/.test(b) && e && ex > 0) {
-      items.push({ categoria: cat, puntoStock: puntoStock, codigo: b, nombre: e, unidad: h, existencia: ex });
-      return;
-    }
-    // Fila de punto de stock: col B tiene texto, col E vacía
-    if (!e) {
+    if (CATS.has(b)) { cat = b; puntoStock = ""; return; }
+    if (!/^\d+$/.test(b)) {
+      // Col B no es código numérico → fila de punto de stock (celda fusionada B:R)
       puntoStock = b;
+      return;
+    }
+    // Fila de ítem: b es un código numérico (ej "0086")
+    var e = String(row[4]||"").trim(); // Col E: nombre del insumo
+    var h = String(row[7]||"").trim(); // Col H: unidad
+    var ex = parseFloat(row[8]) || 0;  // Col I: existencia
+    if (e && ex > 0) {
+      items.push({ categoria: cat, puntoStock: puntoStock, codigo: b, nombre: e, unidad: h, existencia: ex });
     }
   });
   return items;
@@ -1716,17 +1719,22 @@ function parsearCuboOC(ws) {
 function switchStockTab(tab) {
   stockTabActiva = tab;
   var tabPropio = document.getElementById("stab-propio"), tabPend = document.getElementById("stab-pendiente");
-  var wPto  = document.getElementById("wrap-stock-pto");
-  var wProv = document.getElementById("wrap-stock-prov");
-  var wIns  = document.getElementById("wrap-stock-ins");
+  var wPto      = document.getElementById("wrap-stock-pto");
+  var wInsP     = document.getElementById("wrap-stock-ins-propio");
+  var wProv     = document.getElementById("wrap-stock-prov");
+  var wIns      = document.getElementById("wrap-stock-ins");
   if (tab==="propio") {
     tabPropio.style.background="var(--white)"; tabPropio.style.color="var(--text)"; tabPropio.style.borderBottom="2px solid var(--brand)";
     tabPend.style.background="transparent"; tabPend.style.color="var(--sub)"; tabPend.style.borderBottom="2px solid transparent";
-    // Poblar filtro de puntos de stock
-    var ptoSel = document.getElementById("inp-stock-pto");
+    // Poblar filtros propio
+    var ptoSel  = document.getElementById("inp-stock-pto");
+    var insPSel = document.getElementById("inp-stock-ins-propio");
     var ptos = [...new Set(stockPropio.map(function(r){return r.puntoStock||"";}).filter(Boolean))].sort();
-    ptoSel.innerHTML = '<option value="">Todos los puntos</option>' + ptos.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
-    wPto.style.display = ptos.length ? "flex" : "none";
+    var inss = [...new Set(stockPropio.map(function(r){return r.nombre||"";}).filter(Boolean))].sort();
+    ptoSel.innerHTML  = '<option value="">Todos los puntos</option>'  + ptos.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
+    insPSel.innerHTML = '<option value="">Todos los insumos</option>' + inss.map(function(i){return '<option value="'+i+'">'+i+'</option>';}).join('');
+    wPto.style.display   = ptos.length ? "flex" : "none";
+    wInsP.style.display  = inss.length ? "flex" : "none";
     wProv.style.display="none"; wIns.style.display="none";
     cargarComprometidoSinRemito();
   } else {
@@ -1735,12 +1743,12 @@ function switchStockTab(tab) {
     var provSel = document.getElementById("inp-stock-prov");
     var insSel  = document.getElementById("inp-stock-ins");
     var provs = [...new Set(stockPendiente.map(function(r){return r.proveedor;}))].sort();
-    var inss  = [...new Set(stockPendiente.map(function(r){return r.insumo;}))].sort();
+    var inss2 = [...new Set(stockPendiente.map(function(r){return r.insumo;}))].sort();
     provSel.innerHTML = '<option value="">Todos los proveedores</option>' + provs.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
-    insSel.innerHTML  = '<option value="">Todos los insumos</option>'     + inss.map(function(i){return '<option value="'+i+'">'+i+'</option>';}).join('');
-    wPto.style.display="none";
+    insSel.innerHTML  = '<option value="">Todos los insumos</option>'     + inss2.map(function(i){return '<option value="'+i+'">'+i+'</option>';}).join('');
+    wPto.style.display="none"; wInsP.style.display="none";
     wProv.style.display = provs.length ? "flex" : "none";
-    wIns.style.display  = inss.length  ? "flex" : "none";
+    wIns.style.display  = inss2.length ? "flex" : "none";
     cargarComprometidoSinRemito();
   }
   renderStockTable();
@@ -1752,16 +1760,17 @@ function limpiarFiltro(id) {
 }
 
 async function cargarComprometidoSinRemito() {
-  // Pedidos con origen asignado pero sin remito → "Pendiente de remito"
-  // Solo se cuentan pedidos que NO tienen remito y no están Cerrados
+  // "Pendiente de remito" = pedidos con origen asignado, sin remito todavía, no Cerrados
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
     comprometidoPorOC     = {};
     comprometidoPorPropio = {};
     items.forEach(function(item) {
       var f = item.fields;
-      // Solo pedidos con origen, SIN remito, sin cerrar
-      if (!f.OrigenAsignado || f.NroRemito || f.Estado === "Cerrado") return;
+      var nroRemito = String(f.NroRemito||"").trim();
+      var origen    = String(f.OrigenAsignado||"").trim();
+      // Requiere: origen asignado + sin remito + no Cerrado
+      if (!origen || nroRemito || f.Estado === "Cerrado") return;
       var ocField = String(f.OrdenCompra || "").trim();
       if (!ocField) return;
       ocField.split(",").forEach(function(part) {
@@ -1794,6 +1803,7 @@ function renderStockTable() {
   var filtProv  = (document.getElementById("inp-stock-prov")||{}).value||"";
   var filtIns   = (document.getElementById("inp-stock-ins")||{}).value||"";
   var filtPto   = (document.getElementById("inp-stock-pto")||{}).value||"";
+  var filtInsP  = (document.getElementById("inp-stock-ins-propio")||{}).value||"";
   var container = document.getElementById("stock-table-container");
   var rows = stockTabActiva==="propio" ? stockPropio : stockPendiente;
   if (!rows.length) {
@@ -1803,7 +1813,8 @@ function renderStockTable() {
   var filtered = rows.filter(function(r){
     if (q && !JSON.stringify(r).toLowerCase().includes(q.toLowerCase())) return false;
     if (stockTabActiva === "propio") {
-      if (filtPto && (r.puntoStock||"") !== filtPto) return false;
+      if (filtPto  && (r.puntoStock||"") !== filtPto) return false;
+      if (filtInsP && r.nombre !== filtInsP) return false;
     } else {
       if (filtProv && r.proveedor !== filtProv) return false;
       if (filtIns  && r.insumo   !== filtIns)  return false;
@@ -2100,6 +2111,8 @@ async function confirmarOrigen() {
   var btn = document.getElementById("btn-confirmar-origen");
   btn.disabled=true; btn.textContent="Guardando...";
   try {
+    var cant = pedidoOrigenActual.cantidad; // definido primero para usarlo en paso 2
+
     // 1. Determinar estado destino según RetiroPersonal
     var esRetiro = pedidoOrigenActual.retiroPersonal === "SI";
     var estadoDestino = esRetiro ? "Listo para retirar" : "Pendiente logística";
@@ -2126,42 +2139,13 @@ async function confirmarOrigen() {
       OrdenCompra:    ordenCompra,
     });
 
-    // 4. Descontar stock propio (si aplica)
-    var cant = pedidoOrigenActual.cantidad;
-    if (selectedStockItem && selectedStockItem.tipo === 'propio' && cant > 0) {
-      var stockItem = selectedStockItem.spId
-        ? stockPropio.find(function(r){ return r.spId === selectedStockItem.spId; })
-        : stockPropio.find(function(r){ return r.nombre === selectedStockItem.nombre; });
-      if (stockItem) {
-        var nueva = Math.max(0, stockItem.existencia - cant);
-        if (stockItem.spId) await spPatch(CONFIG.lists.stockSnapshot, stockItem.spId, { Cantidad: nueva });
-        stockItem.existencia = nueva;
-      }
-    }
-
-    // 5. Descontar OC items seleccionados (multi-OC)
-    for (var si = 0; si < selectedOCItems.length; si++) {
-      var s   = selectedOCItems[si];
-      var mOC = _origenMatchOC[s.idx];
-      if (!mOC || s.cantidadAsignada <= 0) continue;
-      var ocItem = mOC.r.spId
-        ? stockPendiente.find(function(r){ return r.spId === mOC.r.spId; })
-        : stockPendiente.find(function(r){ return r.referencia === mOC.r.referencia && r.proveedor === mOC.r.proveedor && r.insumo === mOC.r.insumo; });
-      if (ocItem) {
-        var nuevaOC = Math.max(0, ocItem.pendiente - s.cantidadAsignada);
-        if (ocItem.spId) await spPatch(CONFIG.lists.stockSnapshot, ocItem.spId, { Cantidad: nuevaOC });
-        ocItem.pendiente = nuevaOC;
-        // Actualizar comprometido en sesión (para reflejar inmediatamente en modal)
-        comprometidoPorOC[mOC.r.referencia] = (comprometidoPorOC[mOC.r.referencia]||0) + s.cantidadAsignada;
-      }
-    }
-
+    // Albor (existencia) no se toca — Disponible = Albor − Pendiente de remito (calculado)
     selectedStockItem = null;
     selectedOCItems   = [];
     cerrarModal("modal-origen");
-    renderStockTable();
     showToast("Origen asignado ✓"+(esRetiro?" — vuelve al operador para remito":""),"ok");
     cargarPedidosInsumos();
+    await cargarComprometidoSinRemito(); // recalcula Pendiente de remito leyendo SP fresco
   } catch(e) { showToast("Error: "+e.message,"error"); }
   btn.disabled=false; btn.textContent="Confirmar origen →";
 }
