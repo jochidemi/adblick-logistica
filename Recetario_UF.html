@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ADBlick Granos - Recetario Agronómico</title>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100vh; }
+:root {
+  --yellow: #F5B800; --yellow-dark: #D9A300; --yellow-light: #FFF3C4;
+  --green: #2e7d32; --green-light: #e6f4ea;
+  --dark: #1A1A1A; --gray: #666; --border: #e0e0e0; --white: #fff;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--yellow); padding: 0 20px; height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
+}
+.header-title { font-size: 16px; font-weight: 700; color: var(--dark); }
+.header-user { font-size: 12px; font-weight: 600; color: var(--dark); }
+
+/* ── LOADING ── */
+.loading-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: calc(100vh - 60px); background: #fffbe8; flex-direction: column; gap: 16px;
+}
+.spinner {
+  width: 36px; height: 36px; border: 3px solid #e0e0e0;
+  border-top-color: var(--yellow); border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.app { display: none; }
+
+/* ── TABS ── */
+.tabs {
+  display: flex; background: var(--white);
+  border-bottom: 2px solid var(--border); position: sticky; top: 60px; z-index: 99;
+  overflow-x: auto;
+}
+.tab {
+  flex: 1; padding: 14px 8px; text-align: center; font-size: 13px; font-weight: 600;
+  color: var(--gray); cursor: pointer; border-bottom: 3px solid transparent;
+  transition: all 0.2s; margin-bottom: -2px; white-space: nowrap; min-width: 100px;
+}
+.tab.active { color: var(--dark); border-bottom-color: var(--yellow); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── LAYOUT ── */
+.main { padding: 16px; max-width: 1200px; margin: 0 auto; }
+.card {
+  background: var(--white); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 16px; margin-bottom: 16px;
+}
+.card-title { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 14px; }
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 11px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.05em; }
+.field-value {
+  font-size: 13px; padding: 7px 10px; border: 1.5px solid var(--border);
+  border-radius: 6px; background: #f9f9f9; color: var(--dark); min-width: 120px;
+}
+
+select, input[type=number], input[type=text], input[type=date], textarea {
+  font-family: inherit; border: 1.5px solid var(--border); border-radius: 6px;
+  padding: 7px 10px; font-size: 13px; background: var(--white); outline: none; transition: border 0.15s;
+}
+select:focus, input:focus, textarea:focus { border-color: var(--yellow-dark); }
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+input[type=number] { -moz-appearance: textfield; }
+
+/* ── BUTTONS ── */
+.btn {
+  border: none; border-radius: 7px; padding: 9px 16px;
+  font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--yellow); color: var(--dark); }
+.btn-primary:hover { background: var(--yellow-dark); }
+.btn-secondary { background: var(--yellow-light); color: #7a6000; }
+.btn-secondary:hover { background: #ffe07a; }
+.btn-danger { background: #fdecea; color: #c0392b; }
+.btn-danger:hover { background: #f8d0cd; }
+.btn-green { background: var(--green-light); color: var(--green); }
+.btn-green:hover { background: #c8e6c9; }
+.btn-dark { background: var(--dark); color: var(--white); }
+.btn-dark:hover { background: #333; }
+.btn-edit { background: #e8f0fe; color: #1a73e8; }
+.btn-edit:hover { background: #d2e3fc; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+
+/* ── TABLAS ── */
+.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.data-table th {
+  background: var(--dark); color: var(--white); padding: 8px 10px; text-align: left;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap;
+}
+.data-table th.center { text-align: center; }
+.data-table td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; font-size: 12px; }
+.data-table td.center { text-align: center; }
+.data-table tr:hover td { background: #fffbe8; }
+
+/* ── LOTES ── */
+.lotes-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px; margin-top: 10px; max-height: 220px; overflow-y: auto;
+  border: 1.5px solid var(--border); border-radius: 8px; padding: 10px;
+  background: #fafafa;
+}
+.lote-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--white); border: 1.5px solid var(--border);
+  border-radius: 6px; padding: 6px 8px; cursor: pointer; transition: all 0.15s;
+  font-size: 12px;
+}
+.lote-chip:hover { border-color: var(--yellow-dark); background: var(--yellow-light); }
+.lote-chip.selected { border-color: var(--yellow-dark); background: var(--yellow-light); }
+.lote-chip input[type=checkbox] { accent-color: var(--yellow-dark); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+.lote-chip .lote-name { font-weight: 600; color: var(--dark); }
+.lote-chip .lote-ha { font-size: 10px; color: var(--gray); }
+.lote-empty { color: var(--gray); font-size: 13px; padding: 20px; text-align: center; }
+
+/* ── PREVIEW LOTES ── */
+.preview-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px; flex-wrap: wrap; gap: 8px;
+}
+.ha-badge {
+  background: var(--yellow); color: var(--dark); border-radius: 20px;
+  padding: 3px 12px; font-size: 12px; font-weight: 700;
+}
+
+/* ── PRODUCTOS ── */
+.producto-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 8px 10px; background: var(--green-light);
+  border: 1px solid #c8e6c9; border-radius: 8px; margin-bottom: 6px;
+}
+.producto-row .p-nombre { font-weight: 600; font-size: 13px; min-width: 200px; flex: 1; }
+.producto-row .p-dosis { font-size: 12px; color: var(--gray); }
+.consumo-info { font-size: 11px; color: #1e7e34; font-weight: 600; }
+
+/* ── CARDS RECETAS ── */
+.receta-card {
+  background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 16px; margin-bottom: 12px; transition: box-shadow 0.15s;
+}
+.receta-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.receta-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.receta-nro { font-size: 11px; font-weight: 700; color: var(--gray); background: #f5f5f5; border-radius: 4px; padding: 2px 8px; }
+.receta-campo { font-size: 15px; font-weight: 700; color: var(--dark); margin-top: 4px; }
+.receta-meta { font-size: 11px; color: var(--gray); margin-top: 2px; }
+.badge {
+  display: inline-block; background: var(--yellow-light); color: #7a6000;
+  border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700;
+}
+.badge-green { background: var(--green-light); color: var(--green); }
+.receta-products { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── MODALES ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 200; align-items: flex-start; justify-content: center; padding: 20px; overflow-y: auto;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--white); border-radius: 12px; width: 100%; max-width: 900px;
+  padding: 24px; margin: auto; position: relative;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-title { font-size: 16px; font-weight: 700; color: var(--dark); }
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--gray); padding: 4px 8px; }
+.modal-close:hover { color: var(--dark); }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 20px; right: 20px; left: 20px; max-width: 400px; margin: 0 auto;
+  padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--white);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 300; display: none; text-align: center;
+}
+.toast.show { display: block; }
+.toast.success { background: #2d7a45; }
+.toast.error { background: #c0392b; }
+.toast.info { background: #1a73e8; }
+
+/* ── MISC ── */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+.section-header h3 { font-size: 14px; font-weight: 700; color: var(--dark); }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--gray); font-size: 14px; }
+.loading-inline { text-align: center; padding: 30px; color: var(--gray); font-size: 13px; }
+.sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+textarea { width: 100%; min-height: 60px; resize: vertical; }
+.step-label {
+  font-size: 11px; font-weight: 700; color: var(--yellow-dark); text-transform: uppercase;
+  letter-spacing: 0.06em; margin-bottom: 8px; display: block;
+}
+.info-box {
+  background: var(--yellow-light); border: 1px solid #e8c800; border-radius: 8px;
+  padding: 10px 14px; font-size: 12px; color: #7a6000; margin-bottom: 14px;
+}
+
+@media (max-width: 600px) {
+  .header-title { font-size: 13px; }
+  .main { padding: 10px; }
+  .form-row { flex-direction: column; }
+  .field select, .field input, .field-value { min-width: unset; width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">ADBlick Granos – Recetario Agronómico</div>
+  <div class="header-user" id="headerUser"></div>
+</div>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <div style="font-size:14px;font-weight:600;color:#7a6000;">Conectando con SharePoint...</div>
+</div>
+
+<div class="app" id="appContent">
+  <div class="tabs">
+    <div class="tab active"  onclick="switchTab('nueva')">Nueva Receta</div>
+    <div class="tab"         onclick="switchTab('mis')">Mis Recetas</div>
+    <div class="tab"         onclick="switchTab('historial')">Historial</div>
+    <div class="tab"         onclick="switchTab('datos')">Datos Maestros</div>
+  </div>
+
+  <!-- ═══════════ TAB: NUEVA RECETA ═══════════ -->
+  <div class="tab-content active" id="tab-nueva">
+    <div class="main">
+
+      <!-- PASO 1: Selección de campos y lotes -->
+      <div class="card">
+        <span class="step-label">Paso 1 — Campos y Lotes</span>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="field">
+            <label>Campo</label>
+            <select id="selCampo" onchange="onCampoChange()" style="min-width:280px;">
+              <option value="">-- Seleccionar campo --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Cultivo</label>
+            <div class="field-value" id="lblCultivo" style="min-width:140px;">-</div>
+          </div>
+          <div class="field">
+            <label>Zona</label>
+            <div class="field-value" id="lblZona" style="min-width:100px;">-</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end;">
+            <button class="btn btn-secondary" onclick="seleccionarTodosLotes()">Todos los lotes</button>
+            <button class="btn btn-secondary" onclick="agregarSeleccion()">+ Agregar al pedido</button>
+          </div>
+        </div>
+
+        <div id="lotesContainer">
+          <div class="lote-empty">Seleccioná un campo para ver los lotes disponibles.</div>
+        </div>
+      </div>
+
+      <!-- PREVIEW SELECCIÓN -->
+      <div class="card" id="previewCard" style="display:none;">
+        <div class="preview-header">
+          <div>
+            <span class="step-label">Campos y Lotes seleccionados</span>
+            <span id="badgeHa" class="ha-badge">0 ha</span>
+          </div>
+          <button class="btn btn-danger" style="font-size:12px;padding:6px 12px;" onclick="limpiarSeleccion()">Limpiar todo</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="tablaSeleccion">
+            <thead>
+              <tr>
+                <th>Campo</th><th>Lote</th><th>Cultivo</th>
+                <th class="center">Has.</th><th>Localidad</th><th>Partido</th>
+                <th class="center"></th>
+              </tr>
+            </thead>
+            <tbody id="bodySeleccion"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PASO 2: Datos de la receta -->
+      <div class="card">
+        <span class="step-label">Paso 2 — Datos de la Receta</span>
+        <div class="form-row">
+          <div class="field">
+            <label>Responsable</label>
+            <select id="selResponsable" style="min-width:200px;">
+              <option value="">-- Seleccionar --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Estadío</label>
+            <select id="selEstadio" style="min-width:180px;">
+              <option value="">-- Seleccionar --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Diagnóstico</label>
+            <select id="selDx" style="min-width:180px;">
+              <option value="">-- Seleccionar --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Contratista</label>
+            <select id="selContratista" style="min-width:220px;">
+              <option value="">-- Seleccionar --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Fecha de Aplicación</label>
+            <input type="date" id="inputFecha" style="min-width:160px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- PASO 3: Productos -->
+      <div class="card">
+        <span class="step-label">Paso 3 — Productos</span>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="field" style="flex:1;min-width:220px;">
+            <label>Producto</label>
+            <select id="selProducto" onchange="onProductoChange()" style="width:100%;">
+              <option value="">-- Seleccionar producto --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Dosis</label>
+            <input type="number" id="inputDosis" min="0" step="0.01" style="width:100px;">
+          </div>
+          <div class="field">
+            <label>Unidad</label>
+            <div class="field-value" id="lblUnidad" style="min-width:80px;">-</div>
+          </div>
+          <div class="field">
+            <label>Categoría</label>
+            <div class="field-value" id="lblCategoria" style="min-width:110px;">-</div>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn btn-green" onclick="agregarProducto()">+ Agregar</button>
+          </div>
+        </div>
+
+        <div id="productosContainer">
+          <div class="lote-empty" style="padding:14px;">Aún no hay productos agregados.</div>
+        </div>
+      </div>
+
+      <!-- PASO 4: Observaciones y Generar -->
+      <div class="card">
+        <span class="step-label">Paso 4 — Observaciones y Generación</span>
+        <div class="field" style="margin-bottom:14px;">
+          <label>Observaciones (opcional)</label>
+          <textarea id="txtObservaciones" placeholder="Condiciones ambientales, restricciones, notas para el aplicador..."></textarea>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" id="btnGenerar" onclick="generarReceta()">Generar Receta</button>
+          <button class="btn btn-secondary" onclick="limpiarFormulario()">Limpiar formulario</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ TAB: MIS RECETAS ═══════════ -->
+  <div class="tab-content" id="tab-mis">
+    <div class="main">
+      <div class="section-header" style="margin-top:8px;">
+        <h3>Mis recetas generadas</h3>
+        <button class="btn btn-secondary" onclick="cargarMisRecetas()" style="font-size:12px;padding:6px 12px;">Actualizar</button>
+      </div>
+      <div id="misRecetasContainer">
+        <div class="loading-inline">Cargando recetas...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TAB: HISTORIAL ═══════════ -->
+  <div class="tab-content" id="tab-historial">
+    <div class="main">
+      <!-- Filtros -->
+      <div class="card">
+        <div class="card-title">Filtros</div>
+        <div class="form-row">
+          <div class="field">
+            <label>Campo</label>
+            <select id="filtCampo" onchange="filtrarHistorial()" style="min-width:200px;">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Responsable</label>
+            <select id="filtResponsable" onchange="filtrarHistorial()" style="min-width:180px;">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Desde</label>
+            <input type="date" id="filtDesde" onchange="filtrarHistorial()" style="min-width:140px;">
+          </div>
+          <div class="field">
+            <label>Hasta</label>
+            <input type="date" id="filtHasta" onchange="filtrarHistorial()" style="min-width:140px;">
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end;">
+            <button class="btn btn-secondary" onclick="cargarHistorial()">Actualizar</button>
+            <button class="btn btn-green" onclick="descargarHistorial()">Descargar Excel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <h3>Base Histórica &nbsp;<span id="contadorHistorial" class="badge">0</span></h3>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table" id="tablaHistorial">
+          <thead>
+            <tr>
+              <th>N° Receta</th><th>Fecha Creación</th><th>Fecha Aplicación</th>
+              <th>Usuario</th><th>Responsable</th><th>Campo</th><th>Lotes</th>
+              <th>Cultivo</th><th class="center">Has.</th>
+              <th>Estadío</th><th>Diagnóstico</th><th>Contratista</th>
+              <th>Productos</th><th>Observaciones</th>
+            </tr>
+          </thead>
+          <tbody id="bodyHistorial"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TAB: DATOS MAESTROS ═══════════ -->
+  <div class="tab-content" id="tab-datos">
+    <div class="main">
+      <div class="card">
+        <div class="card-title">Estado de Datos Maestros</div>
+        <div id="statusDatos" style="font-size:13px;color:#555;background:#f9f9f9;border-radius:8px;padding:14px;margin-bottom:16px;">
+          Cargando...
+        </div>
+        <button class="btn btn-secondary" onclick="reloadMasterData()">🔄 Recargar datos</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Configuración de Listas SharePoint</div>
+        <div class="info-box">
+          Para actualizar los datos maestros (campos, productos, contratistas), modificá las listas en SharePoint y recargá los datos con el botón de arriba.
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Lista</th><th>Uso</th><th>Campos requeridos</th></tr></thead>
+          <tbody>
+            <tr><td><strong>DB_Campos_Lotes</strong></td><td>Campos, lotes, zonas, hectáreas, localidades</td><td>Campo, Lote, Zona, Hectareas, Localidad, Partido, Cultivo</td></tr>
+            <tr><td><strong>DB_Productos_Insumos</strong></td><td>Fitosanitarios y fertilizantes</td><td>Codigo, Nombre, Unidad, Presentacion, Categoria, Tipo</td></tr>
+            <tr><td><strong>DB_Contratistas</strong></td><td>Empresas aplicadoras</td><td>Title (nombre del contratista)</td></tr>
+            <tr><td><strong>Recetario_Recetas</strong> ✨</td><td>Base histórica de recetas generadas</td><td>Ver estructura abajo</td></tr>
+          </tbody>
+        </table>
+        <hr class="sep">
+        <div class="card-title" style="margin-bottom:8px;">Estructura lista <strong>Recetario_Recetas</strong></div>
+        <div class="info-box">Esta es la lista nueva que debés crear en SharePoint con el nombre <strong>Recetario_Recetas</strong>.</div>
+        <table class="data-table">
+          <thead><tr><th>Campo SP</th><th>Tipo</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td>Title</td><td>Texto</td><td>Número de receta (R-0001, R-0002...)</td></tr>
+            <tr><td>FechaCreacion</td><td>Texto</td><td>Fecha de generación (dd/mm/yyyy)</td></tr>
+            <tr><td>FechaAplicacion</td><td>Texto</td><td>Fecha planificada de aplicación</td></tr>
+            <tr><td>Usuario</td><td>Texto</td><td>Usuario que generó la receta (MS365)</td></tr>
+            <tr><td>Responsable</td><td>Texto</td><td>Jefe zonal responsable</td></tr>
+            <tr><td>Campo</td><td>Texto</td><td>Nombre del campo</td></tr>
+            <tr><td>Lotes</td><td>Texto multilínea</td><td>JSON con array de lotes seleccionados</td></tr>
+            <tr><td>Cultivo</td><td>Texto</td><td>Cultivo del campo</td></tr>
+            <tr><td>HectareasTotal</td><td>Número</td><td>Suma de hectáreas de los lotes</td></tr>
+            <tr><td>Localidad</td><td>Texto</td><td>Localidad del campo (primer lote)</td></tr>
+            <tr><td>Partido</td><td>Texto</td><td>Partido del campo (primer lote)</td></tr>
+            <tr><td>Zona</td><td>Texto</td><td>Zona del campo</td></tr>
+            <tr><td>Estadio</td><td>Texto</td><td>Estadío fenológico</td></tr>
+            <tr><td>Diagnostico</td><td>Texto</td><td>Diagnóstico (malezas, insectos...)</td></tr>
+            <tr><td>Contratista</td><td>Texto</td><td>Empresa aplicadora</td></tr>
+            <tr><td>Productos</td><td>Texto multilínea</td><td>JSON con array de productos y dosis</td></tr>
+            <tr><td>Observaciones</td><td>Texto multilínea</td><td>Notas adicionales</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- MODAL DETALLE RECETA -->
+<div class="modal-overlay" id="modalDetalle">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalDetalleTitle">Receta</div>
+      <button class="modal-close" onclick="cerrarModal('modalDetalle')">&#x2715;</button>
+    </div>
+    <div id="modalDetalleContent"></div>
+    <div class="actions" style="justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIGURACIÓN — reemplazar los IDs de listas según SharePoint
+// ════════════════════════════════════════════════════════════
+var CONFIG = {
+  clientId:         "c3d65cc5-56d1-4ac0-9f4f-a6ab47c80563",
+  tenantId:         "576e8544-afbe-423a-94a8-94fb80aaffe3",
+  sharepointSiteId: "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
+
+  // ── Lista con campos, lotes, zonas, etc. (PadronCampos)
+  camposListId:     "49f77686-4740-4fc5-9bcd-b53bf0fe3492",
+
+  // ── Lista de productos fitosanitarios/fertilizantes (PadronInsumos)
+  productosListId:  "3fd32d83-446d-4bd8-bde1-af87e0fd95d6",
+
+  // ── Lista de contratistas (PadronContratistas)
+  contratistasListId: "eb9dca0e-6834-465e-8e29-02eeb619ef9e",
+
+  // ── Lista para guardar recetas (RecetasAgronomicasDB)
+  recetasListId:    "864c7935-6592-4c0b-b73b-4ed39de9ac4f",
+
+  redirectUri:      "https://jochidemi.github.io/adblick-recetario/"
+};
+
+// ── DATOS ESTÁTICOS (no necesitan lista SP) ──────────────────
+var RESPONSABLES = [
+  "Agustin Alejandro","Agustin Perroud","Bruno Padoani","Esteban Romero",
+  "Gabriel Elizondo","Gonzalo Rodriguez","Hernan Harispe","Hernan Roberti",
+  "Jerónimo García","Jose Ignacio Durañona","Jose Pierri","Juan Adjigogovic",
+  "Juan Rivas","Juan Vesprini","Juan Zaffora","Leonardo Seillant",
+  "Lucas Fernandez","Manuel Eladio Carpintero","Mariano Insausti",
+  "Mateo Colombo","Nicolas Bolaño","Tres Quintos"
+];
+
+var ESTADIOS = [
+  "Barbecho 1","Barbecho 2","Barbecho 3","Barbecho 4",
+  "Pre-emergente","Post-emergente 1","Post-emergente 2","Post-emergente 3","Post-emergente 4",
+  "Fertilización 1","Fertilización 2",
+  "Fungicida 1","Fungicida 2","Fungicida 3","Fungicida 4",
+  "Insecticida","Insecticida 2","Desecante"
+];
+
+var DIAGNOSTICOS = ["Malezas","Insectos","Ácaros","Bacteriosis","Fungosis","Deficiencia Nutricional"];
+
+// ════════════════════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ════════════════════════════════════════════════════════════
+var msalInstance = null, currentAccount = null, graphToken = null, currentUser = "";
+
+// Datos maestros cargados de SharePoint
+var CAMPOS_MAP = {};    // { campo: [{lote, zona, cultivo, has, localidad, partido}] }
+var PRODUCTOS_ARR = []; // [{codigo, nombre, unidad, presentacion, categoria, tipo}]
+
+// Estado del formulario
+var lotesSeleccionados = [];   // [{campo, lote, zona, cultivo, has, localidad, partido}]
+var productosReceta = [];      // [{codigo, nombre, dosis, unidad, categoria, tipo}]
+
+// Historial cacheado
+var historialItems = [];
+
+// ════════════════════════════════════════════════════════════
+//  MSAL
+// ════════════════════════════════════════════════════════════
+async function initMsal() {
+  msalInstance = new msal.PublicClientApplication({
+    auth: { clientId: CONFIG.clientId, authority: "https://login.microsoftonline.com/" + CONFIG.tenantId, redirectUri: CONFIG.redirectUri },
+    cache: { cacheLocation: "sessionStorage" }
+  });
+  await msalInstance.initialize();
+  var response = await msalInstance.handleRedirectPromise();
+  if (response) { currentAccount = response.account; graphToken = response.accessToken; showApp(); return; }
+  var accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) { currentAccount = accounts[0]; await acquireTokenSilent(); showApp(); return; }
+  try {
+    await msalInstance.ssoSilent({ scopes: ["Sites.ReadWrite.All","User.Read"] });
+    var accs = msalInstance.getAllAccounts();
+    if (accs.length > 0) { currentAccount = accs[0]; await acquireTokenSilent(); showApp(); return; }
+  } catch(e) {}
+  await msalInstance.loginRedirect({ scopes: ["Sites.ReadWrite.All","User.Read"] });
+}
+
+async function acquireTokenSilent() {
+  try {
+    var r = await msalInstance.acquireTokenSilent({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+    graphToken = r.accessToken;
+  } catch(e) {
+    await msalInstance.acquireTokenRedirect({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+  }
+}
+
+function showApp() {
+  currentUser = currentAccount ? (currentAccount.name || currentAccount.username) : "Usuario";
+  document.getElementById("headerUser").textContent = currentUser;
+  document.getElementById("loadingScreen").style.display = "none";
+  document.getElementById("appContent").style.display = "block";
+  initStaticSelects();
+  loadMasterData();
+}
+
+// ════════════════════════════════════════════════════════════
+//  DATOS ESTÁTICOS (responsables, estadios, dx)
+// ════════════════════════════════════════════════════════════
+function initStaticSelects() {
+  fillSelect("selResponsable", RESPONSABLES);
+  fillSelect("selEstadio", ESTADIOS);
+  fillSelect("selDx", DIAGNOSTICOS);
+  // Filtros historial
+  RESPONSABLES.forEach(function(r) {
+    var opt = document.createElement("option"); opt.value = r; opt.textContent = r;
+    document.getElementById("filtResponsable").appendChild(opt);
+  });
+}
+
+function fillSelect(id, arr) {
+  var sel = document.getElementById(id);
+  arr.forEach(function(v) {
+    var opt = document.createElement("option"); opt.value = v; opt.textContent = v; sel.appendChild(opt);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  CARGA DE DATOS MAESTROS DESDE SHAREPOINT
+// ════════════════════════════════════════════════════════════
+async function loadMasterData() {
+  updateStatusDatos("Cargando campos y lotes...");
+  try {
+    await Promise.all([loadCampos(), loadProductos(), loadContratistas()]);
+    updateStatusDatos("ok");
+  } catch(e) {
+    updateStatusDatos("error:" + e.message);
+    showToast("Error al cargar datos maestros: " + e.message, "error");
+  }
+}
+
+async function loadCampos() {
+  var items = await fetchAllFromList(CONFIG.camposListId);
+  CAMPOS_MAP = {};
+  items.forEach(function(item) {
+    var f = item.fields || {};
+    var campo = (f.Title || f.Campo || "").trim();
+    if (!campo) return;
+    if (!CAMPOS_MAP[campo]) CAMPOS_MAP[campo] = [];
+    CAMPOS_MAP[campo].push({
+      lote:      (f.Lote || f.field_1 || "").trim(),
+      zona:      (f.Zona || f.field_2 || "").trim(),
+      cultivo:   (f.Cultivo || f.field_6 || "").trim(),
+      has:       parseFloat(f.Hectareas || f.Hectareas || f.field_3 || 0) || 0,
+      localidad: (f.Localidad || f.field_4 || "").trim(),
+      partido:   (f.Partido || f.field_5 || "").trim()
+    });
+  });
+  // Poblar selector de campo
+  var sel = document.getElementById("selCampo");
+  var filtSel = document.getElementById("filtCampo");
+  sel.innerHTML = "<option value=\"\">-- Seleccionar campo --</option>";
+  filtSel.innerHTML = "<option value=\"\">Todos</option>";
+  Object.keys(CAMPOS_MAP).sort().forEach(function(c) {
+    var opt1 = document.createElement("option"); opt1.value = c; opt1.textContent = c; sel.appendChild(opt1);
+    var opt2 = document.createElement("option"); opt2.value = c; opt2.textContent = c; filtSel.appendChild(opt2);
+  });
+}
+
+async function loadProductos() {
+  var items = await fetchAllFromList(CONFIG.productosListId);
+  PRODUCTOS_ARR = items.map(function(item) {
+    var f = item.fields || {};
+    return {
+      codigo:       (f.Codigo || f.Title || "").trim(),
+      nombre:       (f.Nombre || f.field_1 || "").trim(),
+      unidad:       (f.Unidad || f.field_2 || "").trim(),
+      presentacion: (f.Presentacion || f.field_3 || "").trim(),
+      categoria:    (f.Categoria || f.field_4 || "").trim(),
+      tipo:         (f.Tipo || f.field_5 || "").trim()
+    };
+  }).filter(function(p) { return p.nombre; });
+
+  var sel = document.getElementById("selProducto");
+  sel.innerHTML = "<option value=\"\">-- Seleccionar producto --</option>";
+  // Agrupar por categoría
+  var byCategoria = {};
+  PRODUCTOS_ARR.forEach(function(p) {
+    var cat = p.categoria || "Sin categoría";
+    if (!byCategoria[cat]) byCategoria[cat] = [];
+    byCategoria[cat].push(p);
+  });
+  Object.keys(byCategoria).sort().forEach(function(cat) {
+    var og = document.createElement("optgroup"); og.label = cat;
+    byCategoria[cat].sort(function(a,b){ return a.nombre.localeCompare(b.nombre); }).forEach(function(p) {
+      var opt = document.createElement("option");
+      opt.value = p.nombre; opt.textContent = p.nombre;
+      opt.dataset.unidad = p.unidad; opt.dataset.categoria = p.categoria; opt.dataset.tipo = p.tipo;
+      og.appendChild(opt);
+    });
+    sel.appendChild(og);
+  });
+}
+
+async function loadContratistas() {
+  var items = await fetchAllFromList(CONFIG.contratistasListId);
+  var nombres = items.map(function(i) { return (i.fields && (i.fields.Title || i.fields.Nombre || "")).trim(); })
+                     .filter(Boolean).sort();
+  var sel = document.getElementById("selContratista");
+  sel.innerHTML = "<option value=\"\">-- Seleccionar contratista --</option>";
+  nombres.forEach(function(n) {
+    var opt = document.createElement("option"); opt.value = n; opt.textContent = n; sel.appendChild(opt);
+  });
+}
+
+async function fetchAllFromList(listId) {
+  var items = [];
+  var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
+            "/lists/" + listId + "/items?$expand=fields&$top=500";
+  while (url) {
+    var res = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
+    if (res.status === 429) {
+      var wait = parseInt(res.headers.get("Retry-After") || "5") * 1000;
+      await new Promise(function(r){ setTimeout(r, wait); });
+      continue;
+    }
+    if (!res.ok) throw new Error("HTTP " + res.status + " en lista " + listId);
+    var data = await res.json();
+    items = items.concat(data.value || []);
+    url = data["@odata.nextLink"] || null;
+    if (url) await new Promise(function(r){ setTimeout(r, 200); });
+  }
+  return items;
+}
+
+function updateStatusDatos(status) {
+  var div = document.getElementById("statusDatos");
+  if (!div) return;
+  if (status === "ok") {
+    var nCampos = Object.keys(CAMPOS_MAP).length;
+    var nLotes = Object.values(CAMPOS_MAP).reduce(function(s, arr){ return s + arr.length; }, 0);
+    div.innerHTML = "✅ Datos cargados desde SharePoint<br>" +
+      "<span style='color:#888;'>" + nCampos + " campos · " + nLotes + " lotes · " +
+      PRODUCTOS_ARR.length + " productos</span>";
+  } else if (status.startsWith("error:")) {
+    div.innerHTML = "❌ Error cargando datos: " + status.slice(6);
+  } else {
+    div.innerHTML = "⏳ " + status;
+  }
+}
+
+async function reloadMasterData() {
+  showToast("Recargando...", "info");
+  await loadMasterData();
+  showToast("Datos actualizados", "success");
+}
+
+// ════════════════════════════════════════════════════════════
+//  FORMULARIO — SELECCIÓN DE CAMPO / LOTES
+// ════════════════════════════════════════════════════════════
+function onCampoChange() {
+  var campo = document.getElementById("selCampo").value;
+  var lotes = campo ? (CAMPOS_MAP[campo] || []) : [];
+
+  // Info rápida del campo
+  if (lotes.length > 0) {
+    document.getElementById("lblCultivo").textContent = lotes[0].cultivo || "-";
+    document.getElementById("lblZona").textContent    = lotes[0].zona    || "-";
+  } else {
+    document.getElementById("lblCultivo").textContent = "-";
+    document.getElementById("lblZona").textContent    = "-";
+  }
+
+  // Render grid de lotes
+  var container = document.getElementById("lotesContainer");
+  if (!campo || lotes.length === 0) {
+    container.innerHTML = "<div class=\"lote-empty\">Seleccioná un campo para ver los lotes disponibles.</div>";
+    return;
+  }
+  var html = "<div class=\"lotes-grid\" id=\"lotesGrid\">";
+  lotes.forEach(function(l, idx) {
+    html += "<label class=\"lote-chip\" id=\"chip_" + idx + "\">" +
+            "<input type=\"checkbox\" id=\"chk_" + idx + "\" data-idx=\"" + idx + "\" onchange=\"onLoteCheck(this)\">" +
+            "<div><div class=\"lote-name\">" + esc(l.lote) + "</div>" +
+            "<div class=\"lote-ha\">" + (l.has || "?") + " ha | " + (l.cultivo || "-") + "</div></div>" +
+            "</label>";
+  });
+  html += "</div>";
+  container.innerHTML = html;
+}
+
+function onLoteCheck(chk) {
+  var chip = chk.closest(".lote-chip");
+  if (chk.checked) chip.classList.add("selected");
+  else chip.classList.remove("selected");
+}
+
+function seleccionarTodosLotes() {
+  var grid = document.getElementById("lotesGrid");
+  if (!grid) return;
+  grid.querySelectorAll("input[type=checkbox]").forEach(function(chk) {
+    chk.checked = true;
+    chk.closest(".lote-chip").classList.add("selected");
+  });
+}
+
+function agregarSeleccion() {
+  var campo = document.getElementById("selCampo").value;
+  if (!campo) { showToast("Seleccioná un campo primero", "error"); return; }
+  var lotes = CAMPOS_MAP[campo] || [];
+  var grid = document.getElementById("lotesGrid");
+  if (!grid) { showToast("Seleccioná al menos un lote", "error"); return; }
+
+  var checkboxes = grid.querySelectorAll("input[type=checkbox]:checked");
+  if (checkboxes.length === 0) { showToast("Marcá al menos un lote", "error"); return; }
+
+  var nuevos = 0;
+  checkboxes.forEach(function(chk) {
+    var idx = parseInt(chk.dataset.idx);
+    var l = lotes[idx];
+    var key = campo + "|||" + l.lote;
+    var yaExiste = lotesSeleccionados.some(function(x){ return x.campo + "|||" + x.lote === key; });
+    if (!yaExiste) {
+      lotesSeleccionados.push({ campo: campo, lote: l.lote, zona: l.zona, cultivo: l.cultivo,
+                                has: l.has, localidad: l.localidad, partido: l.partido });
+      nuevos++;
+    }
+  });
+
+  if (nuevos === 0) { showToast("Los lotes ya están en la lista", "info"); return; }
+  renderSeleccion();
+  showToast(nuevos + " lote(s) agregado(s)", "success");
+  // Desmarcar
+  grid.querySelectorAll("input[type=checkbox]").forEach(function(chk) {
+    chk.checked = false; chk.closest(".lote-chip").classList.remove("selected");
+  });
+}
+
+function quitarLote(idx) {
+  lotesSeleccionados.splice(idx, 1);
+  renderSeleccion();
+}
+
+function limpiarSeleccion() {
+  if (!confirm("¿Limpiar todos los lotes seleccionados?")) return;
+  lotesSeleccionados = [];
+  renderSeleccion();
+}
+
+function renderSeleccion() {
+  var card = document.getElementById("previewCard");
+  if (lotesSeleccionados.length === 0) { card.style.display = "none"; return; }
+  card.style.display = "block";
+
+  var totalHa = lotesSeleccionados.reduce(function(s,l){ return s + (l.has || 0); }, 0);
+  document.getElementById("badgeHa").textContent = totalHa.toLocaleString("es-AR", {maximumFractionDigits:1}) + " ha";
+
+  var tb = "";
+  lotesSeleccionados.forEach(function(l, i) {
+    tb += "<tr><td>" + esc(l.campo) + "</td><td><strong>" + esc(l.lote) + "</strong></td>" +
+          "<td><span class=\"badge\">" + esc(l.cultivo||"-") + "</span></td>" +
+          "<td class=\"center\">" + (l.has||"?") + "</td>" +
+          "<td>" + esc(l.localidad||"-") + "</td><td>" + esc(l.partido||"-") + "</td>" +
+          "<td class=\"center\"><button class=\"btn btn-danger\" style=\"padding:3px 8px;font-size:11px;\" onclick=\"quitarLote(" + i + ")\">✕</button></td></tr>";
+  });
+  document.getElementById("bodySeleccion").innerHTML = tb;
+
+  // Actualizar consumos estimados en productos
+  renderProductos();
+}
+
+// ════════════════════════════════════════════════════════════
+//  FORMULARIO — PRODUCTOS
+// ════════════════════════════════════════════════════════════
+function onProductoChange() {
+  var sel = document.getElementById("selProducto");
+  var opt = sel.options[sel.selectedIndex];
+  document.getElementById("lblUnidad").textContent   = opt.dataset.unidad   || "-";
+  document.getElementById("lblCategoria").textContent = opt.dataset.categoria || "-";
+}
+
+function agregarProducto() {
+  var nombreSel = document.getElementById("selProducto").value;
+  var dosis     = parseFloat(document.getElementById("inputDosis").value);
+  if (!nombreSel) { showToast("Seleccioná un producto", "error"); return; }
+  if (!dosis || dosis <= 0) { showToast("Ingresá una dosis válida", "error"); return; }
+
+  var prod = PRODUCTOS_ARR.find(function(p){ return p.nombre === nombreSel; }) || {};
+  var yaExiste = productosReceta.some(function(p){ return p.nombre === nombreSel; });
+  if (yaExiste) { showToast("Este producto ya está en la lista", "info"); return; }
+
+  productosReceta.push({
+    codigo:    prod.codigo    || "",
+    nombre:    prod.nombre    || nombreSel,
+    dosis:     dosis,
+    unidad:    prod.unidad    || document.getElementById("lblUnidad").textContent,
+    categoria: prod.categoria || "",
+    tipo:      prod.tipo      || ""
+  });
+
+  document.getElementById("selProducto").value = "";
+  document.getElementById("inputDosis").value  = "";
+  document.getElementById("lblUnidad").textContent    = "-";
+  document.getElementById("lblCategoria").textContent = "-";
+  renderProductos();
+  showToast("Producto agregado", "success");
+}
+
+function quitarProducto(idx) {
+  productosReceta.splice(idx, 1);
+  renderProductos();
+}
+
+function renderProductos() {
+  var container = document.getElementById("productosContainer");
+  if (productosReceta.length === 0) {
+    container.innerHTML = "<div class=\"lote-empty\" style=\"padding:14px;\">Aún no hay productos agregados.</div>";
+    return;
+  }
+  var totalHa = lotesSeleccionados.reduce(function(s,l){ return s + (l.has || 0); }, 0);
+  var html = "";
+  productosReceta.forEach(function(p, i) {
+    var consumo = totalHa > 0 ? (p.dosis * totalHa).toLocaleString("es-AR", {maximumFractionDigits:1}) : "—";
+    html += "<div class=\"producto-row\">" +
+            "<div class=\"p-nombre\">" + esc(p.nombre) + "</div>" +
+            "<div class=\"p-dosis\">" + p.dosis + " " + esc(p.unidad) + "/ha" +
+            (totalHa > 0 ? " &nbsp;→&nbsp; <span class=\"consumo-info\">" + consumo + " " + esc(p.unidad) + " total</span>" : "") +
+            "</div>" +
+            "<span class=\"badge badge-green\">" + esc(p.categoria||p.tipo||"") + "</span>" +
+            "<button class=\"btn btn-danger\" style=\"padding:3px 8px;font-size:11px;margin-left:auto;\" onclick=\"quitarProducto(" + i + ")\">✕</button>" +
+            "</div>";
+  });
+  container.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════════════════
+//  GENERAR RECETA → GUARDAR EN SHAREPOINT
+// ════════════════════════════════════════════════════════════
+async function generarReceta() {
+  // Validaciones
+  if (lotesSeleccionados.length === 0) { showToast("Seleccioná al menos un lote", "error"); return; }
+  if (!document.getElementById("selResponsable").value) { showToast("Seleccioná un responsable", "error"); return; }
+  if (!document.getElementById("selEstadio").value)     { showToast("Seleccioná el estadío", "error"); return; }
+  if (!document.getElementById("selDx").value)          { showToast("Seleccioná el diagnóstico", "error"); return; }
+  if (productosReceta.length === 0) { showToast("Agregá al menos un producto", "error"); return; }
+
+  var btn = document.getElementById("btnGenerar");
+  btn.disabled = true; btn.textContent = "Guardando...";
+
+  try {
+    // Número de receta (secuencial)
+    var nroReceta = await getNextNroReceta();
+
+    var responsable = document.getElementById("selResponsable").value;
+    var estadio     = document.getElementById("selEstadio").value;
+    var diagnostico = document.getElementById("selDx").value;
+    var contratista = document.getElementById("selContratista").value;
+    var fechaApl    = document.getElementById("inputFecha").value;
+    var obs         = document.getElementById("txtObservaciones").value;
+
+    var totalHa     = lotesSeleccionados.reduce(function(s,l){ return s + (l.has||0); }, 0);
+    var primerLote  = lotesSeleccionados[0];
+    var camposUnicos = [...new Set(lotesSeleccionados.map(function(l){ return l.campo; }))];
+
+    // Guardar una fila por campo único (para no hacer la lista gigante)
+    for (var ci = 0; ci < camposUnicos.length; ci++) {
+      var campo = camposUnicos[ci];
+      var lotesDeCampo = lotesSeleccionados.filter(function(l){ return l.campo === campo; });
+      var haCampo = lotesDeCampo.reduce(function(s,l){ return s + (l.has||0); }, 0);
+      var primeraFila = lotesDeCampo[0];
+
+      var fields = {
+        Title:          nroReceta + (camposUnicos.length > 1 ? "-" + (ci+1) : ""),
+        FechaCreacion:  new Date().toLocaleDateString("es-AR"),
+        FechaAplicacion: fechaApl ? new Date(fechaApl).toLocaleDateString("es-AR") : "",
+        Usuario:        currentUser,
+        Responsable:    responsable,
+        Campo:          campo,
+        Lotes:          JSON.stringify(lotesDeCampo.map(function(l){ return {lote:l.lote, has:l.has}; })),
+        Cultivo:        primeraFila.cultivo || "",
+        HectareasTotal: haCampo,
+        Localidad:      primeraFila.localidad || "",
+        Partido:        primeraFila.partido   || "",
+        Zona:           primeraFila.zona       || "",
+        Estadio:        estadio,
+        Diagnostico:    diagnostico,
+        Contratista:    contratista,
+        Productos:      JSON.stringify(productosReceta),
+        Observaciones:  obs
+      };
+
+      var r = await fetch(
+        "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
+        "/lists/" + CONFIG.recetasListId + "/items",
+        { method: "POST",
+          headers: { "Authorization": "Bearer " + graphToken, "Content-Type": "application/json" },
+          body: JSON.stringify({ fields: fields }) }
+      );
+      if (!r.ok) throw new Error("Error " + r.status);
+    }
+
+    showToast("Receta " + nroReceta + " generada correctamente ✓", "success");
+    limpiarFormulario();
+
+  } catch(e) {
+    showToast("Error al guardar: " + e.message, "error");
+  }
+
+  btn.disabled = false; btn.textContent = "Generar Receta";
+}
+
+async function getNextNroReceta() {
+  try {
+    var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
+              "/lists/" + CONFIG.recetasListId + "/items?$top=999&$select=id";
+    var r = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
+    if (!r.ok) return "R-0001";
+    var data = await r.json();
+    var total = (data.value || []).length;
+    return "R-" + String(total + 1).padStart(4, "0");
+  } catch(e) {
+    return "R-" + Date.now().toString(36).toUpperCase();
+  }
+}
+
+function limpiarFormulario() {
+  lotesSeleccionados = [];
+  productosReceta = [];
+  document.getElementById("selCampo").value = "";
+  document.getElementById("lblCultivo").textContent = "-";
+  document.getElementById("lblZona").textContent    = "-";
+  document.getElementById("lotesContainer").innerHTML =
+    "<div class=\"lote-empty\">Seleccioná un campo para ver los lotes disponibles.</div>";
+  document.getElementById("selResponsable").value = "";
+  document.getElementById("selEstadio").value     = "";
+  document.getElementById("selDx").value          = "";
+  document.getElementById("selContratista").value = "";
+  document.getElementById("inputFecha").value     = "";
+  document.getElementById("txtObservaciones").value = "";
+  document.getElementById("selProducto").value    = "";
+  document.getElementById("inputDosis").value     = "";
+  document.getElementById("lblUnidad").textContent    = "-";
+  document.getElementById("lblCategoria").textContent = "-";
+  renderSeleccion();
+  renderProductos();
+}
+
+// ════════════════════════════════════════════════════════════
+//  MIS RECETAS
+// ════════════════════════════════════════════════════════════
+async function cargarMisRecetas() {
+  var container = document.getElementById("misRecetasContainer");
+  container.innerHTML = "<div class=\"loading-inline\">Cargando...</div>";
+  try {
+    var items = await fetchAllFromList(CONFIG.recetasListId);
+    var mias = items.filter(function(i){ return (i.fields||{}).Usuario === currentUser; });
+    mias.sort(function(a,b){ return (b.fields.FechaCreacion||"").localeCompare(a.fields.FechaCreacion||""); });
+
+    if (mias.length === 0) {
+      container.innerHTML = "<div class=\"empty-state\">No tenés recetas generadas aún.</div>"; return;
+    }
+    var html = "";
+    mias.forEach(function(item) {
+      var f = item.fields || {};
+      var prods = [];
+      try { prods = JSON.parse(f.Productos || "[]"); } catch(e) {}
+      html += renderRecetaCard(f, item.id, prods, true);
+    });
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = "<div class=\"empty-state\">Error: " + esc(e.message) + "</div>";
+  }
+}
+
+async function eliminarReceta(itemId) {
+  if (!confirm("¿Eliminar esta receta? Esta acción no se puede deshacer.")) return;
+  try {
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
+      "/lists/" + CONFIG.recetasListId + "/items/" + itemId,
+      { method: "DELETE", headers: { Authorization: "Bearer " + graphToken } }
+    );
+    if (r.status === 204 || r.ok) { showToast("Receta eliminada", "success"); cargarMisRecetas(); }
+    else throw new Error("Error " + r.status);
+  } catch(e) { showToast("Error: " + e.message, "error"); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  HISTORIAL
+// ════════════════════════════════════════════════════════════
+async function cargarHistorial() {
+  document.getElementById("bodyHistorial").innerHTML =
+    "<tr><td colspan='14' class='loading-inline'>Cargando...</td></tr>";
+  try {
+    historialItems = await fetchAllFromList(CONFIG.recetasListId);
+    historialItems.sort(function(a,b){ return (b.fields.FechaCreacion||"").localeCompare(a.fields.FechaCreacion||""); });
+    filtrarHistorial();
+  } catch(e) {
+    document.getElementById("bodyHistorial").innerHTML =
+      "<tr><td colspan='14' style='padding:20px;color:#c0392b;'>Error: " + esc(e.message) + "</td></tr>";
+  }
+}
+
+function filtrarHistorial() {
+  var fCampo  = document.getElementById("filtCampo").value;
+  var fResp   = document.getElementById("filtResponsable").value;
+  var fDesde  = document.getElementById("filtDesde").value;
+  var fHasta  = document.getElementById("filtHasta").value;
+
+  var filtered = historialItems.filter(function(i) {
+    var f = i.fields || {};
+    if (fCampo && f.Campo !== fCampo) return false;
+    if (fResp  && f.Responsable !== fResp) return false;
+    // Fecha filter (stored as dd/mm/yyyy)
+    if (fDesde || fHasta) {
+      var partes = (f.FechaCreacion||"").split("/");
+      if (partes.length === 3) {
+        var fRaw = partes[2] + "-" + partes[1] + "-" + partes[0]; // yyyy-mm-dd
+        if (fDesde && fRaw < fDesde) return false;
+        if (fHasta && fRaw > fHasta) return false;
+      }
+    }
+    return true;
+  });
+
+  document.getElementById("contadorHistorial").textContent = filtered.length;
+  var tb = "";
+  filtered.forEach(function(item) {
+    var f = item.fields || {};
+    var prods = []; try { prods = JSON.parse(f.Productos||"[]"); } catch(e){}
+    var lotesArr = []; try { lotesArr = JSON.parse(f.Lotes||"[]"); } catch(e){}
+    var lotesStr = lotesArr.map(function(l){ return l.lote || ""; }).join(", ");
+    var prodsStr = prods.map(function(p){ return p.nombre + " " + p.dosis + " " + p.unidad + "/ha"; }).join(" | ");
+
+    tb += "<tr>" +
+          "<td><strong>" + esc(f.Title||"") + "</strong></td>" +
+          "<td>" + esc(f.FechaCreacion||"")   + "</td>" +
+          "<td>" + esc(f.FechaAplicacion||"") + "</td>" +
+          "<td>" + esc(f.Usuario||"")         + "</td>" +
+          "<td>" + esc(f.Responsable||"")     + "</td>" +
+          "<td>" + esc(f.Campo||"")           + "</td>" +
+          "<td style='max-width:140px;font-size:11px;'>" + esc(lotesStr) + "</td>" +
+          "<td>" + esc(f.Cultivo||"")         + "</td>" +
+          "<td class='center'>" + (f.HectareasTotal||"") + "</td>" +
+          "<td>" + esc(f.Estadio||"")         + "</td>" +
+          "<td>" + esc(f.Diagnostico||"")     + "</td>" +
+          "<td>" + esc(f.Contratista||"")     + "</td>" +
+          "<td style='max-width:180px;font-size:11px;'>" + esc(prodsStr) + "</td>" +
+          "<td style='max-width:140px;font-size:11px;'>" + esc(f.Observaciones||"") + "</td>" +
+          "</tr>";
+  });
+  document.getElementById("bodyHistorial").innerHTML = tb || "<tr><td colspan='14' class='empty-state'>Sin resultados</td></tr>";
+}
+
+async function descargarHistorial() {
+  showToast("Generando Excel...", "info");
+  try {
+    if (historialItems.length === 0) await cargarHistorial();
+    var header = ["N° Receta","Fecha Creación","Fecha Aplicación","Usuario","Responsable",
+                  "Campo","Lotes","Cultivo","Hectáreas","Localidad","Partido","Zona",
+                  "Estadío","Diagnóstico","Contratista","Producto","Dosis","Unidad","Consumo Total","Observaciones"];
+    var rows = [header];
+    historialItems.forEach(function(item) {
+      var f = item.fields || {};
+      var prods = []; try { prods = JSON.parse(f.Productos||"[]"); } catch(e){}
+      var lotesArr = []; try { lotesArr = JSON.parse(f.Lotes||"[]"); } catch(e){}
+      var lotesStr = lotesArr.map(function(l){ return l.lote; }).join(", ");
+      var base = [f.Title||"",f.FechaCreacion||"",f.FechaAplicacion||"",f.Usuario||"",
+                  f.Responsable||"",f.Campo||"",lotesStr,f.Cultivo||"",
+                  f.HectareasTotal||0,f.Localidad||"",f.Partido||"",f.Zona||"",
+                  f.Estadio||"",f.Diagnostico||"",f.Contratista||""];
+      if (prods.length === 0) {
+        rows.push(base.concat(["","","","",f.Observaciones||""]));
+      } else {
+        prods.forEach(function(p, pi) {
+          var consumo = (f.HectareasTotal||0) * (p.dosis||0);
+          rows.push(base.concat([p.nombre||"",p.dosis||"",p.unidad||"",
+                                 consumo||"",pi===0?f.Observaciones||"":""]));
+        });
+      }
+    });
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Recetas");
+    XLSX.writeFile(wb, "Recetario_ADBlick_" + new Date().toISOString().slice(0,10) + ".xlsx");
+    showToast("Descargado", "success");
+  } catch(e) { showToast("Error: " + e.message, "error"); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  HELPERS RENDER
+// ════════════════════════════════════════════════════════════
+function renderRecetaCard(f, itemId, prods, showActions) {
+  var html = "<div class=\"receta-card\">";
+  html += "<div class=\"receta-header\">";
+  html += "<div>" +
+          "<span class=\"receta-nro\">" + esc(f.Title||"") + "</span>" +
+          "<div class=\"receta-campo\">" + esc(f.Campo||"") + "</div>" +
+          "<div class=\"receta-meta\">" + esc(f.FechaCreacion||"") +
+          " &nbsp;|&nbsp; Resp: " + esc(f.Responsable||"-") +
+          " &nbsp;|&nbsp; " + esc(f.Estadio||"-") +
+          " &nbsp;|&nbsp; " + (f.HectareasTotal||0) + " ha</div>";
+  if (f.Diagnostico || f.Contratista) {
+    html += "<div class=\"receta-meta\">" +
+            (f.Diagnostico ? "Dx: " + esc(f.Diagnostico) : "") +
+            (f.Contratista ? " &nbsp;|&nbsp; Contr: " + esc(f.Contratista) : "") +
+            "</div>";
+  }
+  html += "</div>";
+  if (showActions) {
+    html += "<div style='display:flex;gap:6px;flex-shrink:0;'>" +
+            "<button class=\"btn btn-danger\" style=\"padding:6px 12px;font-size:12px;\" onclick=\"eliminarReceta('" + itemId + "')\">Eliminar</button>" +
+            "</div>";
+  }
+  html += "</div>";
+  html += "<div class=\"receta-products\">";
+  prods.forEach(function(p) {
+    html += "<span class=\"badge badge-green\">" + esc(p.nombre) + " · " + p.dosis + " " + esc(p.unidad) + "/ha</span>";
+  });
+  html += "</div></div>";
+  return html;
+}
+
+// ════════════════════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════════════════════
+function switchTab(name) {
+  var tabNames = ["nueva","mis","historial","datos"];
+  document.querySelectorAll(".tab").forEach(function(t, i) {
+    t.classList.toggle("active", tabNames[i] === name);
+  });
+  document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.remove("active"); });
+  document.getElementById("tab-" + name).classList.add("active");
+  if (name === "mis")      cargarMisRecetas();
+  if (name === "historial") cargarHistorial();
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODALES
+// ════════════════════════════════════════════════════════════
+function cerrarModal(id) {
+  document.getElementById(id).classList.remove("open");
+}
+
+// ════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════
+function showToast(msg, type) {
+  var t = document.getElementById("toast");
+  t.textContent = msg; t.className = "toast show " + (type || "success");
+  setTimeout(function(){ t.className = "toast"; }, 3500);
+}
+
+// ════════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════════
+function esc(s) {
+  if (!s) return "";
+  return String(s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+window.addEventListener("load", function() {
+  if (typeof msal === "undefined") {
+    document.getElementById("loadingScreen").innerHTML =
+      "<p style='color:red;padding:20px;'>Error: no se pudo cargar Microsoft Auth. Verificá la conexión.</p>";
+    return;
+  }
+  initMsal();
+});
+</script>
+</body>
+</html>
