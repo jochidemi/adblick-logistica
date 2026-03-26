@@ -508,10 +508,22 @@ tr:hover td{background:var(--brand-light);}
             <button id="stab-propio" onclick="switchStockTab('propio')" style="flex:1;padding:11px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:var(--white);color:var(--text);border-bottom:2px solid var(--brand);transition:all 0.15s;">📦 Existencia Propia</button>
             <button id="stab-pendiente" onclick="switchStockTab('pendiente')" style="flex:1;padding:11px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">🚛 Pendiente de Remitir</button>
           </div>
-          <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+          <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <input type="text" id="inp-stock-search" placeholder="Buscar..." style="font-size:13px;flex:1;min-width:120px;" oninput="renderStockTable()">
-            <select id="inp-stock-prov" style="font-size:12px;flex:1;min-width:120px;display:none;" onchange="renderStockTable()"><option value="">Todos los proveedores</option></select>
-            <select id="inp-stock-ins"  style="font-size:12px;flex:1;min-width:120px;display:none;" onchange="renderStockTable()"><option value="">Todos los insumos</option></select>
+            <!-- Filtro propio: punto de stock -->
+            <div id="wrap-stock-pto" style="display:none;align-items:center;gap:2px;">
+              <select id="inp-stock-pto" style="font-size:12px;min-width:130px;" onchange="renderStockTable()"><option value="">Todos los puntos</option></select>
+              <button onclick="limpiarFiltro('inp-stock-pto')" title="Limpiar" style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+            </div>
+            <!-- Filtros OC: proveedor + insumo -->
+            <div id="wrap-stock-prov" style="display:none;align-items:center;gap:2px;">
+              <select id="inp-stock-prov" style="font-size:12px;min-width:130px;" onchange="renderStockTable()"><option value="">Todos los proveedores</option></select>
+              <button onclick="limpiarFiltro('inp-stock-prov')" title="Limpiar" style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+            </div>
+            <div id="wrap-stock-ins" style="display:none;align-items:center;gap:2px;">
+              <select id="inp-stock-ins" style="font-size:12px;min-width:130px;" onchange="renderStockTable()"><option value="">Todos los insumos</option></select>
+              <button onclick="limpiarFiltro('inp-stock-ins')" title="Limpiar" style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+            </div>
           </div>
           <div id="stock-table-container"><div style="padding:32px;text-align:center;color:var(--light);font-size:13px;">Subí el archivo Excel para ver el stock</div></div>
         </div>
@@ -533,52 +545,80 @@ tr:hover td{background:var(--brand-light);}
   <!-- LOGÍSTICA -->
   <div class="tab-panel" id="tab-logistica">
     <div class="main-wide">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div>
           <h2 style="font-size:20px;font-weight:800;">Logística</h2>
           <p style="color:var(--sub);font-size:13px;margin-top:3px;">Asigná ítems a camiones y registrá el despacho.</p>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;" id="log-main-actions">
           <button class="btn btn-outline" onclick="exportarXLSXLogistica()">⬇ Exportar XLSX</button>
           <button class="btn btn-brand" onclick="crearCamionNuevo()">🚛 Crear camión</button>
         </div>
       </div>
 
-      <!-- Sticky assign bar -->
-      <div class="sticky-bar" id="assign-bar" style="display:none;">
-        <span class="sticky-bar-label" id="assign-bar-label"></span>
-        <div style="flex:1;min-width:200px;" id="combo-cam-destino-wrap"></div>
-        <button class="btn btn-brand btn-sm" id="btn-confirm-assign" onclick="confirmarAsignacion()" disabled>Asignar al camión →</button>
-        <button class="btn-ghost" style="color:rgba(255,255,255,0.4);font-size:12px;" onclick="limpiarSeleccion()">Cancelar</button>
+      <!-- Main log tabs -->
+      <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;background:var(--white);border-radius:10px 10px 0 0;overflow:hidden;border:1px solid var(--border);">
+        <button id="ltab-armado" onclick="switchLogTab('armado')" style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:var(--white);color:var(--text);border-bottom:2px solid var(--brand);transition:all 0.15s;">🚛 Armado de pedidos</button>
+        <button id="ltab-enviados" onclick="switchLogTab('enviados')" style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">📋 Pedidos enviados</button>
       </div>
 
-      <div class="log-grid">
-        <!-- Camiones panel -->
-        <div class="cam-panel">
-          <div class="cam-hdr">
-            <span>Camiones (<span id="cam-count">0</span>)</span>
-          </div>
-          <div style="display:flex;border-bottom:1px solid var(--border);">
-            <button id="ctab-activos"  onclick="switchCamTab('activos')"  style="flex:1;padding:8px 4px;border:none;cursor:pointer;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:var(--white);color:var(--text);border-bottom:2px solid var(--brand);font-family:'Montserrat',sans-serif;">Activos</button>
-            <button id="ctab-enviados" onclick="switchCamTab('enviados')" style="flex:1;padding:8px 4px;border:none;cursor:pointer;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:transparent;color:var(--sub);border-bottom:2px solid transparent;font-family:'Montserrat',sans-serif;">Enviados</button>
-          </div>
-          <div id="cam-list"><div style="padding:32px 16px;text-align:center;color:var(--light);font-size:13px;">🚛<br><br>Creá un camión para empezar</div></div>
-          <div id="cam-enviados-list" style="display:none;"></div>
+      <!-- Tab: Armado de pedidos -->
+      <div id="log-panel-armado">
+        <!-- Sticky assign bar -->
+        <div class="sticky-bar" id="assign-bar" style="display:none;">
+          <span class="sticky-bar-label" id="assign-bar-label"></span>
+          <div style="flex:1;min-width:200px;" id="combo-cam-destino-wrap"></div>
+          <button class="btn btn-brand btn-sm" id="btn-confirm-assign" onclick="confirmarAsignacion()" disabled>Asignar al camión →</button>
+          <button class="btn-ghost" style="color:rgba(255,255,255,0.4);font-size:12px;" onclick="limpiarSeleccion()">Cancelar</button>
         </div>
 
-        <!-- Items panel -->
-        <div class="items-panel">
-          <div class="items-hdr">
-            <div style="font-weight:800;font-size:14px;">Ítems listos para despacho</div>
-            <div style="display:flex;gap:6px;">
-              <button class="btn-ghost btn-sm" onclick="toggleSelectAll()" id="btn-sel-all">Seleccionar todo</button>
-              <button class="btn btn-outline btn-sm" onclick="cargarPedidosLogistica()">↺</button>
+        <div class="log-grid">
+          <!-- Camiones panel -->
+          <div class="cam-panel">
+            <div class="cam-hdr">
+              <span>Camiones (<span id="cam-count">0</span>)</span>
             </div>
+            <div style="display:flex;border-bottom:1px solid var(--border);">
+              <button id="ctab-activos"  onclick="switchCamTab('activos')"  style="flex:1;padding:8px 4px;border:none;cursor:pointer;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:var(--white);color:var(--text);border-bottom:2px solid var(--brand);font-family:'Montserrat',sans-serif;">Activos</button>
+              <button id="ctab-enviados" onclick="switchCamTab('enviados')" style="flex:1;padding:8px 4px;border:none;cursor:pointer;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;background:transparent;color:var(--sub);border-bottom:2px solid transparent;font-family:'Montserrat',sans-serif;">Enviados</button>
+            </div>
+            <div id="cam-list"><div style="padding:32px 16px;text-align:center;color:var(--light);font-size:13px;">🚛<br><br>Creá un camión para empezar</div></div>
+            <div id="cam-enviados-list" style="display:none;"></div>
           </div>
-          <div id="log-items-list"><div style="padding:40px;text-align:center;color:var(--light);">Cargando...</div></div>
 
-          <!-- Agrupados por camión -->
-          <div id="log-by-cam"></div>
+          <!-- Items panel -->
+          <div class="items-panel">
+            <div class="items-hdr">
+              <div style="font-weight:800;font-size:14px;">Ítems listos para despacho</div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn-ghost btn-sm" onclick="toggleSelectAll()" id="btn-sel-all">Seleccionar todo</button>
+                <button class="btn btn-outline btn-sm" onclick="cargarPedidosLogistica()">↺</button>
+              </div>
+            </div>
+            <div id="log-items-list"><div style="padding:40px;text-align:center;color:var(--light);">Cargando...</div></div>
+
+            <!-- Agrupados por camión -->
+            <div id="log-by-cam"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Pedidos enviados -->
+      <div id="log-panel-enviados" style="display:none;">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="text" id="inp-env-search" placeholder="Buscar por campo, operador, insumo..." style="font-size:13px;flex:2;min-width:160px;" oninput="renderPedidosEnviados()">
+            <div style="display:flex;align-items:center;gap:2px;">
+              <select id="inp-env-campo" style="font-size:12px;min-width:130px;" onchange="renderPedidosEnviados()"><option value="">Todos los campos</option></select>
+              <button onclick="limpiarFiltroEnv('inp-env-campo')" title="Limpiar" style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:2px;">
+              <select id="inp-env-operador" style="font-size:12px;min-width:130px;" onchange="renderPedidosEnviados()"><option value="">Todos los operadores</option></select>
+              <button onclick="limpiarFiltroEnv('inp-env-operador')" title="Limpiar" style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="cargarPedidosLogistica().then(renderPedidosEnviados)">↺</button>
+          </div>
+          <div id="log-enviados-container" style="padding:8px 0;"></div>
         </div>
       </div>
     </div>
@@ -661,7 +701,7 @@ tr:hover td{background:var(--brand-light);}
 
 <!-- MODAL ASIGNAR ORIGEN (Insumos) -->
 <div class="modal-overlay" id="modal-origen">
-  <div class="modal" style="max-width:580px;">
+  <div class="modal" style="max-width:600px;">
     <div class="modal-hdr">
       <div>
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--light);margin-bottom:4px;">Asignar origen</div>
@@ -670,9 +710,22 @@ tr:hover td{background:var(--brand-light);}
       </div>
       <button class="btn-ghost" onclick="cerrarModal('modal-origen')" style="font-size:18px;padding:2px 8px;">✕</button>
     </div>
-    <div class="modal-body">
-      <div id="stock-propio-match" style="margin-bottom:16px;"></div>
-      <div id="stock-pend-match" style="margin-bottom:16px;"></div>
+    <!-- Tabs -->
+    <div style="display:flex;border-bottom:1px solid var(--border);background:var(--bg);">
+      <button id="otab-propio" onclick="switchOrigenTab('propio')" style="flex:1;padding:10px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:var(--white);color:var(--text);border-bottom:2px solid var(--brand);transition:all 0.15s;">📦 Existencia Propia</button>
+      <button id="otab-oc" onclick="switchOrigenTab('oc')" style="flex:1;padding:10px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">🚛 Pendiente de Remitir</button>
+    </div>
+    <div class="modal-body" style="padding-top:12px;">
+      <!-- Tab propio -->
+      <div id="origen-tab-propio">
+        <input type="text" id="inp-origen-search-propio" placeholder="Buscar por nombre o punto de stock..." style="font-size:12px;width:100%;margin-bottom:10px;" oninput="filtrarOrigenTab('propio')">
+        <div id="stock-propio-match" style="max-height:280px;overflow-y:auto;"></div>
+      </div>
+      <!-- Tab OC -->
+      <div id="origen-tab-oc" style="display:none;">
+        <input type="text" id="inp-origen-search-oc" placeholder="Buscar por insumo o proveedor..." style="font-size:12px;width:100%;margin-bottom:10px;" oninput="filtrarOrigenTab('oc')">
+        <div id="stock-pend-match" style="max-height:280px;overflow-y:auto;"></div>
+      </div>
       <hr class="divider">
       <div class="fld">
         <label class="lbl">Origen asignado <span class="req">*</span></label>
@@ -813,9 +866,10 @@ var pedidoOrigenActual = null; // {id, spId, insumo, cantidad, presentacion, cam
 var pedidoRemitoActual = null;
 var carritoItems = []; // [{grupoInsumo, tipoInsumo, insumo, presentacion, unidad, cantidad}]
 var editandoPedidoSpId = null;
-var selectedStockItem = null;   // item propio seleccionado (single-select)
-var selectedOCItems   = [];    // [{idx, cantidadAsignada}] — OC items seleccionados (multi-select)
-var comprometidoPorOC = {};    // {referencia: cantidadComprometida} — comprometido sin remito
+var selectedStockItem    = null;  // item propio seleccionado (single-select)
+var selectedOCItems      = [];   // [{idx, cantidadAsignada}] — OC items seleccionados (multi-select)
+var comprometidoPorOC    = {};   // {referencia: cant} — OC pendiente de remito
+var comprometidoPorPropio= {};   // {"nombre|puntoStock": cant} — propio pendiente de remito
 
 // Logística
 var camiones = [];      // [{id, spId, chofer, patente, nViaje, tarifa, transportista, razonSocial, cuit}]
@@ -1601,44 +1655,46 @@ function processStockFile(file, tipo) {
 }
 
 function parsearExistencia(ws) {
-  // El archivo tiene columnas vacías entre código (col B) y nombre (col E).
-  // Usamos los valores filtrados (sin vacíos) para no depender de offsets fijos.
-  // Estructura filtrada por fila de dato: vals[0]=código, vals[1]=nombre, vals[2]=unidad, vals[3]=existencia
+  // Usa posiciones fijas de columnas (0-indexed, header:1):
+  //   B=1 → código de ítem o nombre de categoría/punto de stock
+  //   E=4 → nombre del insumo (vacío en filas de categoría/punto)
+  //   H=7 → unidad
+  //   I=8 → existencia
   var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
-  var SKIP = new Set(["Adblick Granos","Existencia de Insumos","Condiciones de filtro",
+  var SKIP_B = new Set(["Adblick Granos","Existencia de Insumos","Condiciones de filtro",
     "Insumos","Unidad","Existencia","Granos","Otros",
     "Pendiente OC","Comprometido OV","Comprometido < 30 dias","Comprometido > 30 dias",
     "Disponible","Disp + Pend OC","Pesos","En Ejecucion","Existencia Real"]);
-  // Categorías conocidas (para distinguirlas de nombres de punto de stock)
   var CATS = new Set(["Semillas","Agroquimicos","Fertilizantes","Herbicidas","Insecticidas","Fungicidas"]);
   var items = [], cat = "", puntoStock = "";
   raw.forEach(function(row) {
-    var vals = row.map(function(v){ return String(v||"").trim(); }).filter(Boolean);
-    if (!vals.length) return;
-    if (SKIP.has(vals[0])) return;
-    // Fila de categoría o punto de stock (un solo valor no numérico)
-    if (vals.length === 1 && !/^\d/.test(vals[0])) {
-      if (CATS.has(vals[0])) { cat = vals[0]; puntoStock = ""; }
-      else puntoStock = vals[0]; // ej. "3810 Belgrano", "Agropack"
+    var b = String(row[1]||"").trim(); // Col B: código, categoría o punto de stock
+    var e = String(row[4]||"").trim(); // Col E: nombre del insumo (vacío en header rows)
+    var h = String(row[7]||"").trim(); // Col H: unidad
+    var ex = parseFloat(row[8]) || 0;  // Col I: existencia
+    if (!b) return;
+    if (SKIP_B.has(b)) return;
+    if (CATS.has(b)) {
+      cat = b; puntoStock = "";
       return;
     }
-    // Fila de dato: primer valor empieza con dígito (código), mínimo 4 valores filtrados
-    if (/^\d/.test(vals[0]) && vals.length >= 4) {
-      var nombre   = vals[1];
-      var unidad   = vals[2];
-      var ex       = parseFloat(vals[3]) || 0;
-      if (nombre && ex > 0) {
-        items.push({ categoria: cat, puntoStock: puntoStock, codigo: vals[0], nombre: nombre, unidad: unidad, existencia: ex });
-      }
+    // Fila de dato: col B = código (empieza con dígito), col E = nombre
+    if (/^\d/.test(b) && e && ex > 0) {
+      items.push({ categoria: cat, puntoStock: puntoStock, codigo: b, nombre: e, unidad: h, existencia: ex });
+      return;
+    }
+    // Fila de punto de stock: col B tiene texto, col E vacía
+    if (!e) {
+      puntoStock = b;
     }
   });
   return items;
 }
 
 function parsearCuboOC(ws) {
-  // Mantiene líneas individuales por OC (referencia = col J).
-  // Cada fila del cubo con la misma OC+insumo+proveedor se acumula en la misma entrada.
-  var rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+  // Mantiene líneas individuales por OC (referencia = col J "Referencia").
+  // range:1 salta la fila 1 vacía y usa la fila 2 (con los encabezados reales) como header.
+  var rows = XLSX.utils.sheet_to_json(ws, {defval:"", range:1});
   var mapa = {};
   rows.forEach(function(row){
     var pend = parseFloat(row["Pendiente Stock"]) || 0;
@@ -1660,53 +1716,84 @@ function parsearCuboOC(ws) {
 function switchStockTab(tab) {
   stockTabActiva = tab;
   var tabPropio = document.getElementById("stab-propio"), tabPend = document.getElementById("stab-pendiente");
+  var wPto  = document.getElementById("wrap-stock-pto");
+  var wProv = document.getElementById("wrap-stock-prov");
+  var wIns  = document.getElementById("wrap-stock-ins");
   if (tab==="propio") {
     tabPropio.style.background="var(--white)"; tabPropio.style.color="var(--text)"; tabPropio.style.borderBottom="2px solid var(--brand)";
     tabPend.style.background="transparent"; tabPend.style.color="var(--sub)"; tabPend.style.borderBottom="2px solid transparent";
-    document.getElementById("inp-stock-prov").style.display="none";
-    document.getElementById("inp-stock-ins").style.display="none";
+    // Poblar filtro de puntos de stock
+    var ptoSel = document.getElementById("inp-stock-pto");
+    var ptos = [...new Set(stockPropio.map(function(r){return r.puntoStock||"";}).filter(Boolean))].sort();
+    ptoSel.innerHTML = '<option value="">Todos los puntos</option>' + ptos.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
+    wPto.style.display = ptos.length ? "flex" : "none";
+    wProv.style.display="none"; wIns.style.display="none";
+    cargarComprometidoSinRemito();
   } else {
     tabPend.style.background="var(--white)"; tabPend.style.color="var(--text)"; tabPend.style.borderBottom="2px solid var(--brand)";
     tabPropio.style.background="transparent"; tabPropio.style.color="var(--sub)"; tabPropio.style.borderBottom="2px solid transparent";
-    // Poblar filtros con valores únicos
     var provSel = document.getElementById("inp-stock-prov");
     var insSel  = document.getElementById("inp-stock-ins");
     var provs = [...new Set(stockPendiente.map(function(r){return r.proveedor;}))].sort();
     var inss  = [...new Set(stockPendiente.map(function(r){return r.insumo;}))].sort();
     provSel.innerHTML = '<option value="">Todos los proveedores</option>' + provs.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
     insSel.innerHTML  = '<option value="">Todos los insumos</option>'     + inss.map(function(i){return '<option value="'+i+'">'+i+'</option>';}).join('');
-    provSel.style.display=""; insSel.style.display="";
-    cargarComprometidoSinRemito(); // Cargar comprometido al cambiar a tab OC
+    wPto.style.display="none";
+    wProv.style.display = provs.length ? "flex" : "none";
+    wIns.style.display  = inss.length  ? "flex" : "none";
+    cargarComprometidoSinRemito();
   }
   renderStockTable();
 }
 
+function limpiarFiltro(id) {
+  var el = document.getElementById(id);
+  if (el) { el.value = ""; renderStockTable(); }
+}
+
 async function cargarComprometidoSinRemito() {
-  // Pedidos con origen asignado pero sin remito → comprometido por referencia OC
+  // Pedidos con origen asignado pero sin remito → "Pendiente de remito"
+  // Solo se cuentan pedidos que NO tienen remito y no están Cerrados
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
-    comprometidoPorOC = {};
+    comprometidoPorOC     = {};
+    comprometidoPorPropio = {};
     items.forEach(function(item) {
       var f = item.fields;
+      // Solo pedidos con origen, SIN remito, sin cerrar
       if (!f.OrigenAsignado || f.NroRemito || f.Estado === "Cerrado") return;
       var ocField = String(f.OrdenCompra || "").trim();
       if (!ocField) return;
       ocField.split(",").forEach(function(part) {
-        var sep = part.lastIndexOf(":");
-        if (sep < 0) return;
-        var ref = part.substring(0, sep).trim();
-        var qty = parseFloat(part.substring(sep+1)) || 0;
-        if (ref && qty > 0) comprometidoPorOC[ref] = (comprometidoPorOC[ref] || 0) + qty;
+        part = part.trim();
+        if (!part) return;
+        if (part.startsWith("PROPIO|")) {
+          // Propio: "PROPIO|nombre|puntoStock:qty"
+          var body = part.substring(7);
+          var sep = body.lastIndexOf(":");
+          if (sep < 0) return;
+          var key = body.substring(0, sep).trim();
+          var qty = parseFloat(body.substring(sep+1)) || 0;
+          if (key && qty > 0) comprometidoPorPropio[key] = (comprometidoPorPropio[key]||0) + qty;
+        } else {
+          // OC: "referencia:qty"
+          var sep2 = part.lastIndexOf(":");
+          if (sep2 < 0) return;
+          var ref = part.substring(0, sep2).trim();
+          var qty2 = parseFloat(part.substring(sep2+1)) || 0;
+          if (ref && qty2 > 0) comprometidoPorOC[ref] = (comprometidoPorOC[ref]||0) + qty2;
+        }
       });
     });
     renderStockTable();
-  } catch(e) { console.warn("Error cargando comprometido:", e.message); }
+  } catch(e) { console.warn("Error cargando pendiente de remito:", e.message); }
 }
 
 function renderStockTable() {
   var q         = (document.getElementById("inp-stock-search")||{}).value||"";
   var filtProv  = (document.getElementById("inp-stock-prov")||{}).value||"";
   var filtIns   = (document.getElementById("inp-stock-ins")||{}).value||"";
+  var filtPto   = (document.getElementById("inp-stock-pto")||{}).value||"";
   var container = document.getElementById("stock-table-container");
   var rows = stockTabActiva==="propio" ? stockPropio : stockPendiente;
   if (!rows.length) {
@@ -1715,7 +1802,9 @@ function renderStockTable() {
   }
   var filtered = rows.filter(function(r){
     if (q && !JSON.stringify(r).toLowerCase().includes(q.toLowerCase())) return false;
-    if (stockTabActiva === "pendiente") {
+    if (stockTabActiva === "propio") {
+      if (filtPto && (r.puntoStock||"") !== filtPto) return false;
+    } else {
       if (filtProv && r.proveedor !== filtProv) return false;
       if (filtIns  && r.insumo   !== filtIns)  return false;
     }
@@ -1723,10 +1812,21 @@ function renderStockTable() {
   });
   var html = '<div class="tbl-wrap"><table>';
   if (stockTabActiva==="propio") {
-    html += '<thead><tr><th>Categoría</th><th>Punto de Stock</th><th>Insumo</th><th>Unidad</th><th class="r">Existencia</th></tr></thead><tbody>';
-    filtered.forEach(function(r){ html += '<tr><td>'+r.categoria+'</td><td style="font-size:12px;color:var(--sub);">'+(r.puntoStock||'—')+'</td><td style="font-weight:600;">'+r.nombre+'</td><td>'+r.unidad+'</td><td class="r" style="font-weight:700;color:var(--green);">'+r.existencia.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>'; });
+    html += '<thead><tr><th>Categoría</th><th>Punto de Stock</th><th>Insumo</th><th>Unidad</th><th class="r" style="color:var(--blue);">Albor</th><th class="r" style="color:var(--orange);">Pendiente de remito</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
+    filtered.forEach(function(r){
+      var cKey = r.nombre + '|' + (r.puntoStock||'');
+      var pend = comprometidoPorPropio[cKey] || 0;
+      var disp = Math.max(0, r.existencia - pend);
+      html += '<tr><td>'+r.categoria+'</td>' +
+        '<td style="font-size:12px;color:var(--sub);">'+(r.puntoStock||'—')+'</td>' +
+        '<td style="font-weight:600;">'+r.nombre+'</td>' +
+        '<td>'+r.unidad+'</td>' +
+        '<td class="r" style="color:var(--blue);">'+r.existencia.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td>' +
+        '<td class="r" style="color:'+(pend>0?'var(--orange)':'var(--light)')+';">'+(pend>0?pend.toLocaleString("es-AR",{maximumFractionDigits:2}):'—')+'</td>' +
+        '<td class="r" style="font-weight:700;color:'+(disp>0?'var(--green)':'var(--red)')+';">'+disp.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>';
+    });
   } else {
-    html += '<thead><tr><th>Insumo</th><th>Proveedor</th><th>OC (Referencia)</th><th class="r" style="color:var(--blue);">Importado</th><th class="r" style="color:var(--orange);">Comprometido</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
+    html += '<thead><tr><th>Insumo</th><th>Proveedor</th><th>OC (Referencia)</th><th class="r" style="color:var(--blue);">Albor</th><th class="r" style="color:var(--orange);">Pendiente de remito</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
     filtered.forEach(function(r){
       var comp = comprometidoPorOC[r.referencia] || 0;
       var disp = Math.max(0, r.pendiente - comp);
@@ -1806,6 +1906,30 @@ async function cargarPedidosInsumos() {
   }
 }
 
+function switchOrigenTab(tab) {
+  var tP = document.getElementById("otab-propio"), tOC = document.getElementById("otab-oc");
+  var dP = document.getElementById("origen-tab-propio"), dOC = document.getElementById("origen-tab-oc");
+  if (tab === "propio") {
+    tP.style.background="var(--white)"; tP.style.color="var(--text)"; tP.style.borderBottom="2px solid var(--brand)";
+    tOC.style.background="transparent"; tOC.style.color="var(--sub)"; tOC.style.borderBottom="2px solid transparent";
+    dP.style.display=""; dOC.style.display="none";
+  } else {
+    tOC.style.background="var(--white)"; tOC.style.color="var(--text)"; tOC.style.borderBottom="2px solid var(--brand)";
+    tP.style.background="transparent"; tP.style.color="var(--sub)"; tP.style.borderBottom="2px solid transparent";
+    dP.style.display="none"; dOC.style.display="";
+  }
+}
+
+function filtrarOrigenTab(tab) {
+  if (tab === "propio") {
+    var q = (document.getElementById("inp-origen-search-propio")||{}).value||"";
+    renderPropioCards(q);
+  } else {
+    var q2 = (document.getElementById("inp-origen-search-oc")||{}).value||"";
+    renderOCCards(q2);
+  }
+}
+
 function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersonal) {
   pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0, retiroPersonal: retiroPersonal||""};
   document.getElementById("modal-origen-titulo").textContent = insumo;
@@ -1819,6 +1943,9 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
   var manualBtn = document.getElementById("btn-manual-origen");
   if (manualBtn) { manualBtn.style.display = ""; }
   document.getElementById("inp-nota-origen").value = "";
+  document.getElementById("inp-origen-search-propio").value = "";
+  document.getElementById("inp-origen-search-oc").value = "";
+  switchOrigenTab("propio"); // Abrir siempre en tab Propio
   selectedStockItem = null;
   selectedOCItems = [];
 
@@ -1846,19 +1973,29 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
              stockKey: 'OC_'+r.proveedor+'_'+r.insumo+'_'+r.referencia, tipo: 'oc' };
   });
 
-  // ── Existencia propia ──
-  var hP = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">📦 Existencia propia <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar)</span></div>';
-  if (!_origenMatchP.length) {
-    hP += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin coincidencias en stock propio</div>';
+  renderPropioCards("");
+  renderOCCards("");
+  document.getElementById("modal-origen").classList.add("open");
+}
+
+function renderPropioCards(q) {
+  var lista = _origenMatchP;
+  if (q) { var ql = q.toLowerCase(); lista = lista.filter(function(m){ return m.r.nombre.toLowerCase().includes(ql) || (m.r.puntoStock||"").toLowerCase().includes(ql); }); }
+  var hP = "";
+  if (!lista.length) {
+    hP = '<div style="font-size:13px;color:var(--light);font-style:italic;">' + (_origenMatchP.length ? 'Sin resultados para "'+q+'"' : 'Sin coincidencias en stock propio') + '</div>';
   } else {
-    _origenMatchP.forEach(function(m, i){
-      var sinStock   = m.disponible <= 0;
+    lista.forEach(function(m, i){
+      var realIdx  = _origenMatchP.indexOf(m);
+      var sinStock = m.disponible <= 0;
+      var isSel    = selectedStockItem && selectedStockItem.r === m.r;
       var subtitulo  = m.r.puntoStock ? '📍 ' + m.r.puntoStock : (m.r.categoria || '');
       var consumidoTxt = m.consumido > 0 ? ' · <span style="color:var(--orange);">' + m.consumido.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' asignados</span>' : '';
-      hP += '<div onclick="seleccionarOrigenIdx(\'P\',' + i + ',this)" data-origen-item="1" data-origen-propio="1"' +
+      hP += '<div onclick="seleccionarOrigenIdx(\'P\',' + realIdx + ',this)" data-origen-item="1" data-origen-propio="1"' +
             ' style="cursor:'+(sinStock?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;' +
-            'padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);background:'+(sinStock?'#fafafa':'var(--bg)')+';' +
-            'margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+';">';
+            'padding:9px 12px;border-radius:8px;border:1.5px solid '+(isSel?'var(--brand)':'var(--border)')+';' +
+            'background:'+(isSel?'var(--brand-light)':(sinStock?'#fafafa':'var(--bg)'))+';' +
+            'margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+(isSel?';box-shadow:0 0 0 3px rgba(34,139,34,0.12)':'')+'">';
       hP += '<div><div style="font-weight:600;font-size:13px;">' + m.r.nombre + '</div>' +
             '<div style="font-size:11px;color:var(--sub);">' + subtitulo + consumidoTxt + '</div></div>';
       hP += '<div style="text-align:right;">' +
@@ -1868,22 +2005,22 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
     });
   }
   document.getElementById("stock-propio-match").innerHTML = hP;
-
-  renderOCCards();
-  document.getElementById("modal-origen").classList.add("open");
 }
 
-function renderOCCards() {
-  var hOC = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--sub);margin-bottom:8px;">🚛 Pendiente de remitir <span style="font-weight:400;text-transform:none;letter-spacing:0;">(click para seleccionar — podés elegir varias OCs)</span></div>';
-  if (!_origenMatchOC.length) {
-    hOC += '<div style="font-size:13px;color:var(--light);font-style:italic;">Sin OC pendientes</div>';
+function renderOCCards(q) {
+  var lista = _origenMatchOC;
+  if (q) { var ql = q.toLowerCase(); lista = lista.filter(function(m){ return m.r.insumo.toLowerCase().includes(ql) || m.r.proveedor.toLowerCase().includes(ql) || (m.r.referencia||"").toLowerCase().includes(ql); }); }
+  var hOC = "";
+  if (!lista.length) {
+    hOC = '<div style="font-size:13px;color:var(--light);font-style:italic;">' + (_origenMatchOC.length ? 'Sin resultados para "'+q+'"' : 'Sin OC pendientes') + '</div>';
   } else {
-    _origenMatchOC.forEach(function(m, i){
-      var sinStock  = m.disponible <= 0;
-      var selItem   = selectedOCItems.find(function(s){ return s.idx === i; });
-      var isSel     = !!selItem;
-      var compTxt   = m.comprometido > 0 ? ' · <span style="color:var(--orange);">' + m.comprometido.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' comprometidos</span>' : '';
-      hOC += '<div onclick="toggleOCItem('+i+',this)" data-origen-item="1"' +
+    lista.forEach(function(m){
+      var ri       = _origenMatchOC.indexOf(m); // índice real en el array global
+      var sinStock = m.disponible <= 0;
+      var selItem  = selectedOCItems.find(function(s){ return s.idx === ri; });
+      var isSel    = !!selItem;
+      var compTxt  = m.comprometido > 0 ? ' · <span style="color:var(--orange);">' + m.comprometido.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' comprometidos</span>' : '';
+      hOC += '<div onclick="toggleOCItem('+ri+',this)" data-origen-item="1"' +
              ' style="cursor:'+(sinStock?'not-allowed':'pointer')+';padding:9px 12px;border-radius:8px;' +
              'border:1.5px solid '+(isSel?'var(--brand)':'var(--border)')+';' +
              'background:'+(isSel?'var(--brand-light)':(sinStock?'#fafafa':'var(--bg)'))+';' +
@@ -1902,9 +2039,9 @@ function renderOCCards() {
       if (isSel) {
         hOC += '<div style="margin-top:8px;display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation();">' +
                '<label style="font-size:12px;font-weight:600;white-space:nowrap;">Cantidad a asignar:</label>' +
-               '<input type="number" id="oc-qty-'+i+'" value="'+selItem.cantidadAsignada+'" min="0" max="'+m.disponible+'" ' +
+               '<input type="number" id="oc-qty-'+ri+'" value="'+selItem.cantidadAsignada+'" min="0" max="'+m.disponible+'" ' +
                'style="width:80px;font-size:13px;font-weight:700;" ' +
-               'oninput="actualizarOCQty('+i+',this.value)">' +
+               'oninput="actualizarOCQty('+ri+',this.value)">' +
                '<span style="font-size:11px;color:var(--sub);">'+m.r.tipo+'</span></div>';
       }
       hOC += '</div>';
@@ -1932,7 +2069,8 @@ function toggleOCItem(idx, el) {
       if (!e.dataset.origenPropio) { e.style.borderColor=''; e.style.background=''; e.style.boxShadow=''; }
     });
   }
-  renderOCCards();
+  var qOC = (document.getElementById("inp-origen-search-oc")||{}).value||"";
+  renderOCCards(qOC);
   actualizarTextoOrigen();
 }
 
@@ -1966,11 +2104,19 @@ async function confirmarOrigen() {
     var esRetiro = pedidoOrigenActual.retiroPersonal === "SI";
     var estadoDestino = esRetiro ? "Listo para retirar" : "Pendiente logística";
 
-    // 2. Construir campo OrdenCompra desde OC items seleccionados ("ref:qty,ref:qty")
-    var ordenCompra = selectedOCItems
-      .filter(function(s){ return s.cantidadAsignada > 0; })
-      .map(function(s){ var m=_origenMatchOC[s.idx]; return m ? (m.r.referencia+":"+s.cantidadAsignada) : ""; })
-      .filter(Boolean).join(",");
+    // 2. Construir campo OrdenCompra
+    //    OC: "referencia:qty,referencia:qty"
+    //    Propio: "PROPIO|nombre|puntoStock:qty"
+    var ordenCompra = "";
+    if (selectedStockItem && selectedStockItem.tipo === 'propio' && cant > 0) {
+      var propioKey = selectedStockItem.nombre + "|" + (selectedStockItem.r ? (selectedStockItem.r.puntoStock||"") : "");
+      ordenCompra = "PROPIO|" + propioKey + ":" + cant;
+    } else {
+      ordenCompra = selectedOCItems
+        .filter(function(s){ return s.cantidadAsignada > 0; })
+        .map(function(s){ var m=_origenMatchOC[s.idx]; return m ? (m.r.referencia+":"+s.cantidadAsignada) : ""; })
+        .filter(Boolean).join(",");
+    }
 
     // 3. Guardar en SP
     await spPatch(CONFIG.lists.pedidos, pedidoOrigenActual.spId, {
@@ -2028,21 +2174,122 @@ function seleccionarOrigenIdx(grupo, idx, el) {
 
   // Limpiar selección OC al elegir propio
   selectedOCItems = [];
-  renderOCCards();
+  var qOC2 = (document.getElementById("inp-origen-search-oc")||{}).value||"";
+  renderOCCards(qOC2);
 
-  // Quitar selección visual de otros cards propio
-  document.querySelectorAll('[data-origen-propio]').forEach(function(e) {
-    e.style.borderColor = 'var(--border)';
-    e.style.background  = 'var(--bg)';
-    e.style.boxShadow   = '';
-  });
-  if (el) {
-    el.style.borderColor = 'var(--brand)';
-    el.style.background  = 'var(--brand-light)';
-    el.style.boxShadow   = '0 0 0 3px rgba(34,139,34,0.12)';
-  }
-  selectedStockItem = { spId: m.r.spId, nombre: m.stockKey, texto: m.texto, disponible: m.disponible, tipo: m.tipo };
+  selectedStockItem = { spId: m.r.spId, r: m.r, nombre: m.stockKey, texto: m.texto, disponible: m.disponible, tipo: m.tipo };
+  // Re-render propio cards to show selection highlight
+  var qP = (document.getElementById("inp-origen-search-propio")||{}).value||"";
+  renderPropioCards(qP);
   actualizarTextoOrigen();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGÍSTICA — tabs principales
+// ═══════════════════════════════════════════════════════════════
+var logTabActiva = "armado";
+
+function switchLogTab(tab) {
+  logTabActiva = tab;
+  var tA = document.getElementById("ltab-armado"), tE = document.getElementById("ltab-enviados");
+  var pA = document.getElementById("log-panel-armado"), pE = document.getElementById("log-panel-enviados");
+  var acts = document.getElementById("log-main-actions");
+  if (tab === "armado") {
+    tA.style.background="var(--white)"; tA.style.color="var(--text)"; tA.style.borderBottom="2px solid var(--brand)";
+    tE.style.background="transparent"; tE.style.color="var(--sub)"; tE.style.borderBottom="2px solid transparent";
+    pA.style.display=""; pE.style.display="none";
+    if (acts) acts.style.display="flex";
+  } else {
+    tE.style.background="var(--white)"; tE.style.color="var(--text)"; tE.style.borderBottom="2px solid var(--brand)";
+    tA.style.background="transparent"; tA.style.color="var(--sub)"; tA.style.borderBottom="2px solid transparent";
+    pA.style.display="none"; pE.style.display="";
+    if (acts) acts.style.display="none";
+    renderPedidosEnviados();
+  }
+}
+
+function limpiarFiltroEnv(id) {
+  var el = document.getElementById(id);
+  if (el) { el.value = ""; renderPedidosEnviados(); }
+}
+
+function renderPedidosEnviados() {
+  var q       = (document.getElementById("inp-env-search")||{}).value||"";
+  var fCampo  = (document.getElementById("inp-env-campo")||{}).value||"";
+  var fOper   = (document.getElementById("inp-env-operador")||{}).value||"";
+  var container = document.getElementById("log-enviados-container");
+  if (!container) return;
+
+  // Pedidos "En camino" (ya despachados)
+  var enviados = pedidosLogistica.filter(function(p){ return p.fields.Estado === "En camino"; });
+
+  // Poblar selects con valores únicos
+  var campSel = document.getElementById("inp-env-campo");
+  var operSel = document.getElementById("inp-env-operador");
+  if (campSel && campSel.options.length <= 1) {
+    var campos = [...new Set(enviados.map(function(p){ return p.fields.Campo||""; }).filter(Boolean))].sort();
+    campSel.innerHTML = '<option value="">Todos los campos</option>' + campos.map(function(c){ return '<option value="'+esc(c)+'">'+c+'</option>'; }).join('');
+  }
+  if (operSel && operSel.options.length <= 1) {
+    var opers = [...new Set(enviados.map(function(p){ return p.fields.Operador||""; }).filter(Boolean))].sort();
+    operSel.innerHTML = '<option value="">Todos los operadores</option>' + opers.map(function(o){ return '<option value="'+esc(o)+'">'+o+'</option>'; }).join('');
+  }
+
+  // Filtrar
+  var filtrados = enviados.filter(function(p){
+    var f = p.fields;
+    if (fCampo && (f.Campo||"") !== fCampo) return false;
+    if (fOper  && (f.Operador||"") !== fOper) return false;
+    if (q) { var s = JSON.stringify(f).toLowerCase(); if (!s.includes(q.toLowerCase())) return false; }
+    return true;
+  });
+
+  if (!filtrados.length) {
+    container.innerHTML = '<div style="padding:48px;text-align:center;color:var(--light);">Sin pedidos enviados' + (q||fCampo||fOper?' (con estos filtros)':'') + '</div>';
+    return;
+  }
+
+  // Agrupar por CamionId
+  var porCam = {};
+  filtrados.forEach(function(p){ var cid = p.fields.CamionId||"s/c"; if (!porCam[cid]) porCam[cid]=[]; porCam[cid].push(p); });
+
+  var html = "";
+  Object.keys(porCam).sort().forEach(function(cid){
+    var items = porCam[cid];
+    var cam = camiones.find(function(c){ return c.id===cid; }) || {};
+    html += '<div style="margin:0 16px 16px;border:1px solid var(--border);border-radius:10px;overflow:hidden;">';
+    // Cabecera del camión
+    html += '<div style="background:var(--bg);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;">';
+    html += '<span style="font-weight:800;font-size:14px;">🚛 '+cid+'</span>';
+    if (cam.transportista) html += '<span style="font-size:12px;color:var(--sub);">'+cam.transportista+'</span>';
+    if (cam.chofer)        html += '<span style="font-size:12px;color:var(--sub);">👤 '+cam.chofer+'</span>';
+    if (cam.patente)       html += '<span style="font-size:12px;color:var(--sub);">🪪 '+cam.patente+(cam.patenteAcoplado?' / '+cam.patenteAcoplado:'')+'</span>';
+    if (cam.cupo)          html += '<span style="font-size:12px;color:var(--sub);">Cupo: '+cam.cupo+'</span>';
+    html += '<span class="badge badge-transit" style="margin-left:auto;">En camino</span>';
+    html += '</div>';
+    // Tabla de ítems
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+    html += '<thead><tr style="background:var(--bg);">' +
+      '<th style="padding:7px 14px;text-align:left;font-weight:700;font-size:11px;color:var(--sub);">N° Pedido</th>' +
+      '<th style="padding:7px 14px;text-align:left;font-weight:700;font-size:11px;color:var(--sub);">Insumo</th>' +
+      '<th style="padding:7px 14px;text-align:right;font-weight:700;font-size:11px;color:var(--sub);">Cantidad</th>' +
+      '<th style="padding:7px 14px;text-align:left;font-weight:700;font-size:11px;color:var(--sub);">Campo (Destino)</th>' +
+      '<th style="padding:7px 14px;text-align:left;font-weight:700;font-size:11px;color:var(--sub);">Operador</th>' +
+      '</tr></thead><tbody>';
+    items.forEach(function(p, pi){
+      var f = p.fields;
+      html += '<tr style="border-top:1px solid var(--border);background:'+(pi%2===0?'var(--white)':'var(--bg)')+'">' +
+        '<td style="padding:8px 14px;font-size:12px;color:var(--light);">'+(f.NumeroPedido||'—')+'</td>' +
+        '<td style="padding:8px 14px;font-weight:600;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+(f.Presentacion||'')+'</span></td>' +
+        '<td style="padding:8px 14px;text-align:right;font-weight:700;">'+f.Cantidad+' '+(f.Unidad||'')+'</td>' +
+        '<td style="padding:8px 14px;font-size:12px;">📍 '+f.Campo+'</td>' +
+        '<td style="padding:8px 14px;font-size:12px;color:var(--sub);">'+f.Operador+'</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+
+  container.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2093,6 +2340,7 @@ async function cargarPedidosLogistica() {
           patente:         f.Patente||"",
           patenteAcoplado: f.PatenteAcoplado||"",
           tarifa:          f.Tarifa||0,
+          cupo:            f.Cupo||"",
           transportista:   f.Transportista||"",
           razonSocial:     "",
           cuit:            f.CUIT||"",
@@ -2108,6 +2356,10 @@ async function cargarPedidosLogistica() {
 
     renderCamiones();
     renderItemsLogistica();
+    // Refrescar selects de la vista enviados para que se repueblen
+    var cs = document.getElementById("inp-env-campo"); if (cs) cs.innerHTML='<option value="">Todos los campos</option>';
+    var os = document.getElementById("inp-env-operador"); if (os) os.innerHTML='<option value="">Todos los operadores</option>';
+    if (logTabActiva === "enviados") renderPedidosEnviados();
   } catch(e) { showToast("Error cargando pedidos: "+e.message,"error"); }
 }
 
