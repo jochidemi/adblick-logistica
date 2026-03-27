@@ -536,11 +536,21 @@ tr:hover td{background:var(--brand-light);}
       <!-- PEDIDOS INSUMOS -->
       <div id="ins-pedidos" style="display:none;">
         <div class="card" style="padding:0;overflow:hidden;">
-          <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-            <div style="font-weight:800;font-size:15px;">Pedidos pendientes de asignación</div>
+          <div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div style="display:flex;gap:0;background:var(--bg);border-radius:8px;padding:3px;border:1px solid var(--border);">
+              <button id="itab-asig" onclick="switchInsPedidosTab('asig')"
+                style="padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text);font-family:'Montserrat',sans-serif;">
+                Pendientes de asignación <span id="ins-asig-count" style="color:var(--orange);"></span>
+              </button>
+              <button id="itab-log" onclick="switchInsPedidosTab('log')"
+                style="padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--sub);font-family:'Montserrat',sans-serif;">
+                Pendientes logística <span id="ins-log-count" style="color:var(--blue);"></span>
+              </button>
+            </div>
             <button class="btn btn-outline btn-sm" onclick="cargarPedidosInsumos()">↺ Actualizar</button>
           </div>
           <div id="ins-pedidos-list"><div style="padding:40px;text-align:center;color:var(--light);">Cargando...</div></div>
+          <div id="ins-logistica-list" style="display:none;"></div>
         </div>
       </div>
     </div>
@@ -1915,34 +1925,90 @@ async function guardarStockEnSP() {
 // ═══════════════════════════════════════════════════════════════
 // PEDIDOS INSUMOS (asignación de origen)
 // ═══════════════════════════════════════════════════════════════
+var insPedidosTab = "asig"; // "asig" | "log"
+
+function switchInsPedidosTab(tab) {
+  insPedidosTab = tab;
+  var tA = document.getElementById("itab-asig"), tL = document.getElementById("itab-log");
+  var dA = document.getElementById("ins-pedidos-list"), dL = document.getElementById("ins-logistica-list");
+  if (tab === "asig") {
+    tA.style.background="var(--white)"; tA.style.color="var(--text)";
+    tL.style.background="transparent";  tL.style.color="var(--sub)";
+    dA.style.display=""; dL.style.display="none";
+  } else {
+    tL.style.background="var(--white)"; tL.style.color="var(--text)";
+    tA.style.background="transparent";  tA.style.color="var(--sub)";
+    dA.style.display="none"; dL.style.display="";
+  }
+}
+
 async function cargarPedidosInsumos() {
-  var container = document.getElementById("ins-pedidos-list");
-  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
+  var cA = document.getElementById("ins-pedidos-list");
+  var cL = document.getElementById("ins-logistica-list");
+  cA.innerHTML = cL.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
+
+    // ── Tab 1: pendientes de asignación ──────────────────────────
     pedidosInsumos = items.filter(function(i){ return i.fields.Estado==="Pendiente insumos"; });
-    document.getElementById("ins-pend-count").textContent = pedidosInsumos.length ? "("+pedidosInsumos.length+")" : "";
-    if (!pedidosInsumos.length) {
-      container.innerHTML = '<div style="padding:48px;text-align:center;color:var(--light);">No hay pedidos pendientes de asignación ✓</div>';
-      return;
+    var cntA = pedidosInsumos.length;
+    document.getElementById("ins-asig-count").textContent = cntA ? "("+cntA+")" : "";
+    document.getElementById("ins-pend-count").textContent  = cntA ? "("+cntA+")" : "";
+
+    var htmlA = "";
+    if (!cntA) {
+      htmlA = '<div style="padding:48px;text-align:center;color:var(--light);">No hay pedidos pendientes de asignación ✓</div>';
+    } else {
+      pedidosInsumos.forEach(function(item){
+        var f=item.fields; var spId=item.id;
+        var retiroFlag = (f.RetiroPersonal||"").toUpperCase()==="SI" ? "SI" : "";
+        htmlA += '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
+        htmlA += '<div style="flex:1;min-width:0;">';
+        htmlA += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);">('+f.Presentacion+')</span>':'')+' </div>';
+        htmlA += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
+                 '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
+        htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
+        htmlA += '<span class="badge badge-pending">Pendiente</span>';
+        htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
+        htmlA += '</div></div>';
+      });
     }
-    var html="";
-    pedidosInsumos.forEach(function(item){
-      var f=item.fields; var spId=item.id;
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
-      html += '<div style="flex:1;min-width:0;">';
-      html += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);">('+f.Presentacion+')</span>':'')+' </div>';
-      html += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
-              '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
-      html += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
-      html += '<span class="badge badge-pending">Pendiente</span>';
-      var retiroFlag = (f.RetiroPersonal||"").toUpperCase()==="SI" ? "SI" : "";
-      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
-      html += '</div></div>';
+    cA.innerHTML = '<div style="overflow:hidden;">'+htmlA+'</div>';
+
+    // ── Tab 2: pendientes logística (sin camión asignado aún) ─────
+    var pedidosLog = items.filter(function(i){
+      var f = i.fields;
+      return f.Estado === "Pendiente logística" && !f.CamionId;
     });
-    container.innerHTML = '<div style="overflow:hidden;">'+html+'</div>';
+    var cntL = pedidosLog.length;
+    document.getElementById("ins-log-count").textContent = cntL ? "("+cntL+")" : "";
+
+    var htmlL = "";
+    if (!cntL) {
+      htmlL = '<div style="padding:48px;text-align:center;color:var(--light);">No hay pedidos pendientes de logística editables ✓</div>';
+    } else {
+      pedidosLog.forEach(function(item){
+        var f=item.fields; var spId=item.id;
+        var retiroFlag = (f.RetiroPersonal||"").toUpperCase()==="SI" ? "SI" : "";
+        htmlL += '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
+        htmlL += '<div style="flex:1;min-width:0;">';
+        htmlL += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);">('+f.Presentacion+')</span>':'')+' </div>';
+        htmlL += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
+                 '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div>';
+        if (f.OrigenAsignado) {
+          htmlL += '<div style="margin-top:5px;font-size:12px;color:var(--blue);font-weight:600;">📦 '+f.OrigenAsignado+(f.NotaInsumos?' · <span style="color:var(--sub);font-weight:400;">'+f.NotaInsumos+'</span>':'')+'</div>';
+        }
+        htmlL += '</div>';
+        htmlL += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
+        htmlL += '<span class="badge badge-insumos">Pend. logística</span>';
+        htmlL += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">✏️ Editar origen</button>';
+        htmlL += '</div></div>';
+      });
+    }
+    cL.innerHTML = '<div style="overflow:hidden;">'+htmlL+'</div>';
+
   } catch(e) {
-    container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
+    cA.innerHTML = cL.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
   }
 }
 
