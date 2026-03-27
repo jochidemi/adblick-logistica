@@ -3003,7 +3003,12 @@ async function processPadron(file, padId, listId) {
   dz.innerHTML = '<div style="font-size:18px;">⏳</div><div style="font-weight:700;font-size:13px;color:var(--sub);margin-top:4px;">Procesando...</div>';
   try {
     var wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
-    var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:""});
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    // Log raw structure for debugging
+    var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+    console.log("Padron raw rows[0..4]:", raw.slice(0,5));
+    var rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+    console.log("Padron json rows[0]:", rows[0]);
     var fields_list = mapPadronRows(padId, rows);
     if (!fields_list.length) throw new Error("No se encontraron registros válidos");
     
@@ -3085,7 +3090,7 @@ function mapPadronRows(padId, rows) {
     return rows.map(function(r){
       var v   = String(r[campoKey]||"").trim();
       var loc = locKey ? String(r[locKey]||"").trim() : "";
-      return v ? {Title:v.substring(0,255), NombreCampo:v.substring(0,255), Localidad:loc} : null;
+      return v ? {Title:v.substring(0,255), Localidad:loc} : null;
     }).filter(Boolean);
   }
   if (padId==="ops")    return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
