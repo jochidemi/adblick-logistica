@@ -2969,7 +2969,7 @@ async function limpiarPadron(listId, event) {
 
 function renderPadronesPanel() {
   var paneles = [
-    { id:"campos",   titulo:"Campos / Destinos", desc:"Descargá del ERP, subí el Excel. Columnas leídas: primera columna como nombre del campo.", listId:CONFIG.lists.padronCampos, count:padronCampos.length },
+    { id:"campos",   titulo:"Campos / Destinos", desc:"Columnas requeridas: <b>Campo</b> (nombre del campo) y <b>Localidad</b>.", listId:CONFIG.lists.padronCampos, count:padronCampos.length },
     { id:"insumos",  titulo:"Insumos",           desc:"Excel de Albor. Columnas: Categoría (col D), Tipo.1, Nombre, Presentación.", listId:CONFIG.lists.padronInsumos, count:padronInsumos.length },
     { id:"transp",   titulo:"Transportistas",    desc:"Excel de Albor. Columnas leídas: Nombre, Razón Social, CUIT.", listId:CONFIG.lists.padronTransp, count:padronTransp.length },
     { id:"ops",      titulo:"Operadores",        desc:"Lista de operadores con email Microsoft para login automático. Columnas: Title (nombre), Iniciales, Email.", listId:CONFIG.lists.padronOperadores, count:padronOperadores.length },
@@ -3077,14 +3077,10 @@ function mapPadronRows(padId, rows) {
   }
   if (padId==="transp") return rows.map(function(r){ return { Title:String(r["Nombre"]||"").trim().substring(0,255), RazonSocial:String(r["Razón Social"]||"").trim(), CUIT:String(r["CUIT"]||"").trim() }; }).filter(function(r){return r.Title;});
   if (padId==="campos") return rows
-    .filter(function(r){ 
-      // Solo campos activos (columna Activo == "Si")
-      var activo = String(r["Activo"]||r["activo"]||"Si").trim().toLowerCase();
-      return activo === "si" || activo === "sí" || activo === "true" || activo === "1";
-    })
-    .map(function(r){ 
-      var v = String(r["Nombre"]||r["nombre"]||"").trim();
-      return v ? {Title:v.substring(0,255), NombreCampo:v.substring(0,255)} : null; 
+    .map(function(r){
+      var v = String(r["Campo"]||r["NombreCampo"]||r["Nombre"]||r["nombre"]||"").trim();
+      var loc = String(r["Localidad"]||r["localidad"]||"").trim();
+      return v ? {Title:v.substring(0,255), NombreCampo:v.substring(0,255), Localidad:loc} : null;
     }).filter(Boolean);
   if (padId==="ops")    return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
   return [];
