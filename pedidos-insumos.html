@@ -6,6 +6,7 @@
 <title>ADBlick Granos — Pedidos de Insumos</title>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -648,6 +649,23 @@ tr:hover td{background:var(--brand-light);}
         </p>
       </div>
       <div id="padrones-panels"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE CAMIÓN -->
+<div class="modal-overlay" id="modal-detalle-cam">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-hdr">
+      <div class="modal-title">Detalle del viaje</div>
+      <button class="btn-ghost" onclick="cerrarModal('modal-detalle-cam')" style="font-size:18px;padding:2px 8px;">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;max-height:70vh;overflow-y:auto;">
+      <div id="detalle-cam-card" style="padding:20px;background:#fff;font-family:'Montserrat',sans-serif;"></div>
+    </div>
+    <div class="modal-footer" style="gap:8px;">
+      <button class="btn btn-outline" onclick="cerrarModal('modal-detalle-cam')">Cerrar</button>
+      <button class="btn btn-brand" onclick="descargarDetalleCamion()">📸 Descargar JPG</button>
     </div>
   </div>
 </div>
@@ -2622,6 +2640,7 @@ function renderCamiones() {
     html += '</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">';
     html += '<span class="cam-count">'+count+' ítems</span>';
     html += '<button class="btn btn-brand btn-sm" style="font-size:11px;padding:5px 8px;" onclick="abrirModalCamion(\''+cam.id+'\')">📋 Datos / Despachar</button>';
+    if (count > 0) html += '<button class="btn btn-outline btn-sm" style="font-size:11px;padding:5px 8px;" onclick="verDetalleCamion(\''+cam.id+'\')">👁 Ver detalle</button>';
     html += '</div></div>';
   });
   list.innerHTML = html;
@@ -2663,6 +2682,97 @@ function cerrarCamion(camId) {
   renderCamiones();
   renderItemsLogistica();
   showToast("Viaje cerrado ✓","ok");
+}
+
+var detalleCamId = null;
+
+function verDetalleCamion(camId) {
+  detalleCamId = camId;
+  var cam = camiones.find(function(c){ return c.id === camId; });
+  if (!cam) return;
+
+  var items = pedidosLogistica.filter(function(p){
+    return p.fields.CamionId === camId && p.fields.Estado === "Pendiente logística";
+  });
+
+  var fecha = new Date().toLocaleDateString("es-AR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+
+  var h = '';
+
+  // Encabezado
+  h += '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;margin-bottom:14px;border-bottom:3px solid #FFD600;">';
+  h += '<div><div style="font-weight:800;font-size:17px;color:#18181B;letter-spacing:-0.01em;">ADBLICK GRANOS</div>';
+  h +=     '<div style="font-size:10px;font-weight:700;color:#9CA3AF;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Remito de Viaje</div></div>';
+  h += '<div style="text-align:right;font-size:11px;color:#6B7280;line-height:1.5;">';
+  h +=   '<div style="font-weight:700;font-size:14px;color:#18181B;">Camión '+camId+'</div>';
+  h +=   '<div>'+fecha+'</div>';
+  h += '</div></div>';
+
+  // Datos del camión
+  h += '<div style="background:#F9FAFB;border-radius:10px;padding:12px 14px;margin-bottom:16px;border:1px solid #E5E7EB;">';
+  h += '<div style="font-size:10px;font-weight:700;color:#9CA3AF;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Datos del transporte</div>';
+  if (cam.transportista) h += fila('Transportista', cam.transportista);
+  if (cam.chofer)        h += fila('Chofer',        cam.chofer);
+  if (cam.cuitChofer)    h += fila('CUIT',          cam.cuitChofer);
+  if (cam.patente) {
+    var pts = cam.patente + (cam.patenteAcoplado ? ' / ' + cam.patenteAcoplado : '');
+    h += fila('Patente', pts);
+  }
+  if (cam.cupo)          h += fila('Cupo',          cam.cupo);
+  if (cam.tarifa)        h += fila('Tarifa',        '$' + Number(cam.tarifa).toLocaleString('es-AR'));
+  h += '</div>';
+
+  // Pedidos
+  h += '<div style="font-size:10px;font-weight:700;color:#9CA3AF;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;">Pedidos · '+items.length+' ítem'+(items.length!==1?'s':'')+'</div>';
+
+  items.forEach(function(p, i){
+    var f = p.fields;
+    h += '<div style="padding:11px 0;border-top:1px solid #E5E7EB;">';
+    h += '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">';
+    h +=   '<div style="font-weight:700;font-size:13px;color:#111827;">'+f.Insumo+'</div>';
+    h +=   '<div style="font-size:13px;font-weight:600;color:#2563EB;white-space:nowrap;">'+f.Cantidad+' '+(f.Unidad||'')+'</div>';
+    h += '</div>';
+    if (f.Presentacion) h += '<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">'+f.Presentacion+'</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;margin-top:6px;">';
+    if (f.OrigenAsignado) h += filaMini('Origen', f.OrigenAsignado);
+    h += filaMini('Destino', f.Campo);
+    if (f.FechaEntrega)   h += filaMini('Entrega', f.FechaEntrega);
+    h += filaMini('N° Pedido', String(f.NumeroPedido||''));
+    h += filaMini('Responsable', f.Operador||'');
+    h += '</div>';
+    if (f.NotaInsumos) {
+      h += '<div style="margin-top:5px;font-size:11px;color:#6B7280;font-style:italic;">Nota: '+f.NotaInsumos+'</div>';
+    }
+    h += '</div>';
+  });
+
+  // Pie
+  h += '<div style="margin-top:14px;padding-top:10px;border-top:1px solid #E5E7EB;font-size:10px;color:#9CA3AF;text-align:center;">ADBlick Granos S.A. · '+fecha+'</div>';
+
+  document.getElementById("detalle-cam-card").innerHTML = h;
+  document.getElementById("modal-detalle-cam").classList.add("open");
+}
+
+function fila(label, val) {
+  return '<div style="display:flex;gap:6px;font-size:12px;color:#374151;margin-bottom:3px;"><span style="font-weight:600;min-width:90px;flex-shrink:0;">'+label+':</span><span>'+val+'</span></div>';
+}
+function filaMini(label, val) {
+  return '<div style="font-size:11px;color:#374151;"><span style="font-weight:600;color:#6B7280;">'+label+': </span>'+val+'</div>';
+}
+
+async function descargarDetalleCamion() {
+  var el = document.getElementById("detalle-cam-card");
+  var btn = event.target;
+  var orig = btn.textContent;
+  btn.disabled = true; btn.textContent = "Generando...";
+  try {
+    var canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+    var link = document.createElement("a");
+    link.download = "viaje-" + (detalleCamId||"cam") + "-" + new Date().toISOString().slice(0,10) + ".jpg";
+    link.href = canvas.toDataURL("image/jpeg", 0.95);
+    link.click();
+  } catch(e) { showToast("Error al generar imagen: " + e.message, "error"); }
+  btn.disabled = false; btn.textContent = orig;
 }
 
 function abrirModalCamion(camId) {
