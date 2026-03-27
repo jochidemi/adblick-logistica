@@ -386,6 +386,7 @@ tr:hover td{background:var(--brand-light);}
               <div class="fld">
                 <label class="lbl">Campo / Destino <span class="req">*</span></label>
                 <div class="combo-wrap" id="combo-campo"></div>
+                <div id="campo-localidad-hint" style="font-size:11px;color:var(--blue);font-weight:600;margin-top:4px;min-height:14px;"></div>
               </div>
               <div class="fld">
                 <label class="lbl">Fecha de entrega <span class="req">*</span></label>
@@ -810,6 +811,7 @@ tr:hover td{background:var(--brand-light);}
       <div class="fld">
         <label class="lbl">Campo / Destino</label>
         <div class="combo-wrap" id="combo-campo-edit"></div>
+        <div id="campo-edit-localidad-hint" style="font-size:11px;color:var(--blue);font-weight:600;margin-top:4px;min-height:14px;"></div>
       </div>
       <div class="g2">
         <div class="fld">
@@ -885,6 +887,7 @@ function renderNav(rol) {
 
 // Padrones (en memoria)
 var padronCampos = [], padronInsumos = [], padronTransp = [], padronOperadores = [];
+var camposLocalidad = {}; // { nombreCampo: localidad }
 
 // Stock (en memoria sesión)
 var stockPropio = [], stockPendiente = [];
@@ -927,7 +930,7 @@ var CAMPAÑAS = ["26/27","25/26","24/25"];
 
 // Form state
 var formState = {
-  campo:"", grupoInsumo:"", tipoInsumo:"", insumo:"",
+  campo:"", localidad:"", grupoInsumo:"", tipoInsumo:"", insumo:"",
   presentacion:"", cantidad:"", campaña:"26/27",
   fechaEntrega:"", obs:""
 };
@@ -1095,6 +1098,8 @@ async function loadAllMasterData() {
     setLoadingText("Cargando stock...");
     var snap = await spGet(CONFIG.lists.stockSnapshot, "");
     padronCampos   = campos.map(function(i){ return (i.fields.NombreCampo||i.fields.Title||"").trim(); }).filter(Boolean).sort();
+    camposLocalidad = {};
+    campos.forEach(function(i){ var n=(i.fields.NombreCampo||i.fields.Title||"").trim(); if(n) camposLocalidad[n]=(i.fields.Localidad||"").trim(); });
     console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0,3));
     padronInsumos  = insumos.map(function(i){ 
       // Categoria en SP puede venir como "Tipo.1" del Excel (SP lo encodea)
@@ -1253,6 +1258,9 @@ function initOperadorForm() {
   });
   buildCombo("combo-campo", padronCampos, formState.campo, "Buscar campo...", function(v){
     formState.campo = v;
+    formState.localidad = camposLocalidad[v] || "";
+    var hint = document.getElementById("campo-localidad-hint");
+    if (hint) hint.textContent = formState.localidad ? "📍 " + formState.localidad : "";
     buildCombo("combo-campo", padronCampos, v, "Buscar campo...", arguments.callee);
     renderProgress();
   });
@@ -1338,7 +1346,7 @@ function resetGrupo() {
 }
 
 function limpiarFormOperador() {
-  formState = { campo:"", grupoInsumo:"", tipoInsumo:"", insumo:"", presentacion:"", unidad:"", cantidad:"", campaña:"26/27", fechaEntrega:"", obs:"" };
+  formState = { campo:"", localidad:"", grupoInsumo:"", tipoInsumo:"", insumo:"", presentacion:"", unidad:"", cantidad:"", campaña:"26/27", fechaEntrega:"", obs:"" };
   carritoItems = [];
   document.getElementById("inp-cantidad").value="";
   document.getElementById("inp-fecha").value="";
@@ -1472,6 +1480,7 @@ async function enviarPedido() {
       if (obs)                    fields.Observaciones = obs;
       var esRetiro = document.getElementById("chk-retiro") && document.getElementById("chk-retiro").checked;
       if (esRetiro)               fields.RetiroPersonal = "SI";
+      if (formState.localidad)    fields.Localidad      = formState.localidad;
       await enviarUnItem(fields);
     }
 
@@ -1524,7 +1533,7 @@ async function cargarMisPedidos() {
       html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">';
       html += '<div>';
       html += '<div style="font-weight:800;font-size:15px;">Pedido '+nro+'</div>';
-      html += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f0.Campo+' · 🌾 '+(f0.Campa_x00f1_a||f0.Campana||"")+'</div>';
+      html += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f0.Campo+(f0.Localidad?' <span style="color:var(--blue);font-weight:600;">'+f0.Localidad+'</span>':'')+' · 🌾 '+(f0.Campa_x00f1_a||f0.Campana||"")+'</div>';
       html += '<div style="font-size:12px;color:var(--light);margin-top:1px;">'+new Date(f0.FechaPedido).toLocaleDateString("es-AR")+(f0.FechaEntrega?' · Entrega: '+f0.FechaEntrega:'')+'</div>';
       html += '</div>';
       html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">';
@@ -1608,6 +1617,8 @@ function abrirEditarPedido(spId, campo, cantidad, fechaEntrega, obs) {
   editandoPedidoSpId = spId;
   buildCombo("combo-campo-edit", padronCampos, campo, "Buscar campo...", function(v){
     buildCombo("combo-campo-edit", padronCampos, v, "Buscar campo...", arguments.callee);
+    var hint = document.getElementById("campo-edit-localidad-hint");
+    if (hint) hint.textContent = camposLocalidad[v] ? "📍 " + camposLocalidad[v] : "";
   });
   var today = new Date().toISOString().split("T")[0];
   document.getElementById("inp-edit-cantidad").value = cantidad;
@@ -1627,7 +1638,9 @@ async function guardarEdicion() {
   var btn = document.getElementById("btn-guardar-editar");
   btn.disabled=true; btn.textContent="Guardando...";
   try {
+    var loc = camposLocalidad[campo] || "";
     var fields = { Campo:campo, Cantidad:cantidad, FechaEntrega:fecha };
+    if (loc) fields.Localidad = loc;
     if (obs) fields.Observaciones = obs;
     await spPatch(CONFIG.lists.pedidos, editandoPedidoSpId, fields);
     cerrarModal("modal-editar");
@@ -1984,7 +1997,7 @@ async function cargarPedidosInsumos() {
         htmlA += '<div style="flex:1;min-width:0;">';
         htmlA += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);">('+f.Presentacion+')</span>':'')+' </div>';
         htmlA += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
-                 '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
+                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
         htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlA += '<span class="badge badge-pending">Pendiente</span>';
         htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
@@ -2012,7 +2025,7 @@ async function cargarPedidosInsumos() {
         htmlL += '<div style="flex:1;min-width:0;">';
         htmlL += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);">('+f.Presentacion+')</span>':'')+' </div>';
         htmlL += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
-                 '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div>';
+                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div>';
         if (f.OrigenAsignado) {
           htmlL += '<div style="margin-top:5px;font-size:12px;color:var(--blue);font-weight:600;">📦 '+f.OrigenAsignado+(f.NotaInsumos?' · <span style="color:var(--sub);font-weight:400;">'+f.NotaInsumos+'</span>':'')+'</div>';
         }
@@ -2379,7 +2392,7 @@ function renderPedidosEnviados() {
         '<td style="padding:8px 14px;font-size:12px;color:var(--light);">'+(f.NumeroPedido||'—')+'</td>' +
         '<td style="padding:8px 14px;font-weight:600;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+(f.Presentacion||'')+'</span></td>' +
         '<td style="padding:8px 14px;text-align:right;font-weight:700;">'+f.Cantidad+' '+(f.Unidad||'')+'</td>' +
-        '<td style="padding:8px 14px;font-size:12px;">📍 '+f.Campo+'</td>' +
+        '<td style="padding:8px 14px;font-size:12px;">📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+'</td>' +
         '<td style="padding:8px 14px;font-size:12px;color:var(--sub);">'+f.Operador+'</td>' +
         '</tr>';
     });
@@ -2476,7 +2489,7 @@ function renderItemsLogistica() {
         '<div style="flex:1;min-width:0;">'+
           '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span></div>'+
           '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
-            '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span>'+
+            '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
             (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
           '</div>'+
         '</div>'+
@@ -2496,7 +2509,7 @@ function renderItemsLogistica() {
         '<div style="flex:1;min-width:0;">'+
           '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);font-size:11px;">('+f.Presentacion+')</span>':'')+' </div>'+
           '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
-            '<span>📍 '+f.Campo+'</span><span>👤 '+f.Operador+'</span>'+
+            '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
             (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
           '</div>'+
         '</div>'+
@@ -2523,7 +2536,7 @@ function renderItemsLogistica() {
       var f=item.fields;
       html2 += '<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
       html2 += '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);font-size:11px;">('+f.Presentacion+')</span>':'')+' </div>';
-      html2 += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f.Campo+' · 👤 '+f.Operador+'</div></div>';
+      html2 += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' · 👤 '+f.Operador+'</div></div>';
       html2 += '<span class="badge badge-transit">En camino</span>';
       html2 += '<button style="font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--sub);" onclick="quitarDeCamion(\''+item.id+'\')">✕ Quitar</button>';
       html2 += '</div>';
@@ -2666,7 +2679,7 @@ function renderCamionesEnviados() {
     html += '<div style="font-size:11px;color:var(--sub);margin-top:4px;">';
     itemsCam.forEach(function(p){
       var f=p.fields;
-      html += '<div>'+f.Insumo+' <span style="color:var(--light);">'+f.Cantidad+' '+(f.Unidad||'')+'</span> — 📍 '+f.Campo+'</div>';
+      html += '<div>'+f.Insumo+' <span style="color:var(--light);">'+f.Cantidad+' '+(f.Unidad||'')+'</span> — 📍 '+f.Campo+(f.Localidad?' · '+f.Localidad:'')+'</div>';
     });
     html += '</div>';
     html += '</div><div style="text-align:right;flex-shrink:0;">';
@@ -2735,7 +2748,7 @@ function verDetalleCamion(camId) {
     if (f.Presentacion) h += '<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">'+f.Presentacion+'</div>';
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;margin-top:6px;">';
     if (f.OrigenAsignado) h += filaMini('Origen', f.OrigenAsignado);
-    h += filaMini('Destino', f.Campo);
+    h += filaMini('Destino', f.Campo + (f.Localidad ? ' · ' + f.Localidad : ''));
     if (f.FechaEntrega)   h += filaMini('Entrega', f.FechaEntrega);
     h += filaMini('N° Pedido', String(f.NumeroPedido||''));
     h += filaMini('Responsable', f.Operador||'');
