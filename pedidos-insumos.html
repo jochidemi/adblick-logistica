@@ -487,8 +487,8 @@ tr:hover td{background:var(--brand-light);}
               ondrop="dropFile(event,'existencia')">
               <div style="font-size:24px;margin-bottom:6px;">📦</div>
               <div style="font-weight:700;font-size:13px;color:var(--sub);">Existencia de Insumos</div>
-              <div style="font-size:11px;color:var(--light);margin-top:3px;">ExistenciaDeInsumos.xlsx</div>
-              <input type="file" id="inp-existencia" accept=".xlsx,.xls" style="display:none;" onchange="loadFile(this,'existencia')">
+              <div style="font-size:11px;color:var(--light);margin-top:3px;">ExistenciaDeInsumos.csv / .xlsx</div>
+              <input type="file" id="inp-existencia" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadFile(this,'existencia')">
             </div>
             <div id="drop-cubo" class="drop-zone" onclick="document.getElementById('inp-cubo').click();"
               ondragover="event.preventDefault();this.classList.add('over');"
@@ -1633,16 +1633,17 @@ function loadFile(input, tipo) {
 }
 
 function processStockFile(file, tipo) {
+  var ext = (file.name.split('.').pop()||"").toLowerCase();
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
-      var wb = XLSX.read(e.target.result, {type:"array"});
+      var wb = XLSX.read(e.target.result, {type: ext==="csv" ? "string" : "array"});
       var ws = wb.Sheets[wb.SheetNames[0]];
       if (tipo === "existencia") {
-        stockPropio = parsearExistencia(ws);
+        stockPropio = ext === "csv" ? parsearExistenciaCSV(ws) : parsearExistencia(ws);
         var drop = document.getElementById("drop-existencia");
         drop.classList.add("loaded");
-        drop.innerHTML = '<div style="font-size:20px;margin-bottom:4px;">✅</div><div style="font-weight:700;font-size:13px;color:var(--green);">Existencia cargada</div><div style="font-size:11px;color:var(--light);">'+stockPropio.length+' ítems con stock · click para reemplazar</div><input type="file" id="inp-existencia" accept=".xlsx,.xls" style="display:none;" onchange="loadFile(this,\'existencia\')">';
+        drop.innerHTML = '<div style="font-size:20px;margin-bottom:4px;">✅</div><div style="font-weight:700;font-size:13px;color:var(--green);">Existencia cargada</div><div style="font-size:11px;color:var(--light);">'+stockPropio.length+' ítems con stock · click para reemplazar</div><input type="file" id="inp-existencia" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadFile(this,\'existencia\')">';
         drop.onclick = function(){ document.getElementById("inp-existencia").click(); };
       } else {
         stockPendiente = parsearCuboOC(ws);
@@ -1655,7 +1656,35 @@ function processStockFile(file, tipo) {
       showToast("Archivo cargado correctamente", "ok");
     } catch(ex) { showToast("Error leyendo archivo: "+ex.message, "error"); }
   };
-  reader.readAsArrayBuffer(file);
+  if (ext === "csv") reader.readAsText(file, "utf-8");
+  else reader.readAsArrayBuffer(file);
+}
+
+function parsearExistenciaCSV(ws) {
+  // CSV exportado desde el sistema (ExistenciaDeInsumos.csv)
+  // Cada fila es plana: categoría + punto de stock + código + nombre + unidad + existencia
+  // Columnas clave (por nombre de encabezado):
+  //   Descripcion_Tipo_Insumo → categoría
+  //   Textbox97               → punto de stock (ej: "AGROPACK LOBOS")
+  //   Codigo_Insumo2          → código
+  //   Nombre_Insumo2          → nombre del insumo
+  //   Descripcion_Unidad_Medida2 → unidad
+  //   Textbox32               → existencia (formato AR: "1.660,000" = 1660)
+  var rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+  var items = [];
+  rows.forEach(function(row) {
+    var cat = String(row["Descripcion_Tipo_Insumo"]||"").trim();
+    var pto = String(row["Textbox97"]||"").trim();
+    var cod = String(row["Codigo_Insumo2"]||"").trim();
+    var nom = String(row["Nombre_Insumo2"]||"").trim();
+    var uni = String(row["Descripcion_Unidad_Medida2"]||"").trim();
+    // Formato argentino: "1.660,000" → quitar puntos de miles, cambiar coma decimal
+    var exStr = String(row["Textbox32"]||"").replace(/\./g,"").replace(",",".");
+    var ex = parseFloat(exStr) || 0;
+    if (!nom || !cod || ex <= 0) return;
+    items.push({ categoria: cat, puntoStock: pto, codigo: cod, nombre: nom, unidad: uni, existencia: ex });
+  });
+  return items;
 }
 
 function parsearExistencia(ws) {
