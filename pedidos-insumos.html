@@ -3076,12 +3076,18 @@ function mapPadronRows(padId, rows) {
       }).filter(Boolean);
   }
   if (padId==="transp") return rows.map(function(r){ return { Title:String(r["Nombre"]||"").trim().substring(0,255), RazonSocial:String(r["Razón Social"]||"").trim(), CUIT:String(r["CUIT"]||"").trim() }; }).filter(function(r){return r.Title;});
-  if (padId==="campos") return rows
-    .map(function(r){
-      var v = String(r["Campo"]||r["NombreCampo"]||r["Nombre"]||r["nombre"]||"").trim();
-      var loc = String(r["Localidad"]||r["localidad"]||"").trim();
+  if (padId==="campos") {
+    if (!rows.length) return [];
+    console.log("Campos headers:", Object.keys(rows[0]));
+    var keys = Object.keys(rows[0]);
+    var campoKey = keys.find(function(k){ var t=k.trim().replace(/^\uFEFF/,"").toLowerCase(); return t==="campo"||t==="nombrecampo"||t==="nombre"; }) || keys[0];
+    var locKey   = keys.find(function(k){ return k.trim().replace(/^\uFEFF/,"").toLowerCase()==="localidad"; }) || "";
+    return rows.map(function(r){
+      var v   = String(r[campoKey]||"").trim();
+      var loc = locKey ? String(r[locKey]||"").trim() : "";
       return v ? {Title:v.substring(0,255), NombreCampo:v.substring(0,255), Localidad:loc} : null;
     }).filter(Boolean);
+  }
   if (padId==="ops")    return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
   return [];
 }
