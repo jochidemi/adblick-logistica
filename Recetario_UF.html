@@ -533,7 +533,7 @@ var CONFIG = {
   // ── Lista para guardar recetas (RecetasAgronomicasDB)
   recetasListId:    "864c7935-6592-4c0b-b73b-4ed39de9ac4f",
 
-  redirectUri:      "https://jochidemi.github.io/adblick-recetario/"
+  redirectUri:      "https://jochidemi.github.io/adblick-logistica/recetario.html"
 };
 
 // ── DATOS ESTÁTICOS (no necesitan lista SP) ──────────────────
@@ -651,16 +651,16 @@ async function loadCampos() {
   CAMPOS_MAP = {};
   items.forEach(function(item) {
     var f = item.fields || {};
-    var campo = (f.Title || f.Campo || "").trim();
+    var campo = (f.NombreCampo || f.Title || "").trim();
     if (!campo) return;
     if (!CAMPOS_MAP[campo]) CAMPOS_MAP[campo] = [];
     CAMPOS_MAP[campo].push({
-      lote:      (f.Lote || f.field_1 || "").trim(),
-      zona:      (f.Zona || f.field_2 || "").trim(),
-      cultivo:   (f.Cultivo || f.field_6 || "").trim(),
-      has:       parseFloat(f.Hectareas || f.Hectareas || f.field_3 || 0) || 0,
-      localidad: (f.Localidad || f.field_4 || "").trim(),
-      partido:   (f.Partido || f.field_5 || "").trim()
+      lote:      (f.Lote || "").trim(),
+      zona:      (f.Zona || "").trim(),
+      cultivo:   (f.Cultivo || "").trim(),
+      has:       parseFloat(f.Hectareas || 0) || 0,
+      localidad: (f.Localidad || "").trim(),
+      partido:   (f.Partido || "").trim()
     });
   });
   // Poblar selector de campo
@@ -679,12 +679,11 @@ async function loadProductos() {
   PRODUCTOS_ARR = items.map(function(item) {
     var f = item.fields || {};
     return {
-      codigo:       (f.Codigo || f.Title || "").trim(),
-      nombre:       (f.Nombre || f.field_1 || "").trim(),
-      unidad:       (f.Unidad || f.field_2 || "").trim(),
-      presentacion: (f.Presentacion || f.field_3 || "").trim(),
-      categoria:    (f.Categoria || f.field_4 || "").trim(),
-      tipo:         (f.Tipo || f.field_5 || "").trim()
+      nombre:       (f.Title || "").trim(),
+      unidad:       (f.Unidad || "").trim(),
+      presentacion: (f.Presentacion || "").trim(),
+      categoria:    (f.Categoria || "").trim(),
+      tipo:         (f.TipoInsumo || "").trim()
     };
   }).filter(function(p) { return p.nombre; });
 
