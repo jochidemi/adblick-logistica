@@ -2443,17 +2443,20 @@ async function cargarPedidosLogistica() {
       var f = item.fields;
       if (f.CamionId && !camIdsSeen[f.CamionId]) {
         camIdsSeen[f.CamionId] = true;
+        // Preferir datos locales: el usuario puede haber cargado chofer/patente
+        // antes de que se graben en SP (solo se persisten al enviar el camión)
+        var lc = camiones.find(function(c){ return c.id === f.CamionId; }) || {};
         reconstructed.push({
           id:              f.CamionId,
-          chofer:          f.Chofer||"",
-          cuitChofer:      f.CUITChofer||"",
-          patente:         f.Patente||"",
-          patenteAcoplado: f.PatenteAcoplado||"",
-          tarifa:          f.Tarifa||0,
-          cupo:            f.Cupo||"",
-          transportista:   f.Transportista||"",
-          razonSocial:     "",
-          cuit:            f.CUIT||"",
+          chofer:          lc.chofer          || f.Chofer          || "",
+          cuitChofer:      lc.cuitChofer      || f.CUITChofer      || "",
+          patente:         lc.patente         || f.Patente         || "",
+          patenteAcoplado: lc.patenteAcoplado || f.PatenteAcoplado || "",
+          tarifa:          lc.tarifa          || f.Tarifa          || 0,
+          cupo:            lc.cupo            || f.Cupo            || "",
+          transportista:   lc.transportista   || f.Transportista   || "",
+          razonSocial:     lc.razonSocial     || "",
+          cuit:            lc.cuit            || f.CUIT            || "",
           cerrado:         f.Estado==="En camino",
         });
       }
