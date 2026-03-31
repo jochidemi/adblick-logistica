@@ -872,6 +872,7 @@ var CONFIG = {
     padronInsumos:   "3fd32d83-446d-4bd8-bde1-af87e0fd95d6",
     padronTransp:    "a5e2cb66-6e75-4b06-a750-26e885af12d4",
     padronOperadores:"17a13b1e-217b-40cc-831f-1ea48c8a33ce",
+    camiones:        "Camiones",
   },
   redirectUri: "https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html",
 };
@@ -1047,10 +1048,17 @@ async function spPost(listId, fields) {
 }
 
 async function spPatch(listId, itemId, fields) {
-  var r = await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items/" + itemId + "/fields",
-    { method:"PATCH", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify(fields) });
-  if (!r.ok) throw new Error("SP PATCH " + r.status);
-  return r.ok;
+  for (var attempt = 0; attempt < 2; attempt++) {
+    var r = await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+listId+"/items/"+itemId+"/fields",
+      { method:"PATCH", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify(fields) });
+    if (r.ok) return true;
+    if (r.status === 401 && attempt === 0) {
+      try { var t = await msalInstance.acquireTokenSilent({ scopes:["Sites.ReadWrite.All"], account:currentAccount }); graphToken = t.accessToken; } catch(e) {}
+    } else {
+      throw new Error("SP PATCH " + r.status);
+    }
+  }
+  throw new Error("SP PATCH failed after retry");
 }
 
 async function spDelete(listId, itemId) {
@@ -2549,12 +2557,9 @@ function renderPedidosEnviados() {
 // Calcula el próximo ID de camión leyendo todos los CamionId existentes en SP
 async function getNextCamionId() {
   try {
-    var items = await spGet(CONFIG.lists.pedidos, "");
-    var ids = items.map(function(i){ return i.fields.CamionId||""; }).filter(Boolean);
-    var numsRemoto = ids.map(function(id){ return parseInt(id.replace(/\D/g,"")||"0"); }).filter(function(n){ return !isNaN(n)&&n>0; });
-    var numsLocal  = camiones.map(function(c){ return parseInt((c.id||"").replace(/\D/g,"")||"0"); }).filter(function(n){ return !isNaN(n)&&n>0; });
-    var all = numsRemoto.concat(numsLocal);
-    var next = all.length ? Math.max.apply(null,all)+1 : 1;
+    var items = await spGet(CONFIG.lists.camiones, "");
+    var nums = items.map(function(i){ return parseInt((i.fields.Title||"").replace(/\D/g,"")||"0"); }).filter(function(n){ return !isNaN(n)&&n>0; });
+    var next = nums.length ? Math.max.apply(null,nums)+1 : 1;
     return "CA"+String(next).padStart(2,"0");
   } catch(e) {
     var numsLocal = camiones.map(function(c){ return parseInt((c.id||"").replace(/\D/g,"")||"0"); }).filter(function(n){ return !isNaN(n)&&n>0; });
@@ -2563,50 +2568,47 @@ async function getNextCamionId() {
   }
 }
 
-// Crea un camión nuevo con ID único persistente entre sesiones
+// Crea un camión nuevo en SharePoint Camiones y en memoria
 async function crearCamionNuevo() {
-  var id = await getNextCamionId();
-  camiones.push({ id:id, cerrado:false });
-  renderCamiones();
-  renderItemsLogistica();
-  showToast("Camión "+id+" creado — ahora asigná los productos","ok");
+  try {
+    var id = await getNextCamionId();
+    var created = await spPost(CONFIG.lists.camiones, { Title: id, Estado: "activo" });
+    camiones.push({ id: id, spItemId: created.id, cerrado: false });
+    renderCamiones();
+    renderItemsLogistica();
+    showToast("Camión "+id+" creado ✓ — completá los datos antes de despachar","ok");
+  } catch(e) { showToast("Error al crear camión: "+e.message,"error"); }
 }
 
 async function cargarPedidosLogistica() {
   try {
-    var items = await spGet(CONFIG.lists.pedidos, "");
-    pedidosLogistica = items.filter(function(i){ return i.fields.Estado==="Pendiente logística"||i.fields.Estado==="En camino"||i.fields.Estado==="Listo para retirar"; });
+    // Cargar pedidos y camiones en paralelo
+    var [pedItems, camItems] = await Promise.all([
+      spGet(CONFIG.lists.pedidos, ""),
+      spGet(CONFIG.lists.camiones, "").catch(function(){ return []; })
+    ]);
 
-    // Reconstruir camiones desde los pedidos SP (persistencia entre sesiones)
-    var camIdsSeen = {};
-    var reconstructed = [];
-    pedidosLogistica.forEach(function(item) {
+    pedidosLogistica = pedItems.filter(function(i){ return i.fields.Estado==="Pendiente logística"||i.fields.Estado==="En camino"||i.fields.Estado==="Listo para retirar"; });
+
+    // Reconstruir camiones desde la lista Camiones SP (fuente de verdad)
+    camiones = camItems.map(function(item) {
       var f = item.fields;
-      if (f.CamionId && !camIdsSeen[f.CamionId]) {
-        camIdsSeen[f.CamionId] = true;
-        // Preferir datos locales: el usuario puede haber cargado chofer/patente
-        // antes de que se graben en SP (solo se persisten al enviar el camión)
-        var lc = camiones.find(function(c){ return c.id === f.CamionId; }) || {};
-        reconstructed.push({
-          id:              f.CamionId,
-          chofer:          lc.chofer          || f.Chofer          || "",
-          cuitChofer:      lc.cuitChofer      || f.CUITChofer      || "",
-          patente:         lc.patente         || f.Patente         || "",
-          patenteAcoplado: lc.patenteAcoplado || f.PatenteAcoplado || "",
-          tarifa:          lc.tarifa          || f.Tarifa          || 0,
-          cupo:            lc.cupo            || f.Cupo            || "",
-          transportista:   lc.transportista   || f.Transportista   || "",
-          razonSocial:     lc.razonSocial     || "",
-          cuit:            lc.cuit            || f.CUIT            || "",
-          cerrado:         f.Estado==="En camino",
-        });
-      }
+      var transpItem = padronTransp.find(function(t){ return t.nombre === (f.Transportista||""); });
+      return {
+        id:              f.Title        || "",
+        spItemId:        item.id,
+        chofer:          f.Chofer        || "",
+        cuitChofer:      f.CUITChofer    || "",
+        patente:         f.Patente       || "",
+        patenteAcoplado: f.PatenteAcoplado || "",
+        tarifa:          f.Tarifa        || 0,
+        cupo:            f.Cupo          || "",
+        transportista:   f.Transportista || "",
+        razonSocial:     transpItem ? transpItem.razonSocial : (f.RazonSocial||""),
+        cuit:            transpItem ? transpItem.cuit : (f.CUIT||""),
+        cerrado:         f.Estado === "enviado",
+      };
     });
-    // Conservar camiones locales aún sin ítems asignados
-    camiones.forEach(function(c) {
-      if (!camIdsSeen[c.id]) reconstructed.push(c);
-    });
-    camiones = reconstructed;
 
     renderCamiones();
     renderItemsLogistica();
@@ -2734,20 +2736,9 @@ async function confirmarAsignacion() {
   var ids = Object.keys(selItems).filter(function(k){ return selItems[k]; });
   var btn = document.getElementById("btn-confirm-assign");
   btn.disabled=true; btn.textContent="Guardando...";
-  // Si el camión ya tiene datos cargados, incluirlos en el patch para que persistan
-  var camLocal = camiones.find(function(c){ return c.id === camDestinoActual; }) || {};
-  var asignFields = { CamionId: camDestinoActual };
-  if (camLocal.chofer)          asignFields.Chofer          = camLocal.chofer;
-  if (camLocal.patente)         asignFields.Patente         = camLocal.patente;
-  if (camLocal.transportista)   asignFields.Transportista   = camLocal.transportista;
-  if (camLocal.cuit)            asignFields.CUIT            = camLocal.cuit;
-  if (camLocal.cuitChofer)      asignFields.CUITChofer      = camLocal.cuitChofer;
-  if (camLocal.patenteAcoplado) asignFields.PatenteAcoplado = camLocal.patenteAcoplado;
-  if (camLocal.tarifa)          asignFields.Tarifa          = camLocal.tarifa;
-  if (camLocal.cupo)            asignFields.Cupo            = camLocal.cupo;
   try {
     for (var i=0; i<ids.length; i++) {
-      await spPatch(CONFIG.lists.pedidos, ids[i], asignFields);
+      await spPatch(CONFIG.lists.pedidos, ids[i], { CamionId: camDestinoActual });
     }
     selItems={}; camDestinoActual="";
     showToast("Ítems asignados al camión ✓","ok");
@@ -3004,28 +2995,26 @@ async function guardarDatosCamion() {
   var d = leerDatosCamionModal();
   if (!d.chofer || !d.patente) { showToast("Completá chofer y patente","error"); return; }
   var camId = editingCamionId;
+  var cam = camiones.find(function(c){ return c.id === camId; });
   camiones = camiones.map(function(c){
     if (c.id !== camId) return c;
     return Object.assign({}, c, d);
   });
   cerrarModal("modal-camion");
   renderCamiones();
-  // Persistir en SP los ítems ya asignados a este camión para que sobrevivan recarga
-  var fields = { Chofer: d.chofer, Patente: d.patente };
-  if (d.transportista)   fields.Transportista   = d.transportista;
-  if (d.cuit)            fields.CUIT            = d.cuit;
-  if (d.cuitChofer)      fields.CUITChofer      = d.cuitChofer;
-  if (d.patenteAcoplado) fields.PatenteAcoplado = d.patenteAcoplado;
-  if (d.tarifa)          fields.Tarifa          = d.tarifa;
-  if (d.cupo)            fields.Cupo            = d.cupo;
-  var itemsCam = pedidosLogistica.filter(function(p){
-    return p.fields.CamionId === camId && p.fields.Estado === "Pendiente logística";
-  });
-  try {
-    for (var i = 0; i < itemsCam.length; i++) {
-      await spPatch(CONFIG.lists.pedidos, itemsCam[i].id, fields);
-    }
-  } catch(e) { console.warn("No se pudo persistir datos del camión en SP:", e.message); }
+  // Persistir solo en la lista Camiones SP (no tocar pedidos)
+  if (cam && cam.spItemId) {
+    var fields = { Chofer: d.chofer, Patente: d.patente };
+    if (d.transportista)   fields.Transportista   = d.transportista;
+    if (d.cuit)            fields.CUIT            = d.cuit;
+    if (d.cuitChofer)      fields.CUITChofer      = d.cuitChofer;
+    if (d.patenteAcoplado) fields.PatenteAcoplado = d.patenteAcoplado;
+    if (d.tarifa)          fields.Tarifa          = d.tarifa;
+    if (d.cupo)            fields.Cupo            = d.cupo;
+    try {
+      await spPatch(CONFIG.lists.camiones, cam.spItemId, fields);
+    } catch(e) { showToast("No se pudo guardar en SP: "+e.message,"error"); return; }
+  }
   showToast("Datos del camión guardados ✓ — aún podés editar antes de despachar","ok");
 }
 
@@ -3059,6 +3048,18 @@ async function despacharCamion() {
         var badField = errBody.error&&errBody.error.message?errBody.error.message.match(/Field '([^']+)' is not recognized/):null;
         if (badField) { delete fields[badField[1]]; } else { throw new Error(errBody.error?errBody.error.message:"PATCH "+r.status); }
       }
+    }
+    // Marcar camión como "enviado" en la lista Camiones SP
+    var cam = camiones.find(function(c){ return c.id === camId; });
+    if (cam && cam.spItemId) {
+      var camFields = { Estado: "enviado", Chofer: d.chofer, Patente: d.patente };
+      if (d.transportista)   camFields.Transportista   = d.transportista;
+      if (d.cuit)            camFields.CUIT            = d.cuit;
+      if (d.cuitChofer)      camFields.CUITChofer      = d.cuitChofer;
+      if (d.patenteAcoplado) camFields.PatenteAcoplado = d.patenteAcoplado;
+      if (d.tarifa)          camFields.Tarifa          = d.tarifa;
+      if (d.cupo)            camFields.Cupo            = d.cupo;
+      try { await spPatch(CONFIG.lists.camiones, cam.spItemId, camFields); } catch(e) { console.warn("No se pudo actualizar lista Camiones:", e.message); }
     }
     cerrarModal("modal-camion");
     showToast("Camión "+camId+" despachado ✓ — "+itemsDelCamion.length+" ítems en camino","ok");
