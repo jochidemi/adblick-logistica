@@ -2593,9 +2593,20 @@ async function confirmarAsignacion() {
   var ids = Object.keys(selItems).filter(function(k){ return selItems[k]; });
   var btn = document.getElementById("btn-confirm-assign");
   btn.disabled=true; btn.textContent="Guardando...";
+  // Si el camión ya tiene datos cargados, incluirlos en el patch para que persistan
+  var camLocal = camiones.find(function(c){ return c.id === camDestinoActual; }) || {};
+  var asignFields = { CamionId: camDestinoActual };
+  if (camLocal.chofer)          asignFields.Chofer          = camLocal.chofer;
+  if (camLocal.patente)         asignFields.Patente         = camLocal.patente;
+  if (camLocal.transportista)   asignFields.Transportista   = camLocal.transportista;
+  if (camLocal.cuit)            asignFields.CUIT            = camLocal.cuit;
+  if (camLocal.cuitChofer)      asignFields.CUITChofer      = camLocal.cuitChofer;
+  if (camLocal.patenteAcoplado) asignFields.PatenteAcoplado = camLocal.patenteAcoplado;
+  if (camLocal.tarifa)          asignFields.Tarifa          = camLocal.tarifa;
+  if (camLocal.cupo)            asignFields.Cupo            = camLocal.cupo;
   try {
     for (var i=0; i<ids.length; i++) {
-      await spPatch(CONFIG.lists.pedidos, ids[i], { CamionId: camDestinoActual });
+      await spPatch(CONFIG.lists.pedidos, ids[i], asignFields);
     }
     selItems={}; camDestinoActual="";
     showToast("Ítems asignados al camión ✓","ok");
@@ -2858,6 +2869,22 @@ async function guardarDatosCamion() {
   });
   cerrarModal("modal-camion");
   renderCamiones();
+  // Persistir en SP los ítems ya asignados a este camión para que sobrevivan recarga
+  var fields = { Chofer: d.chofer, Patente: d.patente };
+  if (d.transportista)   fields.Transportista   = d.transportista;
+  if (d.cuit)            fields.CUIT            = d.cuit;
+  if (d.cuitChofer)      fields.CUITChofer      = d.cuitChofer;
+  if (d.patenteAcoplado) fields.PatenteAcoplado = d.patenteAcoplado;
+  if (d.tarifa)          fields.Tarifa          = d.tarifa;
+  if (d.cupo)            fields.Cupo            = d.cupo;
+  var itemsCam = pedidosLogistica.filter(function(p){
+    return p.fields.CamionId === camId && p.fields.Estado === "Pendiente logística";
+  });
+  try {
+    for (var i = 0; i < itemsCam.length; i++) {
+      await spPatch(CONFIG.lists.pedidos, itemsCam[i].id, fields);
+    }
+  } catch(e) { console.warn("No se pudo persistir datos del camión en SP:", e.message); }
   showToast("Datos del camión guardados ✓ — aún podés editar antes de despachar","ok");
 }
 
