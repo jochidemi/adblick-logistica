@@ -460,6 +460,13 @@ tr:hover td{background:var(--brand-light);}
       <!-- MIS PEDIDOS -->
       <div id="op-mispedidos" style="display:none;">
         <div id="mis-pedidos-list"></div>
+        <!-- Barra flotante remito en lote -->
+        <div id="bar-remito" style="display:none;position:sticky;bottom:16px;left:0;right:0;margin:12px 0 0;background:var(--dark);color:#fff;border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 24px rgba(0,0,0,.25);">
+          <span id="bar-remito-count" style="font-weight:700;font-size:13px;white-space:nowrap;">0 seleccionados</span>
+          <input id="inp-remito-lote" placeholder="Número de remito..." style="flex:1;min-width:160px;padding:7px 12px;border-radius:8px;border:none;font-size:13px;font-family:inherit;">
+          <button class="btn btn-brand btn-sm" onclick="aplicarRemitoLote()">✓ Aplicar remito</button>
+          <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);" onclick="limpiarSelRemito()">✕ Cancelar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -539,20 +546,33 @@ tr:hover td{background:var(--brand-light);}
       <div id="ins-pedidos" style="display:none;">
         <div class="card" style="padding:0;overflow:hidden;">
           <div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <div style="display:flex;gap:0;background:var(--bg);border-radius:8px;padding:3px;border:1px solid var(--border);">
+            <div style="display:flex;gap:0;background:var(--bg);border-radius:8px;padding:3px;border:1px solid var(--border);flex-wrap:wrap;">
               <button id="itab-asig" onclick="switchInsPedidosTab('asig')"
-                style="padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text);font-family:'Montserrat',sans-serif;">
-                Pendientes de asignación <span id="ins-asig-count" style="color:var(--orange);"></span>
+                style="padding:6px 12px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:var(--white);color:var(--text);font-family:'Montserrat',sans-serif;">
+                Pend. asignación <span id="ins-asig-count" style="color:var(--orange);"></span>
               </button>
               <button id="itab-log" onclick="switchInsPedidosTab('log')"
-                style="padding:6px 14px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--sub);font-family:'Montserrat',sans-serif;">
-                Pendientes logística <span id="ins-log-count" style="color:var(--blue);"></span>
+                style="padding:6px 12px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--sub);font-family:'Montserrat',sans-serif;">
+                Pend. logística <span id="ins-log-count" style="color:var(--blue);"></span>
+              </button>
+              <button id="itab-enc" onclick="switchInsPedidosTab('enc')"
+                style="padding:6px 12px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--sub);font-family:'Montserrat',sans-serif;">
+                En camino <span id="ins-enc-count" style="color:var(--green);"></span>
+              </button>
+              <button id="itab-cer" onclick="switchInsPedidosTab('cer')"
+                style="padding:6px 12px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--sub);font-family:'Montserrat',sans-serif;">
+                Cerrados <span id="ins-cer-count" style="color:var(--sub);"></span>
               </button>
             </div>
-            <button class="btn btn-outline btn-sm" onclick="cargarPedidosInsumos()">↺ Actualizar</button>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button id="btn-ins-export-cer" class="btn btn-outline btn-sm" onclick="exportarInsumosExcel()" style="display:none;">⬇ Exportar XLSX</button>
+              <button class="btn btn-outline btn-sm" onclick="cargarPedidosInsumos()">↺ Actualizar</button>
+            </div>
           </div>
           <div id="ins-pedidos-list"><div style="padding:40px;text-align:center;color:var(--light);">Cargando...</div></div>
           <div id="ins-logistica-list" style="display:none;"></div>
+          <div id="ins-encamino-list" style="display:none;"></div>
+          <div id="ins-cerrados-list" style="display:none;"></div>
         </div>
       </div>
     </div>
@@ -1553,10 +1573,16 @@ async function cargarMisPedidos() {
       // Líneas de productos
       if (lineas.length > 1) {
         html += '<div class="tbl-wrap" style="margin-bottom:8px;"><table>';
-        html += '<thead><tr><th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+((enCamino||listoRetirar)?'<th></th>':'')+'</tr></thead><tbody>';
+        html += '<thead><tr>'+((enCamino||listoRetirar)?'<th style="width:28px;"></th>':'')+
+                '<th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+((enCamino||listoRetirar)?'<th></th>':'')+'</tr></thead><tbody>';
         lineas.forEach(function(item) {
           var f = item.fields;
-          html += '<tr><td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Cantidad+' '+(f.Unidad||'')+'</td><td style="font-size:12px;color:var(--light);">'+(f.Presentacion||'-')+'</td>';
+          html += '<tr>';
+          if (enCamino || listoRetirar) {
+            if (!f.NroRemito) html += '<td><input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+item.id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);"></td>';
+            else html += '<td></td>';
+          }
+          html += '<td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Cantidad+' '+(f.Unidad||'')+'</td><td style="font-size:12px;color:var(--light);">'+(f.Presentacion||'-')+'</td>';
           if (enCamino || listoRetirar) {
             if (!f.NroRemito) html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Remito</button></td>';
             else html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</span></td>';
@@ -1579,20 +1605,30 @@ async function cargarMisPedidos() {
         html += '</div>';
         if (lineas.length === 1) {
           var f = lineas[0].fields;
-          if (!f.NroRemito) html += '<button class="btn btn-brand btn-sm" style="margin-top:4px;" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
-          else html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
+          if (!f.NroRemito) {
+            html += '<div style="display:flex;align-items:center;gap:10px;margin-top:6px;">';
+            html += '<input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+lineas[0].id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);" title="Seleccionar para remito en lote">';
+            html += '<button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
+            html += '</div>';
+          } else html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
         }
       }
-      if (enCamino && f0.Chofer) {
-        html += '<div class="info-box" style="margin:10px 0;font-size:12px;">';
-        html += '<b>🚛 En camino</b> · Transportista: '+(f0.Transportista||'-')+' · Chofer: '+f0.Chofer+' · Patente: '+f0.Patente;
-        if (f0.PatenteAcoplado) html += ' / Acoplado: '+f0.PatenteAcoplado;
-        if (f0.Tarifa) html += ' · Tarifa: $'+Number(f0.Tarifa).toLocaleString("es-AR");
-        html += '</div>';
+      if (enCamino) {
+        if (f0.Chofer) {
+          html += '<div class="info-box" style="margin:10px 0;font-size:12px;">';
+          html += '<b>🚛 En camino</b> · Transportista: '+(f0.Transportista||'-')+' · Chofer: '+f0.Chofer+' · Patente: '+f0.Patente;
+          if (f0.PatenteAcoplado) html += ' / Acoplado: '+f0.PatenteAcoplado;
+          if (f0.Tarifa) html += ' · Tarifa: $'+Number(f0.Tarifa).toLocaleString("es-AR");
+          html += '</div>';
+        }
         if (lineas.length === 1) {
           var f = lineas[0].fields;
-          if (!f.NroRemito) html += '<button class="btn btn-brand btn-sm" style="margin-top:4px;" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
-          else html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
+          if (!f.NroRemito) {
+            html += '<div style="display:flex;align-items:center;gap:10px;margin-top:6px;">';
+            html += '<input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+lineas[0].id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);" title="Seleccionar para remito en lote">';
+            html += '<button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
+            html += '</div>';
+          } else html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
         }
       }
       html += '</div>';
@@ -1956,27 +1992,29 @@ async function guardarStockEnSP() {
 // ═══════════════════════════════════════════════════════════════
 // PEDIDOS INSUMOS (asignación de origen)
 // ═══════════════════════════════════════════════════════════════
-var insPedidosTab = "asig"; // "asig" | "log"
+var insPedidosTab = "asig"; // "asig" | "log" | "enc" | "cer"
 
 function switchInsPedidosTab(tab) {
   insPedidosTab = tab;
-  var tA = document.getElementById("itab-asig"), tL = document.getElementById("itab-log");
-  var dA = document.getElementById("ins-pedidos-list"), dL = document.getElementById("ins-logistica-list");
-  if (tab === "asig") {
-    tA.style.background="var(--white)"; tA.style.color="var(--text)";
-    tL.style.background="transparent";  tL.style.color="var(--sub)";
-    dA.style.display=""; dL.style.display="none";
-  } else {
-    tL.style.background="var(--white)"; tL.style.color="var(--text)";
-    tA.style.background="transparent";  tA.style.color="var(--sub)";
-    dA.style.display="none"; dL.style.display="";
-  }
+  var tabs = ["asig","log","enc","cer"];
+  tabs.forEach(function(t) {
+    var btn = document.getElementById("itab-"+t);
+    var div = document.getElementById(t==="asig"?"ins-pedidos-list":t==="log"?"ins-logistica-list":t==="enc"?"ins-encamino-list":"ins-cerrados-list");
+    var active = (t === tab);
+    if (btn) { btn.style.background = active ? "var(--white)" : "transparent"; btn.style.color = active ? "var(--text)" : "var(--sub)"; }
+    if (div) div.style.display = active ? "" : "none";
+  });
+  // Mostrar botón export solo en cerrados
+  var expBtn = document.getElementById("btn-ins-export-cer");
+  if (expBtn) expBtn.style.display = (tab === "cer") ? "" : "none";
 }
 
 async function cargarPedidosInsumos() {
-  var cA = document.getElementById("ins-pedidos-list");
-  var cL = document.getElementById("ins-logistica-list");
-  cA.innerHTML = cL.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
+  var cA  = document.getElementById("ins-pedidos-list");
+  var cL  = document.getElementById("ins-logistica-list");
+  var cEC = document.getElementById("ins-encamino-list");
+  var cCE = document.getElementById("ins-cerrados-list");
+  cA.innerHTML = cL.innerHTML = cEC.innerHTML = cCE.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
 
@@ -2038,9 +2076,112 @@ async function cargarPedidosInsumos() {
     }
     cL.innerHTML = '<div style="overflow:hidden;">'+htmlL+'</div>';
 
+    // ── Tab 3: en camino ─────────────────────────────────────────
+    var pedidosEC = items.filter(function(i){ return i.fields.Estado==="En camino"; });
+    pedidosEC.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
+    var cntEC = pedidosEC.length;
+    document.getElementById("ins-enc-count").textContent = cntEC ? "("+cntEC+")" : "";
+    var htmlEC = "";
+    if (!cntEC) {
+      htmlEC = '<div style="padding:48px;text-align:center;color:var(--light);">No hay pedidos en camino</div>';
+    } else {
+      htmlEC += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+      htmlEC += '<thead><tr style="background:var(--dark);color:#fff;">';
+      ['N° Pedido','Operador','Campo','Localidad','Insumo','Cantidad','Origen','Camión','Chofer','Patente','F. Entrega'].forEach(function(h){
+        htmlEC += '<th style="padding:8px 12px;text-align:left;white-space:nowrap;">'+h+'</th>';
+      });
+      htmlEC += '</tr></thead><tbody>';
+      pedidosEC.forEach(function(item, idx){
+        var f = item.fields;
+        var bg = idx%2===0?"#fff":"#f8f9fa";
+        htmlEC += '<tr style="background:'+bg+';border-bottom:1px solid var(--border);">';
+        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.NumeroPedido||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;">'+( f.Operador||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;">'+( f.Campo||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;color:var(--blue);font-weight:600;">'+( f.Localidad||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;font-weight:600;">'+( f.Insumo||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.Cantidad||"")+" "+(f.Unidad||"")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;color:var(--blue);">'+( f.OrigenAsignado||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.CamionId||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;">'+( f.Chofer||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;">'+( f.Patente||"-")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.FechaEntrega||"-")+'</td>';
+        htmlEC += '</tr>';
+      });
+      htmlEC += '</tbody></table></div>';
+    }
+    cEC.innerHTML = htmlEC;
+
+    // ── Tab 4: cerrados ──────────────────────────────────────────
+    var pedidosCE = items.filter(function(i){ return i.fields.Estado==="Cerrado"; });
+    pedidosCE.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
+    var cntCE = pedidosCE.length;
+    document.getElementById("ins-cer-count").textContent = cntCE ? "("+cntCE+")" : "";
+    // Guardar para export
+    window._insCerradosData = pedidosCE;
+    var htmlCE = "";
+    if (!cntCE) {
+      htmlCE = '<div style="padding:48px;text-align:center;color:var(--light);">No hay pedidos cerrados</div>';
+    } else {
+      htmlCE += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+      htmlCE += '<thead><tr style="background:var(--dark);color:#fff;">';
+      ['N° Pedido','Operador','Campo','Localidad','Insumo','Cantidad','Presentación','Origen','OC','Camión','Transportista','Chofer','Patente','F. Entrega','F. Pedido','Remito'].forEach(function(h){
+        htmlCE += '<th style="padding:8px 12px;text-align:left;white-space:nowrap;">'+h+'</th>';
+      });
+      htmlCE += '</tr></thead><tbody>';
+      pedidosCE.forEach(function(item, idx){
+        var f = item.fields;
+        var bg = idx%2===0?"#fff":"#f8f9fa";
+        htmlCE += '<tr style="background:'+bg+';border-bottom:1px solid var(--border);">';
+        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.NumeroPedido||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+( f.Operador||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+( f.Campo||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;color:var(--blue);font-weight:600;">'+( f.Localidad||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;font-weight:600;">'+( f.Insumo||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.Cantidad||"")+" "+(f.Unidad||"")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+( f.Presentacion||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;color:var(--blue);">'+( f.OrigenAsignado||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+( f.OrdenCompra||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.CamionId||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+( f.Transportista||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+( f.Chofer||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+( f.Patente||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.FechaEntrega||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.FechaPedido ? new Date(f.FechaPedido).toLocaleDateString("es-AR") : "-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;color:var(--green);font-weight:600;">'+( f.NroRemito||"-")+'</td>';
+        htmlCE += '</tr>';
+      });
+      htmlCE += '</tbody></table></div>';
+    }
+    cCE.innerHTML = htmlCE;
+
   } catch(e) {
-    cA.innerHTML = cL.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
+    cA.innerHTML = cL.innerHTML = cEC.innerHTML = cCE.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
   }
+}
+
+function exportarInsumosExcel() {
+  var data = window._insCerradosData || [];
+  if (!data.length) { showToast("No hay pedidos cerrados para exportar","error"); return; }
+  var headers = ["N° Pedido","Operador","Campo","Localidad","Campaña","Insumo","Cantidad","Unidad","Presentación","Origen","OC","Camión","Transportista","CUIT Transp.","Chofer","CUIT Chofer","Patente","Pat. Acoplado","Tarifa","F. Entrega","F. Pedido","Remito"];
+  var rows = data.map(function(item){
+    var f = item.fields;
+    return [
+      f.NumeroPedido||"", f.Operador||"", f.Campo||"", f.Localidad||"",
+      f.Campa_x00f1_a||f.Campana||"", f.Insumo||"",
+      f.Cantidad||"", f.Unidad||"", f.Presentacion||"",
+      f.OrigenAsignado||"", f.OrdenCompra||"", f.CamionId||"",
+      f.Transportista||"", f.CUIT||"", f.Chofer||"", f.CUITChofer||"",
+      f.Patente||"", f.PatenteAcoplado||"", f.Tarifa||"",
+      f.FechaEntrega||"",
+      f.FechaPedido ? new Date(f.FechaPedido).toLocaleDateString("es-AR") : "",
+      f.NroRemito||""
+    ];
+  });
+  var ws = XLSX.utils.aoa_to_sheet([headers].concat(rows));
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Pedidos Cerrados");
+  XLSX.writeFile(wb, "PedidosCerrados_"+new Date().toISOString().slice(0,10)+".xlsx");
 }
 
 function switchOrigenTab(tab) {
@@ -2952,6 +3093,41 @@ async function exportarXLSXLogistica() {
 // ═══════════════════════════════════════════════════════════════
 // REMITO (Operador)
 // ═══════════════════════════════════════════════════════════════
+// ── Selección múltiple de remitos ──────────────────────────────
+var selRemitoItems = {}; // { spId: true }
+function toggleRemitoItem(spId, cb) {
+  if (cb.checked) selRemitoItems[spId] = true;
+  else delete selRemitoItems[spId];
+  var n = Object.keys(selRemitoItems).length;
+  var bar = document.getElementById("bar-remito");
+  document.getElementById("bar-remito-count").textContent = n+" seleccionado"+(n===1?"":"s");
+  bar.style.display = n > 0 ? "flex" : "none";
+}
+function limpiarSelRemito() {
+  selRemitoItems = {};
+  document.getElementById("bar-remito").style.display = "none";
+  // desmarcar todos los checkboxes
+  document.querySelectorAll(".chk-remito").forEach(function(c){ c.checked = false; });
+}
+async function aplicarRemitoLote() {
+  var remito = document.getElementById("inp-remito-lote").value.trim();
+  if (!remito) { showToast("Ingresá el número de remito","error"); return; }
+  var ids = Object.keys(selRemitoItems);
+  if (!ids.length) return;
+  var btn = document.querySelector("#bar-remito .btn-brand");
+  btn.disabled = true; btn.textContent = "Guardando...";
+  try {
+    for (var i = 0; i < ids.length; i++) {
+      await spPatch(CONFIG.lists.pedidos, ids[i], { NroRemito: remito, Estado: "Cerrado" });
+    }
+    limpiarSelRemito();
+    document.getElementById("inp-remito-lote").value = "";
+    showToast("Remito aplicado a "+ids.length+" ítem"+(ids.length===1?"":"s")+" ✓","ok");
+    cargarMisPedidos();
+  } catch(e) { showToast("Error: "+e.message,"error"); }
+  btn.disabled = false; btn.textContent = "✓ Aplicar remito";
+}
+
 var remitoSpId = null;
 function abrirModalRemito(spId, insumo, campo) {
   remitoSpId = spId;
