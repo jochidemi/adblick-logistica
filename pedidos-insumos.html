@@ -459,7 +459,17 @@ tr:hover td{background:var(--brand-light);}
 
       <!-- MIS PEDIDOS -->
       <div id="op-mispedidos" style="display:none;">
-        <div id="mis-pedidos-list"></div>
+        <!-- Sub-tabs por estado -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="sub-pill on"  id="mppill-encamino"    onclick="switchMisPedTab('encamino')">🚛 En camino <span id="cnt-encamino"></span></button>
+          <button class="sub-pill off" id="mppill-pendinsumos" onclick="switchMisPedTab('pendinsumos')">Pend. insumos <span id="cnt-pendinsumos"></span></button>
+          <button class="sub-pill off" id="mppill-pendlog"     onclick="switchMisPedTab('pendlog')">Pend. logística <span id="cnt-pendlog"></span></button>
+          <button class="sub-pill off" id="mppill-cerrados"    onclick="switchMisPedTab('cerrados')">✓ Cerrados <span id="cnt-cerrados"></span></button>
+        </div>
+        <div id="mpp-encamino"></div>
+        <div id="mpp-pendinsumos" style="display:none;"></div>
+        <div id="mpp-pendlog"     style="display:none;"></div>
+        <div id="mpp-cerrados"    style="display:none;"></div>
         <!-- Barra flotante remito en lote -->
         <div id="bar-remito" style="display:none;position:sticky;bottom:16px;left:0;right:0;margin:12px 0 0;background:var(--dark);color:#fff;border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 24px rgba(0,0,0,.25);">
           <span id="bar-remito-count" style="font-weight:700;font-size:13px;white-space:nowrap;">0 seleccionados</span>
@@ -795,6 +805,25 @@ tr:hover td{background:var(--brand-light);}
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="cerrarModal('modal-origen')">Cancelar</button>
       <button class="btn btn-brand" id="btn-confirmar-origen" onclick="confirmarOrigen()">Confirmar origen →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMPROBANTE DE STOCK -->
+<div class="modal-overlay" id="modal-comprobante">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title">Información para comprobante de stock</div>
+        <div id="comp-tipo-badge" style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:4px;color:var(--blue);"></div>
+      </div>
+      <button class="btn-ghost" onclick="cerrarModal('modal-comprobante')" style="font-size:18px;padding:2px 8px;">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="comp-body"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="cerrarModal('modal-comprobante')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1527,124 +1556,153 @@ async function enviarPedido() {
 // MIS PEDIDOS (Operador)
 // ═══════════════════════════════════════════════════════════════
 async function cargarMisPedidos() {
-  var container = document.getElementById("mis-pedidos-list");
-  container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
+  ["mpp-encamino","mpp-pendinsumos","mpp-pendlog","mpp-cerrados"].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
+  });
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
-    var mios = items.filter(function(i){ return i.fields.Operador === currentUser; });
-    mios.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
-    document.getElementById("mis-count").textContent = mios.length ? "("+mios.length+")" : "";
-    if (!mios.length) {
-      container.innerHTML = '<div class="card" style="text-align:center;padding:48px 32px;"><div style="font-size:36px;margin-bottom:12px;">📋</div><div style="font-size:17px;font-weight:800;color:var(--sub);margin-bottom:16px;">No hay pedidos todavía</div><button class="btn btn-brand" onclick="subTab(\'operador\',\'nuevo\')">+ Nuevo pedido</button></div>';
-      return;
-    }
+    misPedidosData = items.filter(function(i){ return i.fields.Operador === currentUser; });
+    misPedidosData.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
+    document.getElementById("mis-count").textContent = misPedidosData.length ? "("+misPedidosData.length+")" : "";
+
     // Agrupar por NumeroPedido
-    var grupos = {};
-    var ordenGrupos = [];
-    mios.forEach(function(item) {
+    var grupos = {}, ordenGrupos = [];
+    misPedidosData.forEach(function(item) {
       var num = item.fields.NumeroPedido || item.id;
       if (!grupos[num]) { grupos[num] = []; ordenGrupos.push(num); }
       grupos[num].push(item);
     });
-    var html = "";
+
+    // Clasificar grupos por estado
+    var tabs = { encamino:[], pendinsumos:[], pendlog:[], cerrados:[] };
     ordenGrupos.forEach(function(nro) {
       var lineas = grupos[nro];
-      var f0 = lineas[0].fields;
-      var estado = f0.Estado || "Pendiente insumos";
-      var estadoBadge = badgeEstado(estado);
-      var editable     = estado === "Pendiente insumos" || estado === "Pendiente logística";
-      var enCamino     = estado === "En camino";
-      var listoRetirar = estado === "Listo para retirar";
-
-      html += '<div class="pedido-card">';
-      // Header del pedido
-      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">';
-      html += '<div>';
-      html += '<div style="font-weight:800;font-size:15px;">Pedido '+nro+'</div>';
-      html += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f0.Campo+(f0.Localidad?' <span style="color:var(--blue);font-weight:600;">'+f0.Localidad+'</span>':'')+' · 🌾 '+(f0.Campa_x00f1_a||f0.Campana||"")+'</div>';
-      html += '<div style="font-size:12px;color:var(--light);margin-top:1px;">'+new Date(f0.FechaPedido).toLocaleDateString("es-AR")+(f0.FechaEntrega?' · Entrega: '+f0.FechaEntrega:'')+'</div>';
-      html += '</div>';
-      html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">';
-      html += estadoBadge;
-      if (editable) {
-        html += '<div style="display:flex;gap:6px;margin-top:2px;">';
-        var idsStr = lineas.map(function(l){return l.id;}).join(",");
-        html += '<button class="btn btn-danger btn-sm" onclick="eliminarPedido(\''+idsStr+'\')">🗑 Eliminar</button>';
-        if (lineas.length === 1) {
-          var l0 = lineas[0]; var lf = l0.fields;
-          html += '<button class="btn btn-outline btn-sm" onclick="abrirEditarPedido(\''+l0.id+'\',\''+esc(lf.Campo||'')+'\',\''+lf.Cantidad+'\',\''+lf.FechaEntrega+'\',\''+esc(lf.Observaciones||'')+'\')">✏ Editar</button>';
-        }
-        html += '</div>';
-      }
-      html += '</div></div>';
-
-      // Líneas de productos
-      if (lineas.length > 1) {
-        html += '<div class="tbl-wrap" style="margin-bottom:8px;"><table>';
-        html += '<thead><tr>'+((enCamino||listoRetirar)?'<th style="width:28px;"></th>':'')+
-                '<th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+((enCamino||listoRetirar)?'<th></th>':'')+'</tr></thead><tbody>';
-        lineas.forEach(function(item) {
-          var f = item.fields;
-          html += '<tr>';
-          if (enCamino || listoRetirar) {
-            if (!f.NroRemito) html += '<td><input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+item.id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);"></td>';
-            else html += '<td></td>';
-          }
-          html += '<td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Cantidad+' '+(f.Unidad||'')+'</td><td style="font-size:12px;color:var(--light);">'+(f.Presentacion||'-')+'</td>';
-          if (enCamino || listoRetirar) {
-            if (!f.NroRemito) html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Remito</button></td>';
-            else html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</span></td>';
-          }
-          html += '</tr>';
-        });
-        html += '</tbody></table></div>';
-      } else {
-        var f = lineas[0].fields;
-        html += '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="font-size:11px;color:var(--light);">('+f.Presentacion+')</span>':'')+'</div>';
-      }
-
-      if (f0.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">📦 Origen: '+f0.OrigenAsignado+'</div>';
-
-      if (listoRetirar) {
-        html += '<div class="info-box" style="margin:10px 0;font-size:12px;background:#EDE9FE;border-color:#A78BFA;">';
-        html += '<b>🏃 Listo para retirar</b>';
-        if (f0.OrigenAsignado) html += ' · 📦 '+f0.OrigenAsignado;
-        if (f0.OrdenCompra) html += ' · OC: '+f0.OrdenCompra;
-        html += '</div>';
-        if (lineas.length === 1) {
-          var f = lineas[0].fields;
-          if (!f.NroRemito) {
-            html += '<div style="display:flex;align-items:center;gap:10px;margin-top:6px;">';
-            html += '<input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+lineas[0].id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);" title="Seleccionar para remito en lote">';
-            html += '<button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
-            html += '</div>';
-          } else html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
-        }
-      }
-      if (enCamino) {
-        if (f0.Chofer) {
-          html += '<div class="info-box" style="margin:10px 0;font-size:12px;">';
-          html += '<b>🚛 En camino</b> · Transportista: '+(f0.Transportista||'-')+' · Chofer: '+f0.Chofer+' · Patente: '+f0.Patente;
-          if (f0.PatenteAcoplado) html += ' / Acoplado: '+f0.PatenteAcoplado;
-          if (f0.Tarifa) html += ' · Tarifa: $'+Number(f0.Tarifa).toLocaleString("es-AR");
-          html += '</div>';
-        }
-        if (lineas.length === 1) {
-          var f = lineas[0].fields;
-          if (!f.NroRemito) {
-            html += '<div style="display:flex;align-items:center;gap:10px;margin-top:6px;">';
-            html += '<input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+lineas[0].id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);" title="Seleccionar para remito en lote">';
-            html += '<button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+lineas[0].id+'\',\''+esc(f.Insumo)+'\',\''+esc(f.Campo)+'\')">Cargar remito</button>';
-            html += '</div>';
-          } else html += '<div class="ok-box" style="margin-top:8px;font-size:12px;">✓ Remito: '+f.NroRemito+'</div>';
-        }
-      }
-      html += '</div>';
+      var estado = lineas[0].fields.Estado || "Pendiente insumos";
+      if (estado === "En camino" || estado === "Listo para retirar") tabs.encamino.push(nro);
+      else if (estado === "Pendiente insumos")                        tabs.pendinsumos.push(nro);
+      else if (estado === "Pendiente logística")                      tabs.pendlog.push(nro);
+      else if (estado === "Cerrado")                                  tabs.cerrados.push(nro);
     });
-    container.innerHTML = html;
+
+    // Actualizar contadores
+    var setCount = function(id, n) { var el=document.getElementById(id); if(el) el.textContent = n ? "("+n+")" : ""; };
+    setCount("cnt-encamino",   tabs.encamino.length);
+    setCount("cnt-pendinsumos",tabs.pendinsumos.length);
+    setCount("cnt-pendlog",    tabs.pendlog.length);
+    setCount("cnt-cerrados",   tabs.cerrados.length);
+
+    // Renderizar cada tab
+    var renderTab = function(containerId, nroList, tabTipo) {
+      var el = document.getElementById(containerId);
+      if (!el) return;
+      if (!nroList.length) {
+        el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);font-size:13px;">No hay pedidos en este estado.</div>';
+        return;
+      }
+      var html = "";
+      nroList.forEach(function(nro) {
+        html += renderGrupoPedido(nro, grupos[nro], tabTipo);
+      });
+      el.innerHTML = html;
+    };
+    renderTab("mpp-encamino",   tabs.encamino,   "encamino");
+    renderTab("mpp-pendinsumos",tabs.pendinsumos,"pendiente");
+    renderTab("mpp-pendlog",    tabs.pendlog,    "pendiente");
+    renderTab("mpp-cerrados",   tabs.cerrados,   "cerrado");
+
   } catch(e) {
-    container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
+    document.getElementById("mpp-"+misPedidosTab).innerHTML =
+      '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
   }
+}
+
+function renderGrupoPedido(nro, lineas, tabTipo) {
+  var f0 = lineas[0].fields;
+  var estado = f0.Estado || "Pendiente insumos";
+  var enCamino     = estado === "En camino" || estado === "Listo para retirar";
+  var esCerrado    = estado === "Cerrado";
+  var esPendiente  = !enCamino && !esCerrado;
+  var listoRetirar = estado === "Listo para retirar";
+
+  var html = '<div class="pedido-card">';
+
+  // Header
+  html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">';
+  html += '<div><div style="font-weight:800;font-size:15px;">Pedido '+nro+'</div>';
+  html += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f0.Campo+(f0.Localidad?' <span style="color:var(--blue);font-weight:600;">'+f0.Localidad+'</span>':'')+' · 🌾 '+(f0.Campa_x00f1_a||f0.Campana||"")+'</div>';
+  html += '<div style="font-size:12px;color:var(--light);margin-top:1px;">'+new Date(f0.FechaPedido).toLocaleDateString("es-AR")+(f0.FechaEntrega?' · Entrega: '+f0.FechaEntrega:'')+'</div></div>';
+  html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'+badgeEstado(estado);
+  if (esPendiente) {
+    html += '<div style="display:flex;gap:6px;margin-top:2px;">';
+    html += '<button class="btn btn-danger btn-sm" onclick="eliminarPedido(\''+lineas.map(function(l){return l.id;}).join(",")+'\')">🗑 Eliminar</button>';
+    if (lineas.length === 1) {
+      var l0=lineas[0]; var lf=l0.fields;
+      html += '<button class="btn btn-outline btn-sm" onclick="abrirEditarPedido(\''+l0.id+'\',\''+esc(lf.Campo||'')+'\',\''+lf.Cantidad+'\',\''+lf.FechaEntrega+'\',\''+esc(lf.Observaciones||'')+'\')">✏ Editar</button>';
+    }
+    html += '</div>';
+  }
+  if (esCerrado) {
+    // Botón ver comprobante — usa el primer item del grupo
+    html += '<button class="btn btn-outline btn-sm" style="margin-top:4px;" onclick="verComprobanteGrupo(\''+nro+'\')">📋 Ver comprobante</button>';
+  }
+  html += '</div></div>';
+
+  // Líneas de productos
+  if (lineas.length > 1) {
+    html += '<div class="tbl-wrap" style="margin-bottom:8px;"><table>';
+    html += '<thead><tr>'+(enCamino?'<th style="width:28px;"></th>':'')+
+            '<th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+(enCamino?'<th></th>':'')+
+            (esCerrado?'<th>Remito</th>':'')+'</tr></thead><tbody>';
+    lineas.forEach(function(item) {
+      var f=item.fields;
+      html += '<tr>';
+      if (enCamino) {
+        if (!f.NroRemito) html += '<td><input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+item.id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);"></td>';
+        else              html += '<td></td>';
+      }
+      html += '<td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Cantidad+' '+(f.Unidad||'')+'</td><td style="font-size:12px;color:var(--light);">'+(f.Presentacion||'-')+'</td>';
+      if (enCamino) {
+        if (!f.NroRemito) html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\')">Remito</button></td>';
+        else              html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</span></td>';
+      }
+      if (esCerrado) html += '<td style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  } else {
+    var f=lineas[0].fields;
+    html += '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">'+f.Insumo+
+            '<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+
+            (f.Presentacion?' <span style="font-size:11px;color:var(--light);">('+f.Presentacion+')</span>':'')+'</div>';
+    if (esCerrado && f.NroRemito) html += '<div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:6px;">✓ Remito: '+f.NroRemito+'</div>';
+  }
+
+  if (f0.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">📦 Origen: '+f0.OrigenAsignado+'</div>';
+
+  // Info camión
+  if (enCamino) {
+    if (listoRetirar) {
+      html += '<div class="info-box" style="margin:10px 0;font-size:12px;background:#EDE9FE;border-color:#A78BFA;"><b>🏃 Listo para retirar</b>';
+      if (f0.OrigenAsignado) html += ' · 📦 '+f0.OrigenAsignado;
+      html += '</div>';
+    } else if (f0.Chofer) {
+      html += '<div class="info-box" style="margin:10px 0;font-size:12px;"><b>🚛 En camino</b> · Transportista: '+(f0.Transportista||'-')+' · Chofer: '+f0.Chofer+' · Patente: '+f0.Patente;
+      if (f0.PatenteAcoplado) html += ' / Acoplado: '+f0.PatenteAcoplado;
+      if (f0.Tarifa) html += ' · Tarifa: $'+Number(f0.Tarifa).toLocaleString("es-AR");
+      html += '</div>';
+    }
+    // Para pedidos de 1 línea sin remito todavía
+    if (lineas.length === 1 && !lineas[0].fields.NroRemito) {
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-top:6px;">';
+      html += '<input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+lineas[0].id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);">';
+      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+lineas[0].id+'\')">Cargar remito</button>';
+      html += '</div>';
+    }
+  }
+
+  html += '</div>';
+  return html;
 }
 
 async function eliminarPedido(idsStr) {
@@ -1821,9 +1879,11 @@ function parsearCuboOC(ws) {
     var prov = String(row["Proveedor"]||"").trim();
     var ref  = String(row["Referencia"]||"").trim(); // col J
     if (!ins || !prov) return;
+    var camp = String(row["Campa\u00f1as"]||row["Campanas"]||row["Campa\u00f1a"]||row["Campana"]||"").trim();
     var key = prov + "||" + ins + "||" + ref;
-    if (!mapa[key]) mapa[key] = { proveedor:prov, insumo:ins, tipo:tipo, referencia:ref, pendiente:0 };
+    if (!mapa[key]) mapa[key] = { proveedor:prov, insumo:ins, tipo:tipo, referencia:ref, pendiente:0, campana:camp };
     mapa[key].pendiente += pend;
+    if (camp && !mapa[key].campana) mapa[key].campana = camp;
   });
   return Object.values(mapa)
     .filter(function(r){ return r.pendiente > 0; })
@@ -2406,13 +2466,27 @@ async function confirmarOrigen() {
         .filter(Boolean).join(",");
     }
 
+    // Campaña OC: tomar de los items OC seleccionados (únicas, unidas con coma)
+    var campanaOC = "";
+    if (selectedOCItems.length) {
+      var camps = [];
+      selectedOCItems.forEach(function(s){
+        var m = _origenMatchOC[s.idx];
+        var c = m && m.r && m.r.campana ? m.r.campana : "";
+        if (c && camps.indexOf(c) === -1) camps.push(c);
+      });
+      campanaOC = camps.join(", ");
+    }
+
     // 3. Guardar en SP
-    await spPatch(CONFIG.lists.pedidos, pedidoOrigenActual.spId, {
+    var patchFields = {
       OrigenAsignado: origen,
       NotaInsumos:    document.getElementById("inp-nota-origen").value.trim(),
       Estado:         estadoDestino,
       OrdenCompra:    ordenCompra,
-    });
+    };
+    if (campanaOC) patchFields.CampanaOC = campanaOC;
+    await spPatch(CONFIG.lists.pedidos, pedidoOrigenActual.spId, patchFields);
 
     // Albor (existencia) no se toca — Disponible = Albor − Pendiente de remito (calculado)
     selectedStockItem = null;
@@ -3095,7 +3169,20 @@ async function exportarXLSXLogistica() {
 // REMITO (Operador)
 // ═══════════════════════════════════════════════════════════════
 // ── Selección múltiple de remitos ──────────────────────────────
-var selRemitoItems = {}; // { spId: true }
+var selRemitoItems  = {}; // { spId: true }
+var misPedidosData  = []; // todos los items del operador, cargados en cargarMisPedidos
+var misPedidosTab   = "encamino";
+var remitoItemFields = null; // fields del item actual en modal-remito
+
+function switchMisPedTab(tab) {
+  misPedidosTab = tab;
+  ["encamino","pendinsumos","pendlog","cerrados"].forEach(function(t) {
+    document.getElementById("mpp-"+t).style.display       = t===tab ? "" : "none";
+    document.getElementById("mppill-"+t).className        = t===tab ? "sub-pill on" : "sub-pill off";
+  });
+  // ocultar barra de remito al cambiar de tab
+  limpiarSelRemito();
+}
 function toggleRemitoItem(spId, cb) {
   if (cb.checked) selRemitoItems[spId] = true;
   else delete selRemitoItems[spId];
@@ -3130,32 +3217,117 @@ async function aplicarRemitoLote() {
 }
 
 var remitoSpId = null;
-function abrirModalRemito(spId, insumo, campo) {
+function abrirModalRemito(spId) {
   remitoSpId = spId;
-  document.getElementById("modal-remito-info").innerHTML = '<b>'+insumo+'</b> · 📍 '+campo;
+  var item = misPedidosData.find(function(i){ return i.id === spId; });
+  remitoItemFields = item ? item.fields : null;
+  var f = remitoItemFields || {};
+  document.getElementById("modal-remito-info").innerHTML = '<b>'+(f.Insumo||'')+'</b> · 📍 '+(f.Campo||'')+(f.Localidad?' <span style="color:var(--blue);font-weight:600;">'+f.Localidad+'</span>':'');
   document.getElementById("inp-remito").value="";
   document.getElementById("modal-remito").classList.add("open");
 }
 async function guardarRemito() {
   var remito = document.getElementById("inp-remito").value.trim();
   if (!remito||!remitoSpId) return;
+  var savedFields = remitoItemFields; // capturar antes de cerrar
   try {
     var fields = { NroRemito: remito, Estado: "Cerrado" };
-    for (var attempt = 0; attempt < 8; attempt++) {
-      var r = await fetch(
-        "https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+CONFIG.lists.pedidos+"/items/"+remitoSpId+"/fields",
-        { method:"PATCH", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify(fields) }
-      );
-      if (r.ok) break;
-      var errBody = await r.json().catch(function(){return{};});
-      var badField = errBody.error&&errBody.error.message ? errBody.error.message.match(/Field '([^']+)' is not recognized/) : null;
-      if (badField) { delete fields[badField[1]]; }
-      else { throw new Error(errBody.error ? errBody.error.message : "PATCH "+r.status); }
-    }
+    await spPatch(CONFIG.lists.pedidos, remitoSpId, fields);
     cerrarModal("modal-remito");
     showToast("Remito registrado. Pedido cerrado ✓","ok");
     cargarMisPedidos();
+    if (savedFields) mostrarComprobante([savedFields], remito);
   } catch(e){ showToast("Error: "+e.message,"error"); }
+}
+
+async function aplicarRemitoLote() {
+  var remito = document.getElementById("inp-remito-lote").value.trim();
+  if (!remito) { showToast("Ingresá el número de remito","error"); return; }
+  var ids = Object.keys(selRemitoItems);
+  if (!ids.length) return;
+  // Capturar fields de los items seleccionados antes de patchear
+  var itemsSeleccionados = ids.map(function(id){
+    var it = misPedidosData.find(function(i){ return i.id===id; });
+    return it ? it.fields : null;
+  }).filter(Boolean);
+  var btn = document.querySelector("#bar-remito .btn-brand");
+  btn.disabled = true; btn.textContent = "Guardando...";
+  try {
+    for (var i = 0; i < ids.length; i++) {
+      await spPatch(CONFIG.lists.pedidos, ids[i], { NroRemito: remito, Estado: "Cerrado" });
+    }
+    limpiarSelRemito();
+    document.getElementById("inp-remito-lote").value = "";
+    showToast("Remito aplicado a "+ids.length+" ítem"+(ids.length===1?"":"s")+" ✓","ok");
+    cargarMisPedidos();
+    if (itemsSeleccionados.length) mostrarComprobante(itemsSeleccionados, remito);
+  } catch(e) { showToast("Error: "+e.message,"error"); }
+  btn.disabled = false; btn.textContent = "✓ Aplicar remito";
+}
+
+function verComprobanteGrupo(nroPedido) {
+  var grupo = misPedidosData.filter(function(i){ return (i.fields.NumeroPedido||i.id) === nroPedido; });
+  if (!grupo.length) return;
+  var remito = grupo[0].fields.NroRemito || "-";
+  mostrarComprobante(grupo.map(function(i){ return i.fields; }), remito);
+}
+
+function mostrarComprobante(fieldsArr, remito) {
+  var f0 = fieldsArr[0];
+  var ocStr = String(f0.OrdenCompra||"");
+  var esPropio = ocStr.startsWith("PROPIO");
+  var tipo = esPropio ? "Transferencia de mercadería" : "Ingreso de mercadería";
+
+  // Origen / proveedor
+  var origen = f0.OrigenAsignado || "-";
+
+  // OC refs (formato "ref:qty,ref:qty")
+  var ocRefs = [];
+  if (!esPropio && ocStr) {
+    ocStr.split(",").forEach(function(part){
+      var ref = part.split(":")[0].trim();
+      if (ref && ocRefs.indexOf(ref)===-1) ocRefs.push(ref);
+    });
+  }
+
+  // Campaña: "26/27" para stock propio, sino la del pedido
+  var campana = esPropio ? "26/27" : (f0.Campa_x00f1_a || f0.Campana || "-");
+
+  // Filas del card
+  var rows = [
+    { label:"Tipo de comprobante", value:'<span style="font-weight:800;color:'+(esPropio?"var(--blue)":"var(--green)")+';">'+tipo+'</span>' },
+    { label:"N° de comprobante",   value:'<b>'+remito+'</b>' },
+    { label:"Pto. stock destino",  value:(f0.Campo||"-")+(f0.Localidad?' <span style="color:var(--blue);font-size:11px;font-weight:700;">('+f0.Localidad+')</span>':"") },
+    { label:"Origen / Proveedor",  value:origen },
+    { label:"Campaña OC",           value: esPropio ? "26/27 (stock propio)" : (f0.CampanaOC || campana || "-") },
+    { label:"Transportista",       value:(f0.Transportista||"-")+(f0.Chofer?' · Chofer: '+f0.Chofer:"") },
+  ];
+  if (ocRefs.length) rows.push({ label:"Orden de Compra", value:ocRefs.join(", ") });
+
+  var html = '<div style="background:var(--bg);border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;">';
+  rows.forEach(function(r,i){
+    html += '<div style="display:flex;align-items:baseline;padding:9px 14px;'+(i>0?'border-top:1px solid var(--border);':'')+'">'
+      +'<div style="width:150px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);padding-right:10px;">'+r.label+'</div>'
+      +'<div style="font-size:13px;">'+r.value+'</div>'
+      +'</div>';
+  });
+  html += '</div>';
+
+  // Insumos
+  html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);margin-bottom:8px;">Insumos</div>';
+  html += '<div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);overflow:hidden;">';
+  fieldsArr.forEach(function(f,i){
+    html += '<div style="display:flex;align-items:center;padding:10px 14px;'+(i>0?'border-top:1px solid var(--border);':'')+'">'
+      +'<div style="flex:1;font-weight:700;font-size:13px;">'+(f.Insumo||"-")+'</div>'
+      +'<div style="font-weight:700;color:var(--blue);font-size:13px;">'+(f.Cantidad||"")+" "+(f.Unidad||"")+'</div>'
+      +(f.Presentacion?'<div style="font-size:11px;color:var(--sub);margin-left:10px;">'+(f.Presentacion)+'</div>':"")
+      +'</div>';
+  });
+  html += '</div>';
+
+  document.getElementById("comp-tipo-badge").textContent = tipo;
+  document.getElementById("comp-body").innerHTML = html;
+  document.getElementById("modal-comprobante").classList.add("open");
 }
 
 // ═══════════════════════════════════════════════════════════════
