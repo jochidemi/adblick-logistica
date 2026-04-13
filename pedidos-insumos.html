@@ -149,6 +149,7 @@ textarea{resize:vertical;min-height:72px;}
 .combo-item:hover,.combo-item.sel{background:var(--brand-light);}
 .combo-item.sel{font-weight:700;}
 .combo-item-sub{font-size:11px;color:var(--light);margin-top:1px;}
+.combo-group-header{padding:5px 14px 3px;font-size:11px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.04em;background:var(--bg);border-top:1px solid var(--border);pointer-events:none;user-select:none;}
 .combo-empty{padding:14px;text-align:center;color:var(--light);font-size:13px;}
 
 /* ── TIPO CHIPS ── */
@@ -902,6 +903,7 @@ var CONFIG = {
     padronTransp:    "a5e2cb66-6e75-4b06-a750-26e885af12d4",
     padronOperadores:"17a13b1e-217b-40cc-831f-1ea48c8a33ce",
     camiones:        "Camiones",
+    padronDestinos:  "6113f5de-e124-4f60-bc6e-69e9a37773f2",
   },
   redirectUri: "https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html",
 };
@@ -936,7 +938,20 @@ function renderNav(rol) {
 }
 
 // Padrones (en memoria)
-var padronCampos = [], padronInsumos = [], padronTransp = [], padronOperadores = [];
+var padronCampos = [], padronInsumos = [], padronTransp = [], padronOperadores = [], padronDestinos = [];
+
+function getCamposYDestinos() {
+  var result = [];
+  if (padronCampos.length) {
+    result.push({ _group: true, _label: "🌾 Campos" });
+    padronCampos.forEach(function(c){ result.push({ nombre: c, tipo: "campo" }); });
+  }
+  if (padronDestinos.length) {
+    result.push({ _group: true, _label: "🏭 Puertos / Plantas / Molinos" });
+    padronDestinos.forEach(function(d){ result.push({ nombre: d, tipo: "destino" }); });
+  }
+  return result;
+}
 var camposLocalidad = {}; // { nombreCampo: localidad }
 
 // Stock (en memoria sesión)
@@ -1152,12 +1167,17 @@ async function loadAllMasterData() {
     setLoadingText("Cargando operadores...");
     var ops = await spGet(CONFIG.lists.padronOperadores);
     await sleep(300);
+    setLoadingText("Cargando destinos...");
+    var dests = await spGet(CONFIG.lists.padronDestinos).catch(function(){ return []; });
+    await sleep(300);
     setLoadingText("Cargando stock...");
     var snap = await spGet(CONFIG.lists.stockSnapshot, "");
     padronCampos   = campos.map(function(i){ return (i.fields.NombreCampo||i.fields.Title||"").trim(); }).filter(Boolean).sort();
     camposLocalidad = {};
     campos.forEach(function(i){ var n=(i.fields.NombreCampo||i.fields.Title||"").trim(); if(n) camposLocalidad[n]=(i.fields.Localidad||"").trim(); });
+    padronDestinos = dests.map(function(i){ return (i.fields.Title||"").trim(); }).filter(Boolean).sort();
     console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0,3));
+    console.log("Destinos cargados:", padronDestinos.length, padronDestinos.slice(0,3));
     padronInsumos  = insumos.map(function(i){ 
       // Categoria en SP puede venir como "Tipo.1" del Excel (SP lo encodea)
       var cat = i.fields.Categoria || i.fields.TipoInsumo || "";
@@ -1272,10 +1292,42 @@ function buildCombo(containerId, items, value, placeholder, onChange, renderItem
   list.className = "combo-list"; drop.appendChild(list);
 
   function renderList(q) {
-    var filtered = q ? items.filter(function(i){ var s=typeof i==="string"?i:(i.nombre||i); return s.toLowerCase().includes(q.toLowerCase()); }) : items;
+    var filtered = q ? items.filter(function(i){
+      if (i && i._group) return false; // never filter out group headers by search — re-added contextually below
+      var s = typeof i==="string" ? i : (i.nombre||"");
+      return s.toLowerCase().includes(q.toLowerCase());
+    }) : items;
+    // When searching, remove orphan group headers (headers with no following item)
+    if (q) {
+      var withHeaders = [];
+      for (var gi=0; gi<items.length; gi++) {
+        if (items[gi] && items[gi]._group) {
+          // include header only if next non-group item matches
+          var hasChild = false;
+          for (var gj=gi+1; gj<items.length; gj++) {
+            if (items[gj] && items[gj]._group) break;
+            var gs = typeof items[gj]==="string" ? items[gj] : (items[gj].nombre||"");
+            if (gs.toLowerCase().includes(q.toLowerCase())) { hasChild=true; break; }
+          }
+          if (hasChild) withHeaders.push(items[gi]);
+        } else {
+          var ms = typeof items[gi]==="string" ? items[gi] : (items[gi].nombre||"");
+          if (ms.toLowerCase().includes(q.toLowerCase())) withHeaders.push(items[gi]);
+        }
+      }
+      filtered = withHeaders;
+    }
     list.innerHTML = "";
-    if (!filtered.length) { list.innerHTML = '<div class="combo-empty">Sin resultados</div>'; return; }
+    var nonGroupCount = filtered.filter(function(i){ return !(i&&i._group); }).length;
+    if (!nonGroupCount) { list.innerHTML = '<div class="combo-empty">Sin resultados</div>'; return; }
     filtered.forEach(function(item) {
+      if (item && item._group) {
+        var hdr = document.createElement("div");
+        hdr.className = "combo-group-header";
+        hdr.textContent = item._label;
+        list.appendChild(hdr);
+        return;
+      }
       var key = typeof item === "string" ? item : item.nombre;
       var div = document.createElement("div");
       div.className = "combo-item" + (value===key?" sel":"");
@@ -1313,12 +1365,12 @@ function initOperadorForm() {
   buildCombo("combo-campaña", CAMPAÑAS, formState.campaña, "Campaña", function(v){
     formState.campaña = v; buildCombo("combo-campaña", CAMPAÑAS, v, "Campaña", arguments.callee);
   });
-  buildCombo("combo-campo", padronCampos, formState.campo, "Buscar campo...", function(v){
+  buildCombo("combo-campo", getCamposYDestinos(), formState.campo, "Buscar campo...", function(v){
     formState.campo = v;
     formState.localidad = camposLocalidad[v] || "";
     var hint = document.getElementById("campo-localidad-hint");
     if (hint) hint.textContent = formState.localidad ? "📍 " + formState.localidad : "";
-    buildCombo("combo-campo", padronCampos, v, "Buscar campo...", arguments.callee);
+    buildCombo("combo-campo", getCamposYDestinos(), v, "Buscar campo...", arguments.callee);
     renderProgress();
   });
   var today = new Date().toISOString().split("T")[0];
@@ -1717,8 +1769,8 @@ async function eliminarPedido(idsStr) {
 
 function abrirEditarPedido(spId, campo, cantidad, fechaEntrega, obs) {
   editandoPedidoSpId = spId;
-  buildCombo("combo-campo-edit", padronCampos, campo, "Buscar campo...", function(v){
-    buildCombo("combo-campo-edit", padronCampos, v, "Buscar campo...", arguments.callee);
+  buildCombo("combo-campo-edit", getCamposYDestinos(), campo, "Buscar campo...", function(v){
+    buildCombo("combo-campo-edit", getCamposYDestinos(), v, "Buscar campo...", arguments.callee);
     var hint = document.getElementById("campo-edit-localidad-hint");
     if (hint) hint.textContent = camposLocalidad[v] ? "📍 " + camposLocalidad[v] : "";
   });
@@ -3348,10 +3400,11 @@ async function limpiarPadron(listId, event) {
 
 function renderPadronesPanel() {
   var paneles = [
-    { id:"campos",   titulo:"Campos / Destinos", desc:"Columnas requeridas: <b>Campo</b> (nombre del campo) y <b>Localidad</b>.", listId:CONFIG.lists.padronCampos, count:padronCampos.length },
-    { id:"insumos",  titulo:"Insumos",           desc:"Excel de Albor. Columnas: Categoría (col D), Tipo.1, Nombre, Presentación.", listId:CONFIG.lists.padronInsumos, count:padronInsumos.length },
-    { id:"transp",   titulo:"Transportistas",    desc:"Excel de Albor. Columnas leídas: Nombre, Razón Social, CUIT.", listId:CONFIG.lists.padronTransp, count:padronTransp.length },
-    { id:"ops",      titulo:"Operadores",        desc:"Lista de operadores con email Microsoft para login automático. Columnas: Title (nombre), Iniciales, Email.", listId:CONFIG.lists.padronOperadores, count:padronOperadores.length },
+    { id:"campos",   titulo:"Campos",                      desc:"Columnas requeridas: <b>Campo</b> (nombre del campo) y <b>Localidad</b>.", listId:CONFIG.lists.padronCampos, count:padronCampos.length },
+    { id:"destinos", titulo:"Puertos / Plantas / Molinos", desc:"Columna requerida: <b>Title</b> (nombre del destino).", listId:CONFIG.lists.padronDestinos, count:padronDestinos.length },
+    { id:"insumos",  titulo:"Insumos",                     desc:"Excel de Albor. Columnas: Categoría (col D), Tipo.1, Nombre, Presentación.", listId:CONFIG.lists.padronInsumos, count:padronInsumos.length },
+    { id:"transp",   titulo:"Transportistas",              desc:"Excel de Albor. Columnas leídas: Nombre, Razón Social, CUIT.", listId:CONFIG.lists.padronTransp, count:padronTransp.length },
+    { id:"ops",      titulo:"Operadores",                  desc:"Lista de operadores con email Microsoft para login automático. Columnas: Title (nombre), Iniciales, Email.", listId:CONFIG.lists.padronOperadores, count:padronOperadores.length },
   ];
   var html="";
   paneles.forEach(function(p){
@@ -3472,7 +3525,8 @@ function mapPadronRows(padId, rows) {
       return v ? {Title:v.substring(0,255), Localidad:loc} : null;
     }).filter(Boolean);
   }
-  if (padId==="ops")    return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
+  if (padId==="ops")      return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
+  if (padId==="destinos") return rows.map(function(r){ var v=String(r["Title"]||r["Nombre"]||r["Destino"]||"").trim(); return v?{Title:v.substring(0,255)}:null; }).filter(Boolean);
   return [];
 }
 
