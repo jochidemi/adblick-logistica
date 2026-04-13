@@ -191,6 +191,30 @@ input[type=number] { -moz-appearance: textfield; }
 .toast.error { background: #c0392b; }
 .toast.info { background: #1a73e8; }
 
+/* ── MODAL RESUMEN ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  z-index: 500; align-items: center; justify-content: center; padding: 16px;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--white); border-radius: 14px; max-width: 680px; width: 100%;
+  max-height: 90vh; overflow-y: auto; padding: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.modal-title { font-size: 17px; font-weight: 800; color: var(--dark); margin-bottom: 4px; }
+.modal-sub { font-size: 13px; color: var(--gray); margin-bottom: 18px; }
+.resumen-campo-block {
+  border: 1.5px solid var(--border); border-radius: 9px; padding: 14px; margin-bottom: 12px;
+}
+.resumen-campo-nombre { font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+.resumen-tag { display: inline-block; background: var(--yellow-light); color: #7a6000;
+  border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 600; margin-right: 6px; margin-bottom: 6px; }
+.resumen-total-row { background: #f9f9f9; border-radius: 6px; padding: 8px 12px;
+  font-size: 12px; color: var(--gray); margin-top: 8px; }
+.modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; padding-top: 16px;
+  border-top: 1px solid var(--border); }
+
 /* ── MISC ── */
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
 .section-header h3 { font-size: 14px; font-weight: 700; color: var(--dark); }
@@ -217,6 +241,20 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 </head>
 <body>
 
+<!-- MODAL RESUMEN RECETA -->
+<div class="modal-overlay" id="modalResumen">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitulo">Receta generada</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <div id="modalCuerpo"></div>
+    <div class="modal-actions">
+      <button class="btn btn-green" id="btnEnviarInsumos" onclick="enviarAInsumos()">Enviar pedido a App Insumos</button>
+      <a class="btn btn-edit" href="https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html" target="_blank">Ir a App Insumos →</a>
+      <button class="btn btn-secondary" onclick="cerrarResumenYLimpiar()">Nueva receta</button>
+    </div>
+  </div>
+</div>
+
 <div class="header">
   <div class="header-title">ADBlick Granos – Recetario Agronómico</div>
   <div class="header-user" id="headerUser"></div>
@@ -232,7 +270,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div class="tab active"  onclick="switchTab('nueva')">Nueva Receta</div>
     <div class="tab"         onclick="switchTab('mis')">Mis Recetas</div>
     <div class="tab"         onclick="switchTab('historial')">Historial</div>
-    <div class="tab"         onclick="switchTab('datos')">Datos Maestros</div>
+    <div class="tab" id="tabDatos" onclick="switchTab('datos')" style="display:none;">Datos Maestros</div>
   </div>
 
   <!-- ═══════════ TAB: NUEVA RECETA ═══════════ -->
@@ -297,9 +335,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         <div class="form-row">
           <div class="field">
             <label>Responsable</label>
-            <select id="selResponsable" style="min-width:200px;">
-              <option value="">-- Seleccionar --</option>
-            </select>
+            <div class="field-value" id="lblResponsable" style="min-width:200px;">-</div>
           </div>
           <div class="field">
             <label>Estadío</label>
@@ -521,8 +557,8 @@ var CONFIG = {
   tenantId:         "576e8544-afbe-423a-94a8-94fb80aaffe3",
   sharepointSiteId: "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
 
-  // ── Lista con campos, lotes, zonas, etc. (PadronCampos)
-  camposListId:     "49f77686-4740-4fc5-9bcd-b53bf0fe3492",
+  // ── Lista campos+lotes+cultivos (DB_Campos_Lotes) — columnas: Title, Lote, Zona, Hectareas, Localidad, Partido, Cultivo
+  camposListId:     "166c9f90-fde0-4360-9125-e523c64f5492",
 
   // ── Lista de productos fitosanitarios/fertilizantes (PadronInsumos)
   productosListId:  "3fd32d83-446d-4bd8-bde1-af87e0fd95d6",
@@ -532,6 +568,12 @@ var CONFIG = {
 
   // ── Lista para guardar recetas (RecetasAgronomicasDB)
   recetasListId:    "864c7935-6592-4c0b-b73b-4ed39de9ac4f",
+
+  // ── Lista de operadores/roles (PadronOperadores) — columna: Title (email/nombre), Rol ("Administrador")
+  operadoresListId: "17a13b1e-217b-40cc-831f-1ea48c8a33ce",
+
+  // ── Lista de pedidos de la App Insumos (para integración directa)
+  insumosListId:    "9cc7994c-eab4-4a35-bfc5-fed35f37e22c",
 
   redirectUri:      "https://jochidemi.github.io/adblick-logistica/Recetario_UF.html"
 };
@@ -556,10 +598,12 @@ var ESTADIOS = [
 
 var DIAGNOSTICOS = ["Malezas","Insectos","Ácaros","Bacteriosis","Fungosis","Deficiencia Nutricional"];
 
+var OBS_DEFAULT = "Se recomienda aplicar con las siguientes condiciones: humedad relativa mayor al 50 %; temperatura no mayor a 25 °C; velocidad del viento entre 5 y 15 km/h; aplicar siempre con la dirección del viento contraria a zonas sensibles (viviendas, explotaciones productivas, hospitales, escuelas, etc.), cursos de agua y cultivos sensibles. Evitar la aplicación cuando se prevean precipitaciones dentro de las 4 horas posteriores al tratamiento. Leer completamente la etiqueta del producto antes de su uso y respetar las dosis, momentos y condiciones indicadas en la presente receta, la cual es válida únicamente para el lote y cultivo especificados. Utilizar los equipos de protección personal (EPP) indicados en la etiqueta: mameluco, guantes, antiparras y mascarilla con filtro apropiado. No reutilizar los envases vacíos; realizar el triple lavado y disponerlos conforme a la normativa vigente. En caso de derrame accidental o malestar del operario, consultar la ficha de seguridad del producto (SDS) y comunicarse con el centro toxicológico más cercano. Esta receta no puede ser modificada sin autorización del profesional firmante.";
+
 // ════════════════════════════════════════════════════════════
 //  ESTADO GLOBAL
 // ════════════════════════════════════════════════════════════
-var msalInstance = null, currentAccount = null, graphToken = null, currentUser = "";
+var msalInstance = null, currentAccount = null, graphToken = null, currentUser = "", isAdmin = false;
 
 // Datos maestros cargados de SharePoint
 var CAMPOS_MAP = {};    // { campo: [{lote, zona, cultivo, has, localidad, partido}] }
@@ -605,24 +649,40 @@ async function acquireTokenSilent() {
 function showApp() {
   currentUser = currentAccount ? (currentAccount.name || currentAccount.username) : "Usuario";
   document.getElementById("headerUser").textContent = currentUser;
+  document.getElementById("lblResponsable").textContent = currentUser;
   document.getElementById("loadingScreen").style.display = "none";
   document.getElementById("appContent").style.display = "block";
   initStaticSelects();
+  document.getElementById("txtObservaciones").value = OBS_DEFAULT;
   loadMasterData();
+  checkAdmin();
+}
+
+async function checkAdmin() {
+  try {
+    if (!CONFIG.operadoresListId || CONFIG.operadoresListId.startsWith("TODO")) return;
+    var items = await fetchAllFromList(CONFIG.operadoresListId);
+    var userLower = currentUser.toLowerCase();
+    var match = items.find(function(i) {
+      var f = i.fields || {};
+      var nombre = (f.Title || f.Nombre || f.Email || "").toLowerCase();
+      var rol = (f.Rol || f.Role || "").toLowerCase();
+      return (nombre === userLower || userLower.includes(nombre) || nombre.includes(userLower))
+             && rol === "administrador";
+    });
+    isAdmin = !!match;
+  } catch(e) {
+    isAdmin = false;
+  }
+  document.getElementById("tabDatos").style.display = isAdmin ? "" : "none";
 }
 
 // ════════════════════════════════════════════════════════════
 //  DATOS ESTÁTICOS (responsables, estadios, dx)
 // ════════════════════════════════════════════════════════════
 function initStaticSelects() {
-  fillSelect("selResponsable", RESPONSABLES);
   fillSelect("selEstadio", ESTADIOS);
   fillSelect("selDx", DIAGNOSTICOS);
-  // Filtros historial
-  RESPONSABLES.forEach(function(r) {
-    var opt = document.createElement("option"); opt.value = r; opt.textContent = r;
-    document.getElementById("filtResponsable").appendChild(opt);
-  });
 }
 
 function fillSelect(id, arr) {
@@ -651,14 +711,14 @@ async function loadCampos() {
   CAMPOS_MAP = {};
   items.forEach(function(item) {
     var f = item.fields || {};
-    var campo = (f.NombreCampo || f.Title || "").trim();
+    var campo = (f.Campo || f.Title || f.NombreCampo || "").trim();
     if (!campo) return;
     if (!CAMPOS_MAP[campo]) CAMPOS_MAP[campo] = [];
     CAMPOS_MAP[campo].push({
       lote:      (f.Lote || "").trim(),
       zona:      (f.Zona || "").trim(),
       cultivo:   (f.Cultivo || "").trim(),
-      has:       parseFloat(f.Hectareas || 0) || 0,
+      has:       parseFloat(f.Hectareas || f.Hect_x00e1_reas || f["Hectáreas"] || 0) || 0,
       localidad: (f.Localidad || "").trim(),
       partido:   (f.Partido || "").trim()
     });
@@ -945,7 +1005,6 @@ function renderProductos() {
 async function generarReceta() {
   // Validaciones
   if (lotesSeleccionados.length === 0) { showToast("Seleccioná al menos un lote", "error"); return; }
-  if (!document.getElementById("selResponsable").value) { showToast("Seleccioná un responsable", "error"); return; }
   if (!document.getElementById("selEstadio").value)     { showToast("Seleccioná el estadío", "error"); return; }
   if (!document.getElementById("selDx").value)          { showToast("Seleccioná el diagnóstico", "error"); return; }
   if (productosReceta.length === 0) { showToast("Agregá al menos un producto", "error"); return; }
@@ -957,7 +1016,7 @@ async function generarReceta() {
     // Número de receta (secuencial)
     var nroReceta = await getNextNroReceta();
 
-    var responsable = document.getElementById("selResponsable").value;
+    var responsable = currentUser;
     var estadio     = document.getElementById("selEstadio").value;
     var diagnostico = document.getElementById("selDx").value;
     var contratista = document.getElementById("selContratista").value;
@@ -977,8 +1036,8 @@ async function generarReceta() {
 
       var fields = {
         Title:          nroReceta + (camposUnicos.length > 1 ? "-" + (ci+1) : ""),
-        FechaCreacion:  new Date().toLocaleDateString("es-AR"),
-        FechaAplicacion: fechaApl ? new Date(fechaApl).toLocaleDateString("es-AR") : "",
+        FechaCreacion:  new Date().toISOString(),
+        FechaAplicacion: fechaApl ? new Date(fechaApl + "T00:00:00").toISOString() : null,
         Usuario:        currentUser,
         Responsable:    responsable,
         Campo:          campo,
@@ -1002,11 +1061,10 @@ async function generarReceta() {
           headers: { "Authorization": "Bearer " + graphToken, "Content-Type": "application/json" },
           body: JSON.stringify({ fields: fields }) }
       );
-      if (!r.ok) throw new Error("Error " + r.status);
+      if (!r.ok) { var errTxt = await r.text(); throw new Error("Error " + r.status + ": " + errTxt); }
     }
 
-    showToast("Receta " + nroReceta + " generada correctamente ✓", "success");
-    limpiarFormulario();
+    mostrarResumen(nroReceta, camposUnicos, lotesSeleccionados, productosReceta);
 
   } catch(e) {
     showToast("Error al guardar: " + e.message, "error");
@@ -1029,6 +1087,104 @@ async function getNextNroReceta() {
   }
 }
 
+// ════════════════════════════════════════════════════════════
+//  MODAL RESUMEN + INTEGRACIÓN APP INSUMOS
+// ════════════════════════════════════════════════════════════
+var _resumenData = null; // guarda datos para enviarAInsumos
+
+function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
+  // Calcular totales por campo
+  var bloques = camposUnicos.map(function(campo) {
+    var lotesDelCampo = lotes.filter(function(l){ return l.campo === campo; });
+    var ha = lotesDelCampo.reduce(function(s,l){ return s + (l.has||0); }, 0);
+    var primeraFila = lotesDelCampo[0] || {};
+    var items = productos.map(function(p) {
+      var total = Math.round(p.dosis * ha * 100) / 100;
+      return { nombre: p.nombre, dosis: p.dosis, unidad: p.unidad, categoria: p.categoria, total: total };
+    });
+    return { campo: campo, ha: ha, lotes: lotesDelCampo, localidad: primeraFila.localidad||"", partido: primeraFila.partido||"", items: items };
+  });
+  _resumenData = { nroReceta: nroReceta, bloques: bloques };
+
+  document.getElementById("modalTitulo").textContent = "Receta " + nroReceta + " generada ✓";
+  var totalHa = bloques.reduce(function(s,b){ return s + b.ha; }, 0);
+  document.getElementById("modalSub").textContent =
+    camposUnicos.length + " campo(s) · " + lotes.length + " lote(s) · " + totalHa.toFixed(1) + " ha totales";
+
+  var html = "";
+  bloques.forEach(function(b) {
+    var lotesNombres = b.lotes.map(function(l){ return l.lote; }).join(", ");
+    html += "<div class='resumen-campo-block'>";
+    html += "<div class='resumen-campo-nombre'>" + esc(b.campo) + "</div>";
+    html += "<span class='resumen-tag'>" + b.ha.toFixed(1) + " ha</span>";
+    if (b.localidad) html += "<span class='resumen-tag'>" + esc(b.localidad) + "</span>";
+    html += "<div style='font-size:11px;color:var(--gray);margin:6px 0 10px;'>Lotes: " + esc(lotesNombres) + "</div>";
+    html += "<div class='table-wrapper'><table class='data-table'>";
+    html += "<thead><tr><th>Producto</th><th>Categoría</th><th class='center'>Dosis</th><th class='center'>Total (" + b.ha.toFixed(1) + " ha)</th></tr></thead><tbody>";
+    b.items.forEach(function(it) {
+      html += "<tr><td><strong>" + esc(it.nombre) + "</strong></td><td>" + esc(it.categoria||"-") + "</td>" +
+              "<td class='center'>" + it.dosis + " " + esc(it.unidad||"") + "/ha</td>" +
+              "<td class='center'><strong>" + it.total + " " + esc(it.unidad||"") + "</strong></td></tr>";
+    });
+    html += "</tbody></table></div></div>";
+  });
+  document.getElementById("modalCuerpo").innerHTML = html;
+
+  var btnEnv = document.getElementById("btnEnviarInsumos");
+  btnEnv.disabled = false;
+  btnEnv.textContent = "Enviar pedido a App Insumos";
+
+  document.getElementById("modalResumen").classList.add("show");
+}
+
+async function enviarAInsumos() {
+  if (!_resumenData) return;
+  var btn = document.getElementById("btnEnviarInsumos");
+  btn.disabled = true; btn.textContent = "Enviando...";
+  try {
+    var nro = _resumenData.nroReceta;
+    var obs = "Receta agronómica " + nro;
+    for (var bi = 0; bi < _resumenData.bloques.length; bi++) {
+      var b = _resumenData.bloques[bi];
+      for (var pi = 0; pi < b.items.length; pi++) {
+        var it = b.items[pi];
+        var fields = {
+          Title:        nro,
+          NumeroPedido: nro,
+          Operador:     currentUser,
+          Campo:        b.campo,
+          Insumo:       it.nombre,
+          Cantidad:     it.total,
+          Estado:       "Pendiente insumos",
+          FechaPedido:  new Date().toISOString(),
+          Observaciones: obs
+        };
+        if (b.localidad) fields.Localidad = b.localidad;
+        if (it.categoria) fields.GrupoInsumo = it.categoria;
+        if (it.unidad) fields.Unidad = it.unidad;
+        var r = await fetch(
+          "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
+          "/lists/" + CONFIG.insumosListId + "/items",
+          { method: "POST", headers: { Authorization: "Bearer " + graphToken, "Content-Type": "application/json" },
+            body: JSON.stringify({ fields: fields }) }
+        );
+        if (!r.ok) { var t = await r.text(); throw new Error("Error " + r.status + ": " + t); }
+      }
+    }
+    btn.textContent = "Pedido enviado ✓";
+    showToast("Pedido enviado a App Insumos ✓", "success");
+  } catch(e) {
+    btn.disabled = false; btn.textContent = "Enviar pedido a App Insumos";
+    showToast("Error al enviar a insumos: " + e.message, "error");
+  }
+}
+
+function cerrarResumenYLimpiar() {
+  document.getElementById("modalResumen").classList.remove("show");
+  _resumenData = null;
+  limpiarFormulario();
+}
+
 function limpiarFormulario() {
   lotesSeleccionados = [];
   productosReceta = [];
@@ -1037,12 +1193,11 @@ function limpiarFormulario() {
   document.getElementById("lblZona").textContent    = "-";
   document.getElementById("lotesContainer").innerHTML =
     "<div class=\"lote-empty\">Seleccioná un campo para ver los lotes disponibles.</div>";
-  document.getElementById("selResponsable").value = "";
   document.getElementById("selEstadio").value     = "";
   document.getElementById("selDx").value          = "";
   document.getElementById("selContratista").value = "";
   document.getElementById("inputFecha").value     = "";
-  document.getElementById("txtObservaciones").value = "";
+  document.getElementById("txtObservaciones").value = OBS_DEFAULT;
   document.getElementById("selProducto").value    = "";
   document.getElementById("inputDosis").value     = "";
   document.getElementById("lblUnidad").textContent    = "-";
