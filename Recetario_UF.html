@@ -811,6 +811,26 @@ async function loadContratistas() {
   });
 }
 
+// POST a SharePoint descartando campos desconocidos hasta que funcione
+async function spPostConRetry(listId, fields) {
+  var f = Object.assign({}, fields);
+  for (var attempt = 0; attempt < 10; attempt++) {
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items",
+      { method: "POST",
+        headers: { "Authorization": "Bearer " + (await getGraphToken()), "Content-Type": "application/json" },
+        body: JSON.stringify({ fields: f }) }
+    );
+    if (r.ok) return;
+    var body = await r.json().catch(function(){ return {}; });
+    var msg = (body.error && body.error.message) || "";
+    var bad = msg.match(/['"]([^'"]+)['"]\s*(is not recognized|no se reconoce|column does not exist)/i);
+    if (bad) { delete f[bad[1]]; continue; }
+    throw new Error(msg || "Error " + r.status);
+  }
+  throw new Error("No se pudo guardar después de varios intentos");
+}
+
 async function fetchAllFromList(listId) {
   var items = [];
   var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
@@ -1069,8 +1089,6 @@ async function generarReceta() {
 
       var fields = {
         Title:          nroReceta + (camposUnicos.length > 1 ? "-" + (ci+1) : ""),
-        FechaCreacion:  new Date().toISOString(),
-        FechaAplicacion: fechaApl ? new Date(fechaApl + "T00:00:00").toISOString() : null,
         Usuario:        currentUser,
         Responsable:    responsable,
         Campo:          campo,
@@ -1086,15 +1104,9 @@ async function generarReceta() {
         Productos:      JSON.stringify(productosReceta),
         Observaciones:  obs
       };
+      if (fechaApl) fields.FechaAplicacion = new Date(fechaApl + "T00:00:00").toISOString();
 
-      var r = await fetch(
-        "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
-        "/lists/" + CONFIG.recetasListId + "/items",
-        { method: "POST",
-          headers: { "Authorization": "Bearer " + (await getGraphToken()), "Content-Type": "application/json" },
-          body: JSON.stringify({ fields: fields }) }
-      );
-      if (!r.ok) { var errTxt = await r.text(); throw new Error("Error " + r.status + ": " + errTxt); }
+      await spPostConRetry(CONFIG.recetasListId, fields);
     }
 
     mostrarResumen(nroReceta, camposUnicos, lotesSeleccionados, productosReceta);
