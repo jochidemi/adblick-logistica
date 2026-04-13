@@ -1354,32 +1354,29 @@ function descargarRecetaExcel(itemId) {
   var f = item.fields || {};
   var prods = []; try { prods = JSON.parse(f.Productos||"[]"); } catch(e){}
   var lotesArr = []; try { lotesArr = JSON.parse(f.Lotes||"[]"); } catch(e){}
-  var rows = [
-    ["Receta Agronómica ADBlick"],
-    ["N° Receta", f.Title||""],
-    ["Fecha Creación", f.FechaCreacion ? f.FechaCreacion.slice(0,10) : ""],
-    ["Fecha Aplicación", f.FechaAplicacion ? f.FechaAplicacion.slice(0,10) : ""],
-    ["Responsable", f.Responsable||""],
-    ["Campo", f.Campo||""],
-    ["Lotes", lotesArr.map(function(l){ return (l.lote||"") + " (" + (l.has||0) + " ha)"; }).join(", ")],
-    ["Cultivo", f.Cultivo||""],
-    ["Hectáreas Totales", (f.HectareasTotales||f.HectareasTotal||0)||0],
-    ["Localidad", f.Localidad||""],
-    ["Partido", f.Partido||""],
-    ["Zona", f.Zona||""],
-    ["Estadío", f.Estadio||""],
-    ["Diagnóstico", f.Diagnostico||""],
-    ["Contratista", f.Contratista||""],
-    [],
-    ["Producto", "Dosis", "Unidad", "Total (" + ((f.HectareasTotales||f.HectareasTotal||0)||0) + " ha)"],
-  ];
-  prods.forEach(function(p){
-    rows.push([p.nombre||"", p.dosis||"", p.unidad||"", ((p.dosis||0)*((f.HectareasTotales||f.HectareasTotal||0)||0)).toFixed(2)]);
-  });
-  rows.push([]);
-  rows.push(["Observaciones", f.Observaciones||""]);
+  var ha = (f.HectareasTotales||f.HectareasTotal||0)||0;
+  var lotesStr = lotesArr.map(function(l){ return l.lote||""; }).join(", ");
+  var header = ["N° Receta","Fecha Creación","Fecha Aplicación","Responsable","Campo","Lotes",
+                "Cultivo","Hectáreas","Localidad","Partido","Zona","Estadío","Diagnóstico",
+                "Contratista","Producto","Dosis","Unidad","Total","Observaciones"];
+  var base = [f.Title||"",
+              f.FechaCreacion ? f.FechaCreacion.slice(0,10) : "",
+              f.FechaAplicacion ? f.FechaAplicacion.slice(0,10) : "",
+              f.Responsable||"", f.Campo||"", lotesStr, f.Cultivo||"", ha,
+              f.Localidad||"", f.Partido||"", f.Zona||"",
+              f.Estadio||"", f.Diagnostico||"", f.Contratista||""];
+  var rows = [header];
+  if (prods.length === 0) {
+    rows.push(base.concat(["","","","",f.Observaciones||""]));
+  } else {
+    prods.forEach(function(p, pi){
+      rows.push(base.concat([p.nombre||"", p.dosis||"", p.unidad||"",
+                             ((p.dosis||0)*ha).toFixed(2),
+                             pi===0 ? f.Observaciones||"" : ""]));
+    });
+  }
   var ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{wch:22},{wch:50}];
+  ws["!cols"] = [8,10,12,14,22,18,12,8,12,12,12,12,14,18,22,8,8,10,40].map(function(w){ return {wch:w}; });
   var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Receta");
   XLSX.writeFile(wb, "Receta_" + (f.Title||itemId) + ".xlsx");
 }
