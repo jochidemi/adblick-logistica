@@ -213,6 +213,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div class="tab" onclick="switchTab('mispedidos')">Mis Pedidos</div>
     <div class="tab" onclick="switchTab('descargas')">Descargas</div>
     <div class="tab" onclick="switchTab('logistica')">Logística</div>
+    <div class="tab" onclick="switchTab('padrones')">Padrones</div>
   </div>
 
   <!-- TAB: NUEVO PEDIDO -->
@@ -333,6 +334,42 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     </div>
   </div>
 
+  <!-- TAB: PADRONES -->
+  <div class="tab-content" id="tab-padrones">
+    <div class="main">
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:20px;font-weight:800;">Padrones</h2>
+        <p style="color:var(--gray);font-size:13px;margin-top:3px;">
+          Arrastrá el Excel <strong>DB Logística Campos</strong> para actualizar los datos maestros en SharePoint. Los cambios se reflejan automáticamente en la app.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">DB Logística Campos</div>
+        <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">
+          Columnas esperadas: <strong>Campo</strong>, <strong>Cultivo</strong>, <strong>Comentario</strong>, <strong>Responsable</strong>, <strong>Zona</strong>
+        </p>
+        <div class="drop-zone" id="dz-logistica"
+          ondragover="event.preventDefault();this.classList.add('dragover');"
+          ondragleave="this.classList.remove('dragover');"
+          ondrop="dropPadronLogistica(event)">
+          <p>Arrastrá el archivo Excel acá</p>
+          <span>o hacé click para seleccionar</span>
+        </div>
+        <input type="file" id="inp-pad-logistica" accept=".xlsx,.xls" style="display:none;" onchange="loadPadronLogistica(this)">
+        <div class="log-status" id="padron-log-status"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="section-header">
+          <h3>Estado actual de datos maestros</h3>
+          <button class="btn btn-secondary" onclick="reloadMasterData();renderPadronStatus();" style="font-size:12px;padding:6px 12px;">Recargar</button>
+        </div>
+        <div id="padronStatusContainer" style="font-size:13px;color:var(--gray);">Cargando...</div>
+      </div>
+    </div>
+  </div>
+
 <!-- MODAL EDICION -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
@@ -374,7 +411,7 @@ var editingItemId = null;
 
 // ── TABS ──
 function switchTab(name) {
-  var tabNames = ["nuevo","mispedidos","descargas","logistica"];
+  var tabNames = ["nuevo","mispedidos","descargas","logistica","padrones"];
   document.querySelectorAll(".tab").forEach(function(t, i) {
     t.classList.toggle("active", tabNames[i] === name);
   });
@@ -382,6 +419,7 @@ function switchTab(name) {
   document.getElementById("tab-" + name).classList.add("active");
   if (name === "mispedidos") cargarMisPedidos();
   if (name === "logistica") renderComentariosActivos();
+  if (name === "padrones") renderPadronStatus();
 }
 
 // ── FECHAS ──
@@ -430,6 +468,7 @@ function showApp() {
   document.getElementById("loadingScreen").style.display = "none";
   document.getElementById("appContent").style.display = "block";
   loadMasterData();
+  setupDropZoneClick();
 }
 
 // ── CARGA DATOS MAESTROS DESDE SHAREPOINT ──
@@ -974,6 +1013,196 @@ async function reloadMasterData() {
   await loadMasterData();
   renderComentariosActivos();
   showToast("Datos actualizados desde SharePoint", "ok");
+}
+
+// ── PADRONES: DRAG & DROP + UPLOAD ──
+function setupDropZoneClick() {
+  var dz = document.getElementById("dz-logistica");
+  if (dz) dz.addEventListener("click", function() { document.getElementById("inp-pad-logistica").click(); });
+}
+
+function dropPadronLogistica(event) {
+  event.preventDefault();
+  document.getElementById("dz-logistica").classList.remove("dragover");
+  processPadronLogistica(event.dataTransfer.files[0]);
+}
+
+function loadPadronLogistica(input) {
+  if (input.files[0]) processPadronLogistica(input.files[0]);
+}
+
+async function processPadronLogistica(file) {
+  var dz = document.getElementById("dz-logistica");
+  var logStatus = document.getElementById("padron-log-status");
+  dz.innerHTML = '<div style="font-size:18px;">&#9203;</div><div>Procesando...</div>';
+  logStatus.className = "log-status";
+  logStatus.style.display = "none";
+
+  try {
+    var wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+
+    if (!rows.length) throw new Error("El archivo no contiene registros");
+
+    // Map columns flexibly
+    var fields_list = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var campo = findCol(r, ["campo","title","nombre"]);
+      if (!campo) continue;
+      var cultivo = findCol(r, ["cultivo","crop","field_1"]);
+      var comentario = findCol(r, ["comentario","comentarios","comment","field_2"]);
+      var responsable = findCol(r, ["responsable","resp","field_3"]);
+      var zona = findCol(r, ["zona","zone","field_4"]);
+      fields_list.push({
+        Title: String(campo).trim(),
+        field_1: String(cultivo||"").trim(),
+        field_2: String(comentario||"").trim(),
+        field_3: String(responsable||"").trim(),
+        field_4: String(zona||"").trim()
+      });
+    }
+
+    if (!fields_list.length) throw new Error("No se encontraron registros válidos. Verificá que el Excel tenga una columna 'Campo'.");
+
+    // Test POST first item
+    showToast("Validando formato...", "success");
+    var testResult = await spPostRaw(CONFIG.dbListId, fields_list[0]);
+    if (!testResult.ok) {
+      var errBody = await testResult.json().catch(function(){ return {}; });
+      throw new Error("SharePoint rechazó el item: " + JSON.stringify(errBody.error||errBody).substring(0,200));
+    }
+    // Delete test item
+    var testItem = await testResult.json();
+    await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.dbListId + "/items/" + testItem.id,
+      { method:"DELETE", headers:{ Authorization:"Bearer "+graphToken } });
+
+    // Delete all existing records
+    showToast("Reemplazando padrón — borrando registros anteriores...", "success");
+    var borrados = await spDeleteAll(CONFIG.dbListId);
+    console.log("Borrados:", borrados, "registros anteriores");
+
+    // Upload all new records
+    showToast("Subiendo " + fields_list.length + " registros...", "success");
+    var ok = 0;
+    for (var j = 0; j < fields_list.length; j++) {
+      await spPost(CONFIG.dbListId, fields_list[j]);
+      ok++;
+      if (j % 5 === 0) await sleep(400);
+      if (j % 50 === 0) {
+        showToast("Subiendo... " + ok + "/" + fields_list.length, "success");
+        await acquireTokenSilent();
+      }
+    }
+
+    showToast(ok + " registros cargados en SharePoint", "success");
+    logStatus.className = "log-status ok";
+    logStatus.innerHTML = "&#10003; " + ok + " registros cargados correctamente desde <strong>" + file.name + "</strong>";
+
+    // Reload master data
+    await loadMasterData();
+    renderPadronStatus();
+
+  } catch(e) {
+    showToast("Error: " + e.message, "error");
+    logStatus.className = "log-status err";
+    logStatus.textContent = "Error: " + e.message;
+    console.error("processPadronLogistica error:", e);
+  }
+
+  // Restore drop zone
+  dz.innerHTML = '<p>Arrastrá el archivo Excel acá</p><span>o hacé click para seleccionar</span>';
+  // Re-bind click
+  dz.addEventListener("click", function() { document.getElementById("inp-pad-logistica").click(); });
+  document.getElementById("inp-pad-logistica").value = "";
+}
+
+function findCol(row, candidates) {
+  var keys = Object.keys(row);
+  for (var c = 0; c < candidates.length; c++) {
+    for (var k = 0; k < keys.length; k++) {
+      if (keys[k].toLowerCase().trim() === candidates[c]) return row[keys[k]];
+    }
+  }
+  // Partial match
+  for (var c2 = 0; c2 < candidates.length; c2++) {
+    for (var k2 = 0; k2 < keys.length; k2++) {
+      if (keys[k2].toLowerCase().indexOf(candidates[c2]) !== -1) return row[keys[k2]];
+    }
+  }
+  return "";
+}
+
+async function spPostRaw(listId, fields) {
+  return fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items",
+    { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" },
+      body:JSON.stringify({ fields: fields }) });
+}
+
+async function spPost(listId, fields) {
+  var r = await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items",
+    { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" },
+      body:JSON.stringify({ fields: fields }) });
+  if (!r.ok) throw new Error("SP POST " + r.status);
+  return r.json();
+}
+
+async function spDeleteAll(listId) {
+  var items = [];
+  var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items?$select=id&$top=500";
+  while (url) {
+    var r = await fetch(url, { headers:{ Authorization:"Bearer "+graphToken } });
+    if (!r.ok) throw new Error("Error leyendo lista para borrar: " + r.status);
+    var d = await r.json();
+    items = items.concat(d.value||[]);
+    url = d["@odata.nextLink"]||null;
+    if (url) await sleep(200);
+  }
+  if (!items.length) return 0;
+  for (var i = 0; i < items.length; i += 5) {
+    var batch = items.slice(i, i+5);
+    await Promise.all(batch.map(function(item){
+      return fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items/" + item.id,
+        { method:"DELETE", headers:{ Authorization:"Bearer "+graphToken } });
+    }));
+    await sleep(300);
+  }
+  return items.length;
+}
+
+function sleep(ms) { return new Promise(function(r){ setTimeout(r, ms); }); }
+
+function renderPadronStatus() {
+  var div = document.getElementById("padronStatusContainer");
+  if (!div) return;
+  var nCampos = Object.keys(CAMPOS_ZONA).length;
+  var nCombinaciones = Object.keys(CULTIVO_COMENTARIOS).length;
+  var nConComentario = Object.keys(CULTIVO_COMENTARIOS).filter(function(k){ return CULTIVO_COMENTARIOS[k] && CULTIVO_COMENTARIOS[k] !== "None"; }).length;
+  var nResponsables = Object.keys(CAMPOS_RESPONSABLE).filter(function(k){ return CAMPOS_RESPONSABLE[k]; }).length;
+
+  var html = "<div style='background:#e6f4ea;border-radius:8px;padding:14px 18px;margin-bottom:14px;'>";
+  html += "<strong style='color:#1e7e34;'>Datos cargados en SharePoint</strong><br>";
+  html += "<span style='font-size:12px;color:#555;'>" + nCampos + " campos &middot; " + nCombinaciones + " combinaciones campo/cultivo &middot; " + nConComentario + " con comentario &middot; " + nResponsables + " con responsable</span>";
+  html += "</div>";
+
+  // Table preview of current data
+  var keys = Object.keys(CAMPOS_ZONA).sort();
+  if (keys.length > 0) {
+    html += "<div class='table-wrapper' style='max-height:400px;overflow-y:auto;'>";
+    html += "<table style='width:100%;border-collapse:collapse;font-size:12px;'>";
+    html += "<tr style='background:#f5f5f5;'><th style='padding:5px 8px;text-align:left;font-size:11px;'>Campo</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Zona</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Responsable</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Cultivos</th></tr>";
+    keys.forEach(function(campo) {
+      var cultivos = CAMPO_CULTIVOS[campo] ? CAMPO_CULTIVOS[campo].join(", ") : "-";
+      html += "<tr><td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;font-weight:600;'>" + campo + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + (CAMPOS_ZONA[campo]||"-") + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + (CAMPOS_RESPONSABLE[campo]||"-") + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555;'>" + cultivos + "</td></tr>";
+    });
+    html += "</table></div>";
+  }
+
+  div.innerHTML = html;
 }
 
 function showToast(msg, type) {
