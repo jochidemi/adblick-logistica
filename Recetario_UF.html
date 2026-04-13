@@ -814,7 +814,7 @@ async function loadContratistas() {
 // POST a SharePoint descartando campos desconocidos hasta que funcione
 async function spPostConRetry(listId, fields) {
   var f = Object.assign({}, fields);
-  for (var attempt = 0; attempt < 10; attempt++) {
+  for (var attempt = 0; attempt < 15; attempt++) {
     var r = await fetch(
       "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items",
       { method: "POST",
@@ -824,8 +824,13 @@ async function spPostConRetry(listId, fields) {
     if (r.ok) return;
     var body = await r.json().catch(function(){ return {}; });
     var msg = (body.error && body.error.message) || "";
-    var bad = msg.match(/['"]([^'"]+)['"]\s*(is not recognized|no se reconoce|column does not exist)/i);
+    console.warn("[spPostConRetry] intento " + (attempt+1) + " — " + msg, "campos:", Object.keys(f));
+    // Patrón Graph API: "Field 'X' is not recognized"
+    var bad = msg.match(/Field '([^']+)' is not recognized/);
     if (bad) { delete f[bad[1]]; continue; }
+    // Patrón alternativo
+    var bad2 = msg.match(/'([^']+)' is not recognized/);
+    if (bad2) { delete f[bad2[1]]; continue; }
     throw new Error(msg || "Error " + r.status);
   }
   throw new Error("No se pudo guardar después de varios intentos");
