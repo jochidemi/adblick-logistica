@@ -646,6 +646,23 @@ async function acquireTokenSilent() {
   }
 }
 
+// Siempre renovar el token antes de usarlo
+async function getGraphToken() {
+  try {
+    var r = await msalInstance.acquireTokenSilent({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+    graphToken = r.accessToken;
+  } catch(e) {
+    // Token expirado o requiere interacción — refrescar
+    try {
+      var r2 = await msalInstance.acquireTokenPopup({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+      graphToken = r2.accessToken;
+    } catch(e2) {
+      await msalInstance.acquireTokenRedirect({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+    }
+  }
+  return graphToken;
+}
+
 function showApp() {
   currentUser = currentAccount ? (currentAccount.name || currentAccount.username) : "Usuario";
   document.getElementById("headerUser").textContent = currentUser;
@@ -789,7 +806,8 @@ async function fetchAllFromList(listId) {
   var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
             "/lists/" + listId + "/items?$expand=fields&$top=500";
   while (url) {
-    var res = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
+    var token = await getGraphToken();
+    var res = await fetch(url, { headers: { Authorization: "Bearer " + token } });
     if (res.status === 429) {
       var wait = parseInt(res.headers.get("Retry-After") || "5") * 1000;
       await new Promise(function(r){ setTimeout(r, wait); });
@@ -1063,7 +1081,7 @@ async function generarReceta() {
         "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
         "/lists/" + CONFIG.recetasListId + "/items",
         { method: "POST",
-          headers: { "Authorization": "Bearer " + graphToken, "Content-Type": "application/json" },
+          headers: { "Authorization": "Bearer " + (await getGraphToken()), "Content-Type": "application/json" },
           body: JSON.stringify({ fields: fields }) }
       );
       if (!r.ok) { var errTxt = await r.text(); throw new Error("Error " + r.status + ": " + errTxt); }
@@ -1082,7 +1100,7 @@ async function getNextNroReceta() {
   try {
     var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
               "/lists/" + CONFIG.recetasListId + "/items?$top=999&$select=id";
-    var r = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
+    var r = await fetch(url, { headers: { Authorization: "Bearer " + (await getGraphToken()) } });
     if (!r.ok) return "R-0001";
     var data = await r.json();
     var total = (data.value || []).length;
@@ -1170,7 +1188,7 @@ async function enviarAInsumos() {
         var r = await fetch(
           "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
           "/lists/" + CONFIG.insumosListId + "/items",
-          { method: "POST", headers: { Authorization: "Bearer " + graphToken, "Content-Type": "application/json" },
+          { method: "POST", headers: { Authorization: "Bearer " + (await getGraphToken()), "Content-Type": "application/json" },
             body: JSON.stringify({ fields: fields }) }
         );
         if (!r.ok) { var t = await r.text(); throw new Error("Error " + r.status + ": " + t); }
@@ -1244,7 +1262,7 @@ async function eliminarReceta(itemId) {
     var r = await fetch(
       "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
       "/lists/" + CONFIG.recetasListId + "/items/" + itemId,
-      { method: "DELETE", headers: { Authorization: "Bearer " + graphToken } }
+      { method: "DELETE", headers: { Authorization: "Bearer " + (await getGraphToken()) } }
     );
     if (r.status === 204 || r.ok) { showToast("Receta eliminada", "success"); cargarMisRecetas(); }
     else throw new Error("Error " + r.status);
