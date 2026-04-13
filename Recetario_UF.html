@@ -747,12 +747,12 @@ async function loadCampos() {
     if (!campo) return;
     if (!CAMPOS_MAP[campo]) CAMPOS_MAP[campo] = [];
     CAMPOS_MAP[campo].push({
-      lote:      (spField(f,"Lote")      || "").toString().trim(),
-      zona:      (spField(f,"Zona")      || "").toString().trim(),
-      cultivo:   (spField(f,"Cultivo")   || "").toString().trim(),
-      has:       parseFloat(spField(f,"Hectareas") || spField(f,"Has") || spField(f,"Hectáreas") || 0) || 0,
-      localidad: (spField(f,"Localidad") || "").toString().trim(),
-      partido:   (spField(f,"Partido")   || "").toString().trim()
+      lote:      (spField(f,"Lote")      || spField(f,"field_1") || "").toString().trim(),
+      zona:      (spField(f,"Zona")      || spField(f,"field_2") || "").toString().trim(),
+      has:       parseFloat(spField(f,"Hectareas") || spField(f,"field_3") || spField(f,"Hectáreas") || 0) || 0,
+      localidad: (spField(f,"Localidad") || spField(f,"field_4") || "").toString().trim(),
+      partido:   (spField(f,"Partido")   || spField(f,"field_5") || "").toString().trim(),
+      cultivo:   (spField(f,"Cultivo")   || spField(f,"field_6") || "").toString().trim()
     });
   });
   // Poblar selector de campo
