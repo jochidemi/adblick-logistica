@@ -723,26 +723,36 @@ async function loadMasterData() {
   }
 }
 
+// Búsqueda de campo case-insensitive — cubre variaciones de nombre interno en SharePoint
+function spField(f, name) {
+  if (f[name] !== undefined && f[name] !== null) return f[name];
+  var low = name.toLowerCase();
+  var keys = Object.keys(f);
+  for (var i = 0; i < keys.length; i++) {
+    if (keys[i].toLowerCase() === low) return f[keys[i]];
+  }
+  return "";
+}
+
 async function loadCampos() {
   var items = await fetchAllFromList(CONFIG.camposListId);
-  // DEBUG: loguear los nombres reales de columnas del primer ítem
   if (items.length > 0) {
-    console.log("[DB_Campos_Lotes] Columnas reales del primer ítem:", Object.keys(items[0].fields || {}));
-    console.log("[DB_Campos_Lotes] Primer ítem completo:", items[0].fields);
+    console.log("[DB_Campos_Lotes] Campos del primer ítem:", Object.keys(items[0].fields || {}));
+    console.log("[DB_Campos_Lotes] Datos:", items[0].fields);
   }
   CAMPOS_MAP = {};
   items.forEach(function(item) {
     var f = item.fields || {};
-    var campo = (f.Campo || f.Title || f.NombreCampo || "").trim();
+    var campo = (spField(f,"Title") || spField(f,"Campo") || spField(f,"NombreCampo") || "").toString().trim();
     if (!campo) return;
     if (!CAMPOS_MAP[campo]) CAMPOS_MAP[campo] = [];
     CAMPOS_MAP[campo].push({
-      lote:      (f.Lote || "").trim(),
-      zona:      (f.Zona || "").trim(),
-      cultivo:   (f.Cultivo || "").trim(),
-      has:       parseFloat(f.Hectareas || f.Hect_x00e1_reas || f["Hectáreas"] || 0) || 0,
-      localidad: (f.Localidad || "").trim(),
-      partido:   (f.Partido || "").trim()
+      lote:      (spField(f,"Lote")      || "").toString().trim(),
+      zona:      (spField(f,"Zona")      || "").toString().trim(),
+      cultivo:   (spField(f,"Cultivo")   || "").toString().trim(),
+      has:       parseFloat(spField(f,"Hectareas") || spField(f,"Has") || spField(f,"Hectáreas") || 0) || 0,
+      localidad: (spField(f,"Localidad") || "").toString().trim(),
+      partido:   (spField(f,"Partido")   || "").toString().trim()
     });
   });
   // Poblar selector de campo
