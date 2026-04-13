@@ -213,7 +213,6 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div class="tab" onclick="switchTab('mispedidos')">Mis Pedidos</div>
     <div class="tab" onclick="switchTab('descargas')">Descargas</div>
     <div class="tab" onclick="switchTab('logistica')">Logística</div>
-    <div class="tab" onclick="switchTab('padrones')">Padrones</div>
   </div>
 
   <!-- TAB: NUEVO PEDIDO -->
@@ -318,36 +317,13 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
   <!-- TAB: LOGÍSTICA -->
   <div class="tab-content" id="tab-logistica">
     <div class="main">
-      <div class="card">
-        <div class="card-title">Base de Datos Maestros</div>
-        <p style="font-size:13px;color:var(--gray);margin-bottom:16px;">
-          Los campos, cultivos y comentarios de logística se cargan automáticamente desde SharePoint al iniciar la app.
-          Para actualizar los datos, modificá la lista <strong>DB_Logistica_SharePoint</strong> en SharePoint y recargá la página.
-        </p>
-        <div id="dbStatusCard" style="background:#f5f5f5;border-radius:8px;padding:14px 18px;font-size:13px;color:#555;margin-bottom:20px;">
-          Cargando información...
-        </div>
-        <button class="btn btn-secondary" onclick="reloadMasterData()" style="margin-bottom:20px;">🔄 Recargar datos maestros</button>
-        <div class="card-title" style="margin-bottom:8px;">Comentarios de logística activos</div>
-        <div id="comentariosActivos" style="font-size:12px;color:var(--gray);max-height:400px;overflow-y:auto;"></div>
-      </div>
-    </div>
-  </div>
 
-  <!-- TAB: PADRONES -->
-  <div class="tab-content" id="tab-padrones">
-    <div class="main">
-      <div style="margin-bottom:20px;">
-        <h2 style="font-size:20px;font-weight:800;">Padrones</h2>
-        <p style="color:var(--gray);font-size:13px;margin-top:3px;">
-          Arrastrá el Excel <strong>DB Logística Campos</strong> para actualizar los datos maestros en SharePoint. Los cambios se reflejan automáticamente en la app.
-        </p>
-      </div>
-
+      <!-- SECCIÓN: ACTUALIZAR DATOS MAESTROS -->
       <div class="card">
-        <div class="card-title">DB Logística Campos</div>
-        <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">
-          Columnas esperadas: <strong>Campo</strong>, <strong>Cultivo</strong>, <strong>Comentario</strong>, <strong>Responsable</strong>, <strong>Zona</strong>
+        <div class="card-title">Actualizar datos maestros</div>
+        <p style="font-size:13px;color:var(--gray);margin-bottom:12px;">
+          Arrastrá el Excel <strong>DB Logística Campos</strong> para reemplazar los datos maestros en SharePoint.
+          Columnas esperadas: <strong>Campo</strong>, <strong>Cultivo</strong>, <strong>Comentario_Logistica</strong>, <strong>Responsable</strong>, <strong>Zona</strong>
         </p>
         <div class="drop-zone" id="dz-logistica"
           ondragover="event.preventDefault();this.classList.add('dragover');"
@@ -357,16 +333,33 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
           <span>o hacé click para seleccionar</span>
         </div>
         <input type="file" id="inp-pad-logistica" accept=".xlsx,.xls" style="display:none;" onchange="loadPadronLogistica(this)">
+        <div id="padron-progress" style="display:none;margin-top:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span id="padron-progress-label" style="font-size:13px;font-weight:600;color:var(--dark);">Procesando...</span>
+            <span id="padron-progress-count" style="font-size:12px;color:var(--gray);">0/0</span>
+          </div>
+          <div style="background:#e0e0e0;border-radius:6px;height:10px;overflow:hidden;">
+            <div id="padron-progress-bar" style="background:var(--yellow);height:100%;width:0%;border-radius:6px;transition:width 0.3s;"></div>
+          </div>
+        </div>
         <div class="log-status" id="padron-log-status"></div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
+      <!-- SECCIÓN: ESTADO DE DATOS CARGADOS -->
+      <div class="card">
         <div class="section-header">
-          <h3>Estado actual de datos maestros</h3>
-          <button class="btn btn-secondary" onclick="reloadMasterData();renderPadronStatus();" style="font-size:12px;padding:6px 12px;">Recargar</button>
+          <h3>Estado de datos maestros</h3>
+          <button class="btn btn-secondary" onclick="reloadMasterData()" style="font-size:12px;padding:6px 12px;">Recargar</button>
         </div>
         <div id="padronStatusContainer" style="font-size:13px;color:var(--gray);">Cargando...</div>
       </div>
+
+      <!-- SECCIÓN: COMENTARIOS LOGÍSTICA ACTIVOS -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:8px;">Comentarios de logística activos</div>
+        <div id="comentariosActivos" style="font-size:12px;color:var(--gray);max-height:400px;overflow-y:auto;"></div>
+      </div>
+
     </div>
   </div>
 
@@ -411,15 +404,14 @@ var editingItemId = null;
 
 // ── TABS ──
 function switchTab(name) {
-  var tabNames = ["nuevo","mispedidos","descargas","logistica","padrones"];
+  var tabNames = ["nuevo","mispedidos","descargas","logistica"];
   document.querySelectorAll(".tab").forEach(function(t, i) {
     t.classList.toggle("active", tabNames[i] === name);
   });
   document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.remove("active"); });
   document.getElementById("tab-" + name).classList.add("active");
   if (name === "mispedidos") cargarMisPedidos();
-  if (name === "logistica") renderComentariosActivos();
-  if (name === "padrones") renderPadronStatus();
+  if (name === "logistica") { renderComentariosActivos(); renderPadronStatus(); }
 }
 
 // ── FECHAS ──
@@ -978,21 +970,11 @@ async function cargarPreview() {
   }
 }
 
-// ── PESTAÑA LOGÍSTICA: DRAG & DROP DE COMENTARIOS ──
+// ── PESTAÑA LOGÍSTICA ──
 function renderComentariosActivos() {
-  // Actualizar tarjeta de estado
-  var statusDiv = document.getElementById("dbStatusCard");
-  if (statusDiv) {
-    var nCampos = Object.keys(CAMPOS_ZONA).length;
-    var nCombinaciones = Object.keys(CULTIVO_COMENTARIOS).length;
-    var nConComentario = Object.keys(CULTIVO_COMENTARIOS).filter(function(k){ return CULTIVO_COMENTARIOS[k]; }).length;
-    statusDiv.innerHTML = "✅ Datos cargados desde SharePoint<br>" +
-      "<span style='color:#888;'>" + nCampos + " campos · " + nCombinaciones + " combinaciones campo/cultivo · " + nConComentario + " con comentario de logística</span>";
-  }
-  // Tabla de comentarios activos
   var div = document.getElementById("comentariosActivos");
   if (!div) return;
-  var keys = Object.keys(CULTIVO_COMENTARIOS).filter(function(k) { return CULTIVO_COMENTARIOS[k]; });
+  var keys = Object.keys(CULTIVO_COMENTARIOS).filter(function(k) { return CULTIVO_COMENTARIOS[k] && CULTIVO_COMENTARIOS[k] !== "None"; });
   if (keys.length === 0) {
     div.innerHTML = "<em style=\"color:#aaa;\">No hay comentarios con texto cargados.</em>";
     return;
@@ -1009,10 +991,11 @@ function renderComentariosActivos() {
 }
 
 async function reloadMasterData() {
-  showToast("Recargando datos maestros...", "info");
+  showToast("Recargando datos maestros...", "success");
   await loadMasterData();
   renderComentariosActivos();
-  showToast("Datos actualizados desde SharePoint", "ok");
+  renderPadronStatus();
+  showToast("Datos actualizados desde SharePoint", "success");
 }
 
 // ── PADRONES: DRAG & DROP + UPLOAD ──
@@ -1034,9 +1017,29 @@ function loadPadronLogistica(input) {
 async function processPadronLogistica(file) {
   var dz = document.getElementById("dz-logistica");
   var logStatus = document.getElementById("padron-log-status");
-  dz.innerHTML = '<div style="font-size:18px;">&#9203;</div><div>Procesando...</div>';
+  var progressDiv = document.getElementById("padron-progress");
+  var progressLabel = document.getElementById("padron-progress-label");
+  var progressCount = document.getElementById("padron-progress-count");
+  var progressBar = document.getElementById("padron-progress-bar");
+
+  // Reset UI
   logStatus.className = "log-status";
   logStatus.style.display = "none";
+  dz.innerHTML = '<div style="font-size:18px;">&#9203;</div><div>Leyendo archivo...</div>';
+  progressDiv.style.display = "block";
+  progressLabel.textContent = "Leyendo archivo...";
+  progressCount.textContent = "";
+  progressBar.style.width = "0%";
+
+  function updateProgress(label, current, total) {
+    progressLabel.textContent = label;
+    if (total > 0) {
+      progressCount.textContent = current + "/" + total;
+      progressBar.style.width = Math.round((current / total) * 100) + "%";
+    } else {
+      progressCount.textContent = "";
+    }
+  }
 
   try {
     var wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
@@ -1045,6 +1048,8 @@ async function processPadronLogistica(file) {
 
     if (!rows.length) throw new Error("El archivo no contiene registros");
 
+    updateProgress("Mapeando columnas...", 0, 0);
+
     // Map columns flexibly
     var fields_list = [];
     for (var i = 0; i < rows.length; i++) {
@@ -1052,7 +1057,7 @@ async function processPadronLogistica(file) {
       var campo = findCol(r, ["campo","title","nombre"]);
       if (!campo) continue;
       var cultivo = findCol(r, ["cultivo","crop","field_1"]);
-      var comentario = findCol(r, ["comentario","comentarios","comment","field_2"]);
+      var comentario = findCol(r, ["comentario_logistica","comentario","comentarios","comment","field_2"]);
       var responsable = findCol(r, ["responsable","resp","field_3"]);
       var zona = findCol(r, ["zona","zone","field_4"]);
       fields_list.push({
@@ -1066,54 +1071,60 @@ async function processPadronLogistica(file) {
 
     if (!fields_list.length) throw new Error("No se encontraron registros válidos. Verificá que el Excel tenga una columna 'Campo'.");
 
+    var total = fields_list.length;
+
     // Test POST first item
-    showToast("Validando formato...", "success");
+    updateProgress("Validando formato en SharePoint...", 0, total);
     var testResult = await spPostRaw(CONFIG.dbListId, fields_list[0]);
     if (!testResult.ok) {
       var errBody = await testResult.json().catch(function(){ return {}; });
       throw new Error("SharePoint rechazó el item: " + JSON.stringify(errBody.error||errBody).substring(0,200));
     }
-    // Delete test item
     var testItem = await testResult.json();
     await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.dbListId + "/items/" + testItem.id,
       { method:"DELETE", headers:{ Authorization:"Bearer "+graphToken } });
 
     // Delete all existing records
-    showToast("Reemplazando padrón — borrando registros anteriores...", "success");
+    updateProgress("Borrando registros anteriores...", 0, total);
+    dz.innerHTML = '<div style="font-size:18px;">&#128465;</div><div>Borrando registros anteriores...</div>';
     var borrados = await spDeleteAll(CONFIG.dbListId);
     console.log("Borrados:", borrados, "registros anteriores");
 
     // Upload all new records
-    showToast("Subiendo " + fields_list.length + " registros...", "success");
+    dz.innerHTML = '<div style="font-size:18px;">&#9650;</div><div>Subiendo registros...</div>';
     var ok = 0;
     for (var j = 0; j < fields_list.length; j++) {
       await spPost(CONFIG.dbListId, fields_list[j]);
       ok++;
+      updateProgress("Subiendo registros...", ok, total);
       if (j % 5 === 0) await sleep(400);
       if (j % 50 === 0) {
-        showToast("Subiendo... " + ok + "/" + fields_list.length, "success");
         await acquireTokenSilent();
       }
     }
 
-    showToast(ok + " registros cargados en SharePoint", "success");
+    // Done
+    updateProgress("Completado", total, total);
+    progressBar.style.background = "#2d7a45";
     logStatus.className = "log-status ok";
     logStatus.innerHTML = "&#10003; " + ok + " registros cargados correctamente desde <strong>" + file.name + "</strong>";
+    showToast(ok + " registros cargados en SharePoint", "success");
 
     // Reload master data
     await loadMasterData();
     renderPadronStatus();
+    renderComentariosActivos();
 
   } catch(e) {
     showToast("Error: " + e.message, "error");
     logStatus.className = "log-status err";
     logStatus.textContent = "Error: " + e.message;
+    progressDiv.style.display = "none";
     console.error("processPadronLogistica error:", e);
   }
 
   // Restore drop zone
   dz.innerHTML = '<p>Arrastrá el archivo Excel acá</p><span>o hacé click para seleccionar</span>';
-  // Re-bind click
   dz.addEventListener("click", function() { document.getElementById("inp-pad-logistica").click(); });
   document.getElementById("inp-pad-logistica").value = "";
 }
