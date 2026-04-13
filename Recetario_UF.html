@@ -850,10 +850,10 @@ async function spPostConRetry(listId, fields) {
     console.warn("[spPostConRetry] intento " + (attempt+1) + " — " + msg, "campos:", Object.keys(f));
     // Patrón Graph API: "Field 'X' is not recognized"
     var bad = msg.match(/Field '([^']+)' is not recognized/);
-    if (bad) { delete f[bad[1]]; continue; }
+    if (bad) { console.warn("[spPost] Eliminado:", bad[1]); delete f[bad[1]]; continue; }
     // Patrón alternativo
     var bad2 = msg.match(/'([^']+)' is not recognized/);
-    if (bad2) { delete f[bad2[1]]; continue; }
+    if (bad2) { console.warn("[spPost] Eliminado:", bad2[1]); delete f[bad2[1]]; continue; }
     throw new Error(msg || "Error " + r.status);
   }
   throw new Error("No se pudo guardar después de varios intentos");
@@ -1286,6 +1286,11 @@ async function cargarMisRecetas() {
     var items = await fetchAllFromList(CONFIG.recetasListId);
     _misRecetasItems = items.filter(function(i){ return (i.fields||{}).Usuario === currentUser; });
     _misRecetasItems.sort(function(a,b){ return (b.fields.FechaCreacion||"").localeCompare(a.fields.FechaCreacion||""); });
+    if (_misRecetasItems.length > 0) {
+      var dbg = _misRecetasItems[0].fields || {};
+      console.log("[RecetasDB] Columnas:", Object.keys(dbg));
+      console.log("[RecetasDB] Primer ítem:", dbg);
+    }
     renderMisRecetasTabla();
   } catch(e) {
     container.innerHTML = "<div class=\"empty-state\">Error: " + esc(e.message) + "</div>";
