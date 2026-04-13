@@ -1093,21 +1093,22 @@ async function generarReceta() {
       var primeraFila = lotesDeCampo[0];
 
       var fields = {
-        Title:          nroReceta + (camposUnicos.length > 1 ? "-" + (ci+1) : ""),
-        Usuario:        currentUser,
-        Responsable:    responsable,
-        Campo:          campo,
-        Lotes:          JSON.stringify(lotesDeCampo.map(function(l){ return {lote:l.lote, has:l.has}; })),
-        Cultivo:        primeraFila.cultivo || "",
-        HectareasTotal: haCampo,
-        Localidad:      primeraFila.localidad || "",
-        Partido:        primeraFila.partido   || "",
-        Zona:           primeraFila.zona       || "",
-        Estadio:        estadio,
-        Diagnostico:    diagnostico,
-        Contratista:    contratista,
-        Productos:      JSON.stringify(productosReceta),
-        Observaciones:  obs
+        Title:            nroReceta + (camposUnicos.length > 1 ? "-" + (ci+1) : ""),
+        FechaCreacion:    new Date().toISOString(),
+        Usuario:          currentUser,
+        Responsable:      responsable,
+        Campo:            campo,
+        Lotes:            JSON.stringify(lotesDeCampo.map(function(l){ return {lote:l.lote, has:l.has}; })),
+        Cultivo:          primeraFila.cultivo || "",
+        HectareasTotales: haCampo,
+        Localidad:        primeraFila.localidad || "",
+        Partido:          primeraFila.partido   || "",
+        Zona:             primeraFila.zona       || "",
+        Estadio:          estadio,
+        Diagnostico:      diagnostico,
+        Contratista:      contratista,
+        Productos:        JSON.stringify(productosReceta),
+        Observaciones:    obs
       };
       if (fechaApl) fields.FechaAplicacion = new Date(fechaApl + "T00:00:00").toISOString();
 
