@@ -708,6 +708,11 @@ async function loadMasterData() {
 
 async function loadCampos() {
   var items = await fetchAllFromList(CONFIG.camposListId);
+  // DEBUG: loguear los nombres reales de columnas del primer ítem
+  if (items.length > 0) {
+    console.log("[DB_Campos_Lotes] Columnas reales del primer ítem:", Object.keys(items[0].fields || {}));
+    console.log("[DB_Campos_Lotes] Primer ítem completo:", items[0].fields);
+  }
   CAMPOS_MAP = {};
   items.forEach(function(item) {
     var f = item.fields || {};
