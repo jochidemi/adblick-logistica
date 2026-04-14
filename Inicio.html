@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ADBlick · Inicio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --verde: #6ba539;
+      --verde-oscuro: #4f7d27;
+      --crema: #f8f5ef;
+      --texto: #1f2a18;
+      --sombra: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    html, body {
+      min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--crema);
+      -webkit-font-smoothing: antialiased;
+      background: linear-gradient(135deg, #2d4a1a 0%, #6ba539 100%);
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px 32px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Carousel de fondos */
+    .fondo-carousel {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      overflow: hidden;
+    }
+    .fondo-slide {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transition: opacity 1.6s ease-in-out;
+    }
+    .fondo-slide.activo { opacity: 1; }
+
+    .fondo-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: linear-gradient(180deg, rgba(15, 25, 10, 0.55) 0%, rgba(15, 25, 10, 0.78) 100%);
+      pointer-events: none;
+    }
+
+    header {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: auto;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #fff;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+    .logo span { color: var(--verde); }
+
+    .cambiar-nombre {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .cambiar-nombre:hover {
+      background: rgba(255,255,255,0.22);
+    }
+
+    main {
+      width: 100%;
+      max-width: 1100px;
+      text-align: center;
+      margin: auto 0;
+    }
+
+    .saludo {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 300;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    }
+    .saludo strong {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .pregunta {
+      font-size: clamp(20px, 3.2vw, 28px);
+      font-weight: 400;
+      opacity: 0.92;
+      margin-bottom: 56px;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.5);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      width: 100%;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 36px 28px;
+      text-decoration: none;
+      color: var(--texto);
+      box-shadow: var(--sombra);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+    }
+
+    .icono {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--verde) 0%, var(--verde-oscuro) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 20px rgba(107, 165, 57, 0.35);
+    }
+
+    .icono svg {
+      width: 36px;
+      height: 36px;
+      stroke: #fff;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .card h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--texto);
+    }
+
+    .card p {
+      font-size: 14px;
+      font-weight: 400;
+      color: #5a6b4d;
+      line-height: 1.5;
+    }
+
+    .card .accion {
+      margin-top: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--verde-oscuro);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    footer {
+      margin-top: 48px;
+      font-size: 12px;
+      opacity: 0.6;
+      color: #fff;
+    }
+
+    /* Modal nombre */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 24px;
+    }
+    .modal-overlay.activo { display: flex; }
+
+    .modal {
+      background: #fff;
+      color: var(--texto);
+      border-radius: 20px;
+      padding: 36px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--sombra);
+    }
+    .modal h3 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .modal p {
+      font-size: 14px;
+      color: #5a6b4d;
+      margin-bottom: 20px;
+    }
+    .modal input {
+      width: 100%;
+      padding: 14px 18px;
+      border: 2px solid #e5e0d4;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      transition: border 0.2s ease;
+      margin-bottom: 16px;
+    }
+    .modal input:focus { border-color: var(--verde); }
+    .modal button {
+      width: 100%;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, var(--verde) 0%, var(--verde-oscuro) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s ease;
+    }
+    .modal button:hover { opacity: 0.92; }
+
+    @media (max-width: 600px) {
+      body { padding: 24px 16px; }
+      .saludo { margin-bottom: 4px; }
+      .pregunta { margin-bottom: 36px; }
+      .card { padding: 28px 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="fondo-carousel" id="fondoCarousel"></div>
+  <div class="fondo-overlay"></div>
+
+  <header>
+    <div class="logo">AD<span>Blick</span></div>
+    <button class="cambiar-nombre" id="btnCambiar">Cambiar nombre</button>
+  </header>
+
+  <main>
+    <h1 class="saludo">Hola, <strong id="nombreUsuario">…</strong></h1>
+    <p class="pregunta">¿Qué querés hacer hoy?</p>
+
+    <div class="cards">
+      <a class="card" href="https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html">
+        <div class="icono">
+          <svg viewBox="0 0 24 24"><path d="M3 7h13l3 4v6h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M3 7v10h2"/><path d="M9 17h6"/><path d="M6 11h6"/></svg>
+        </div>
+        <h2>Pedir insumos</h2>
+        <p>Solicitá fertilizantes, semillas y agroquímicos para tu campaña.</p>
+        <div class="accion">Empezar →</div>
+      </a>
+
+      <a class="card" href="https://jochidemi.github.io/adblick-logistica/">
+        <div class="icono">
+          <svg viewBox="0 0 24 24"><path d="M1 4h13v11H1z"/><path d="M14 8h4l3 3v4h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+        </div>
+        <h2>Pedir camiones</h2>
+        <p>Coordiná la logística para retirar o entregar tu producción.</p>
+        <div class="accion">Empezar →</div>
+      </a>
+
+      <a class="card" href="https://jochidemi.github.io/adblick-logistica/Recetario_UF.html">
+        <div class="icono">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/><path d="M9 9h2"/></svg>
+        </div>
+        <h2>Generar receta agronómica</h2>
+        <p>Creá la receta digital de aplicación para tus lotes.</p>
+        <div class="accion">Empezar →</div>
+      </a>
+    </div>
+  </main>
+
+  <footer>ADBlick Granos · Agricultura Digital</footer>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h3>¡Bienvenido!</h3>
+      <p>Decinos tu nombre para personalizar tu experiencia.</p>
+      <input type="text" id="inputNombre" placeholder="Tu nombre" autocomplete="given-name" />
+      <button id="btnGuardar">Continuar</button>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================
+       FOTOS DE FONDO
+       Para agregar más fotos: guardalas en la carpeta /fotos/
+       y sumá el nombre del archivo a la lista de abajo.
+       ============================================================ */
+    const FOTOS = [
+      'fotos/foto1.jpg',
+      'fotos/foto2.jpg',
+      'fotos/foto3.jpg',
+      'fotos/foto4.jpg',
+      'fotos/foto5.jpg',
+      'fotos/foto6.jpg',
+    ];
+    const INTERVALO_MS = 6000; // tiempo entre cambios de foto
+
+    /* ============================================================ */
+
+    const KEY = 'adblick_nombre';
+    const $nombre = document.getElementById('nombreUsuario');
+    const $modal = document.getElementById('modal');
+    const $input = document.getElementById('inputNombre');
+    const $guardar = document.getElementById('btnGuardar');
+    const $cambiar = document.getElementById('btnCambiar');
+    const $carousel = document.getElementById('fondoCarousel');
+
+    // --- Carousel de fondos ---
+    function initCarousel() {
+      if (!FOTOS.length) return;
+      FOTOS.forEach((src, i) => {
+        const slide = document.createElement('div');
+        slide.className = 'fondo-slide' + (i === 0 ? ' activo' : '');
+        slide.style.backgroundImage = `url('${src}')`;
+        $carousel.appendChild(slide);
+      });
+      if (FOTOS.length < 2) return;
+      let idx = 0;
+      setInterval(() => {
+        const slides = $carousel.querySelectorAll('.fondo-slide');
+        slides[idx].classList.remove('activo');
+        idx = (idx + 1) % slides.length;
+        slides[idx].classList.add('activo');
+      }, INTERVALO_MS);
+    }
+
+    // --- Modal de nombre ---
+    function mostrarModal(valorActual = '') {
+      $input.value = valorActual;
+      $modal.classList.add('activo');
+      setTimeout(() => $input.focus(), 50);
+    }
+
+    function guardarNombre() {
+      const valor = $input.value.trim();
+      if (!valor) { $input.focus(); return; }
+      localStorage.setItem(KEY, valor);
+      $nombre.textContent = valor;
+      $modal.classList.remove('activo');
+    }
+
+    function init() {
+      const guardado = localStorage.getItem(KEY);
+      if (guardado) {
+        $nombre.textContent = guardado;
+      } else {
+        mostrarModal();
+      }
+      initCarousel();
+    }
+
+    $guardar.addEventListener('click', guardarNombre);
+    $input.addEventListener('keydown', (e) => { if (e.key === 'Enter') guardarNombre(); });
+    $cambiar.addEventListener('click', () => mostrarModal(localStorage.getItem(KEY) || ''));
+
+    init();
+  </script>
+</body>
+</html>
