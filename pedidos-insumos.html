@@ -960,6 +960,20 @@ function getCamposYDestinos() {
 }
 var camposLocalidad = {}; // { nombreCampo: localidad }
 
+// Helper: enriquecer unidad / presentacion / codigo de un pedido desde el padrón
+// Usa búsqueda case-insensitive; fallback a stockPropio (datos del CSV de existencias)
+function getInsumoInfo(nombreInsumo) {
+  if (!nombreInsumo) return { unidad:"", presentacion:"", codigo:"" };
+  var nl = (nombreInsumo||"").trim().toLowerCase();
+  var p = padronInsumos.find(function(x){ return x.nombre.trim().toLowerCase() === nl; });
+  if (!p) p = padronInsumos.find(function(x){ var xn=x.nombre.trim().toLowerCase(); return nl.indexOf(xn)===0||xn.indexOf(nl)===0; });
+  if (p) return { unidad:p.unidad||"", presentacion:p.presentacion||"", codigo:p.codigo||"" };
+  // Fallback: stockPropio (viene del CSV de existencias, tiene unidades seguras)
+  var s = stockPropio.find(function(x){ return (x.nombre||"").trim().toLowerCase() === nl; });
+  if (s) return { unidad:s.unidad||"", presentacion:"", codigo:s.codigo||"" };
+  return { unidad:"", presentacion:"", codigo:"" };
+}
+
 // Stock (en memoria sesión)
 var stockPropio = [], stockPendiente = [];
 var stockTabActiva = "propio";
@@ -1078,14 +1092,20 @@ async function onLoggedIn() {
 async function spGet(listId, params) {
   params = params || "";
   var items = [], url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items?$expand=fields&$top=500" + params;
+  var retried401 = false;
   while (url) {
     var r = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
     if (r.status === 429) { await sleep(parseInt(r.headers.get("Retry-After")||"5")*1000); continue; }
+    if (r.status === 401 && !retried401) {
+      retried401 = true;
+      try { await acquireToken(); } catch(e) {}
+      continue; // retry same URL with fresh token
+    }
     if (!r.ok) throw new Error("SP GET " + r.status);
     var d = await r.json();
     items = items.concat(d.value || []);
     url = d["@odata.nextLink"] || null;
-    if (url) await sleep(200);
+    if (url) { retried401 = false; await sleep(200); }
   }
   return items;
 }
@@ -1723,10 +1743,10 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
     lineas.forEach(function(item) {
       var f=item.fields;
       // Enriquecer unidad/presentacion/codigo desde padrón si falta en el pedido SP
-      var _pad = padronInsumos.find(function(p){ return p.nombre===f.Insumo; }) || {};
-      var _uni  = f.Unidad        || _pad.unidad        || "";
-      var _pres = f.Presentacion  || _pad.presentacion  || "-";
-      var _cod  = f.CodigoInsumo  || _pad.codigo        || "-";
+      var _inf = getInsumoInfo(f.Insumo);
+      var _uni  = f.Unidad       || _inf.unidad       || "";
+      var _pres = f.Presentacion || _inf.presentacion || "-";
+      var _cod  = f.CodigoInsumo || _inf.codigo       || "-";
       html += '<tr>';
       if (enCamino) {
         if (!f.NroRemito) html += '<td><input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+item.id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);"></td>';
@@ -1747,10 +1767,10 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
   } else {
     var f=lineas[0].fields;
     // Enriquecer unidad/presentacion/codigo desde padrón si falta en el pedido SP
-    var _pad1 = padronInsumos.find(function(p){ return p.nombre===f.Insumo; }) || {};
-    var _uni1  = f.Unidad       || _pad1.unidad       || "";
-    var _pres1 = f.Presentacion || _pad1.presentacion || "";
-    var _cod1  = f.CodigoInsumo || _pad1.codigo       || "";
+    var _inf1 = getInsumoInfo(f.Insumo);
+    var _uni1  = f.Unidad       || _inf1.unidad       || "";
+    var _pres1 = f.Presentacion || _inf1.presentacion || "";
+    var _cod1  = f.CodigoInsumo || _inf1.codigo       || "";
     html += '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">';
     if (_cod1) html += '<span style="font-size:11px;color:var(--sub);font-family:monospace;margin-right:6px;font-weight:400;">['+_cod1+']</span>';
     html += f.Insumo+
@@ -2097,11 +2117,13 @@ function renderStockTable() {
         '<td class="r" style="font-weight:700;color:'+(disp>0?'var(--green)':'var(--red)')+';">'+disp.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>';
     });
   } else {
-    html += '<thead><tr><th>Insumo</th><th>Proveedor</th><th>OC (Referencia)</th><th class="r" style="color:var(--blue);">Albor</th><th class="r" style="color:var(--orange);">Pendiente de remito</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
+    html += '<thead><tr><th style="color:var(--sub);">Código</th><th>Insumo</th><th>Proveedor</th><th>OC (Referencia)</th><th class="r" style="color:var(--blue);">Albor</th><th class="r" style="color:var(--orange);">Pendiente de remito</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
     filtered.forEach(function(r){
       var comp = comprometidoPorOC[r.referencia] || 0;
       var disp = Math.max(0, r.pendiente - comp);
+      var _oc = getInsumoInfo(r.insumo);
       html += '<tr>' +
+        '<td style="font-size:11px;color:var(--sub);font-family:monospace;">'+(_oc.codigo||'—')+'</td>' +
         '<td style="font-weight:600;">'+r.insumo+'</td>' +
         '<td style="font-size:12px;color:var(--sub);">'+r.proveedor+'</td>' +
         '<td style="font-size:11px;color:var(--light);">'+(r.referencia||'—')+'</td>' +
@@ -2160,7 +2182,10 @@ async function guardarStockEnSP() {
     setTimeout(function(){ if (progWrap) progWrap.style.display="none"; }, 3000);
     showToast("Stock guardado en SharePoint ✓ ("+total+" registros)","ok");
   } catch(e) {
-    if (progWrap) progWrap.style.display="none";
+    if (progBar)   { progBar.style.background="var(--red)"; progBar.style.width="100%"; }
+    if (progLabel) progLabel.textContent = "❌ Error: " + e.message.substring(0,100);
+    if (progWrap)  progWrap.style.display = "block";
+    setTimeout(function(){ if (progWrap) progWrap.style.display="none"; }, 5000);
     showToast("Error: "+e.message,"error");
   } finally {
     if (btnGuardar) btnGuardar.disabled = false;
@@ -2209,14 +2234,17 @@ async function cargarPedidosInsumos() {
       pedidosInsumos.forEach(function(item){
         var f=item.fields; var spId=item.id;
         var retiroFlag = (f.RetiroPersonal||"").toUpperCase()==="SI" ? "SI" : "";
+        var _ia = getInsumoInfo(f.Insumo);
+        var _uniA  = f.Unidad       || _ia.unidad       || "";
+        var _presA = f.Presentacion || _ia.presentacion || "";
         htmlA += '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
         htmlA += '<div style="flex:1;min-width:0;">';
-        htmlA += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);">('+f.Presentacion+')</span>':'')+' </div>';
+        htmlA += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uniA+'</span>'+(_presA?' <span style="color:var(--light);">('+_presA+')</span>':'')+' </div>';
         htmlA += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
                  '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
         htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlA += '<span class="badge badge-pending">Pendiente</span>';
-        htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
+        htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniA+' ('+esc(_presA)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
         htmlA += '</div></div>';
       });
     }
@@ -2237,9 +2265,12 @@ async function cargarPedidosInsumos() {
       pedidosLog.forEach(function(item){
         var f=item.fields; var spId=item.id;
         var retiroFlag = (f.RetiroPersonal||"").toUpperCase()==="SI" ? "SI" : "";
+        var _il = getInsumoInfo(f.Insumo);
+        var _uniL  = f.Unidad       || _il.unidad       || "";
+        var _presL = f.Presentacion || _il.presentacion || "";
         htmlL += '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
         htmlL += '<div style="flex:1;min-width:0;">';
-        htmlL += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);">('+f.Presentacion+')</span>':'')+' </div>';
+        htmlL += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uniL+'</span>'+(_presL?' <span style="color:var(--light);">('+_presL+')</span>':'')+' </div>';
         htmlL += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
                  '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div>';
         if (f.OrigenAsignado) {
@@ -2248,7 +2279,7 @@ async function cargarPedidosInsumos() {
         htmlL += '</div>';
         htmlL += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlL += '<span class="badge badge-insumos">Pend. logística</span>';
-        htmlL += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+(f.Unidad||'')+' ('+esc(f.Presentacion)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">✏️ Editar origen</button>';
+        htmlL += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniL+' ('+esc(_presL)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">✏️ Editar origen</button>';
         htmlL += '</div></div>';
       });
     }
@@ -2278,7 +2309,7 @@ async function cargarPedidosInsumos() {
         htmlEC += '<td style="padding:7px 12px;">'+( f.Campo||"-")+'</td>';
         htmlEC += '<td style="padding:7px 12px;color:var(--blue);font-weight:600;">'+( f.Localidad||"-")+'</td>';
         htmlEC += '<td style="padding:7px 12px;font-weight:600;">'+( f.Insumo||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.Cantidad||"")+" "+(f.Unidad||"")+'</td>';
+        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.Cantidad||"")+" "+(f.Unidad||(getInsumoInfo(f.Insumo).unidad)||"")+'</td>';
         htmlEC += '<td style="padding:7px 12px;color:var(--blue);">'+( f.OrigenAsignado||"-")+'</td>';
         htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.CamionId||"-")+'</td>';
         htmlEC += '<td style="padding:7px 12px;">'+( f.Chofer||"-")+'</td>';
@@ -2315,9 +2346,10 @@ async function cargarPedidosInsumos() {
         htmlCE += '<td style="padding:7px 12px;">'+( f.Operador||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;">'+( f.Campo||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;color:var(--blue);font-weight:600;">'+( f.Localidad||"-")+'</td>';
+        var _ice = getInsumoInfo(f.Insumo);
         htmlCE += '<td style="padding:7px 12px;font-weight:600;">'+( f.Insumo||"-")+'</td>';
-        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.Cantidad||"")+" "+(f.Unidad||"")+'</td>';
-        htmlCE += '<td style="padding:7px 12px;">'+( f.Presentacion||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.Cantidad||"")+" "+(f.Unidad||_ice.unidad||"")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+(f.Presentacion||_ice.presentacion||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;color:var(--blue);">'+( f.OrigenAsignado||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;">'+( f.OrdenCompra||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.CamionId||"-")+'</td>';
@@ -2723,9 +2755,9 @@ function renderPedidosEnviados() {
     items.forEach(function(p, pi){
       var f = p.fields;
       // Enriquecer desde padrón si el campo está vacío en SP
-      var _lpad = padronInsumos.find(function(x){ return x.nombre===f.Insumo; }) || {};
-      var _luni  = f.Unidad       || _lpad.unidad       || "";
-      var _lpres = f.Presentacion || _lpad.presentacion || "—";
+      var _linf = getInsumoInfo(f.Insumo);
+      var _luni  = f.Unidad       || _linf.unidad       || "";
+      var _lpres = f.Presentacion || _linf.presentacion || "—";
       html += '<tr style="border-top:1px solid var(--border);background:'+(pi%2===0?'var(--white)':'var(--bg)')+'">' +
         '<td style="padding:8px 14px;font-size:12px;color:var(--light);">'+(f.NumeroPedido||'—')+'</td>' +
         '<td style="padding:8px 14px;font-weight:600;">'+f.Insumo+'</td>' +
@@ -2820,10 +2852,11 @@ function renderItemsLogistica() {
     html += '<div style="padding:10px 14px;background:#EDE9FE;border-bottom:1px solid #C4B5FD;font-size:12px;color:#6D28D9;font-weight:700;">🏃 Retiro Personalmente ('+retiroPersonal.length+') — sin acción requerida de logística</div>';
     retiroPersonal.forEach(function(item){
       var f=item.fields;
+      var _ri = getInsumoInfo(f.Insumo);
       html += '<div class="item-row" style="opacity:0.7;cursor:default;pointer-events:none;">'+
         '<div class="checkbox" style="background:#C4B5FD;color:#6D28D9;">🏃</div>'+
         '<div style="flex:1;min-width:0;">'+
-          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span></div>'+
+          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||_ri.unidad||'')+'</span></div>'+
           '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
             '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
             (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
@@ -2840,10 +2873,12 @@ function renderItemsLogistica() {
     sinAsignar.forEach(function(item){
       var f=item.fields; var spId=item.id;
       var sel=!!selItems[spId];
+      var _si = getInsumoInfo(f.Insumo);
+      var _siU = f.Unidad||_si.unidad||""; var _siP = f.Presentacion||_si.presentacion||"";
       html += '<div class="item-row '+(sel?"sel":"") +'" onclick="toggleItem(\''+spId+'\')">'+
         '<div class="checkbox '+(sel?"checked":"")+'">'+( sel?"✓":"")+'</div>'+
         '<div style="flex:1;min-width:0;">'+
-          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);font-size:11px;">('+f.Presentacion+')</span>':'')+' </div>'+
+          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_siU+'</span>'+(_siP?' <span style="color:var(--light);font-size:11px;">('+_siP+')</span>':'')+' </div>'+
           '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
             '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
             (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
@@ -2870,8 +2905,10 @@ function renderItemsLogistica() {
     html2 += '</div><span style="background:var(--brand);color:var(--text);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:800;">'+itemsCam.length+' ítems</span></div>';
     itemsCam.forEach(function(item){
       var f=item.fields;
+      var _ci2 = getInsumoInfo(f.Insumo);
+      var _ci2U = f.Unidad||_ci2.unidad||""; var _ci2P = f.Presentacion||_ci2.presentacion||"";
       html2 += '<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
-      html2 += '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||'')+'</span>'+(f.Presentacion?' <span style="color:var(--light);font-size:11px;">('+f.Presentacion+')</span>':'')+' </div>';
+      html2 += '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_ci2U+'</span>'+(_ci2P?' <span style="color:var(--light);font-size:11px;">('+_ci2P+')</span>':'')+' </div>';
       html2 += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' · 👤 '+f.Operador+'</div></div>';
       html2 += '<span class="badge badge-transit">En camino</span>';
       html2 += '<button style="font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--sub);" onclick="quitarDeCamion(\''+item.id+'\')">✕ Quitar</button>';
@@ -3015,7 +3052,7 @@ function renderCamionesEnviados() {
     html += '<div style="font-size:11px;color:var(--sub);margin-top:4px;">';
     itemsCam.forEach(function(p){
       var f=p.fields;
-      html += '<div>'+f.Insumo+' <span style="color:var(--light);">'+f.Cantidad+' '+(f.Unidad||'')+'</span> — 📍 '+f.Campo+(f.Localidad?' · '+f.Localidad:'')+'</div>';
+      html += '<div>'+f.Insumo+' <span style="color:var(--light);">'+f.Cantidad+' '+(f.Unidad||getInsumoInfo(f.Insumo).unidad||'')+'</span> — 📍 '+f.Campo+(f.Localidad?' · '+f.Localidad:'')+'</div>';
     });
     html += '</div>';
     html += '</div><div style="text-align:right;flex-shrink:0;">';
@@ -3079,9 +3116,11 @@ function verDetalleCamion(camId) {
     h += '<div style="padding:11px 0;border-top:1px solid #E5E7EB;">';
     h += '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">';
     h +=   '<div style="font-weight:700;font-size:13px;color:#111827;">'+f.Insumo+'</div>';
-    h +=   '<div style="font-size:13px;font-weight:600;color:#2563EB;white-space:nowrap;">'+f.Cantidad+' '+(f.Unidad||'')+'</div>';
+    var _mInf = getInsumoInfo(f.Insumo);
+    h +=   '<div style="font-size:13px;font-weight:600;color:#2563EB;white-space:nowrap;">'+f.Cantidad+' '+(f.Unidad||_mInf.unidad||'')+'</div>';
     h += '</div>';
-    if (f.Presentacion) h += '<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">'+f.Presentacion+'</div>';
+    var _mPres = f.Presentacion||_mInf.presentacion||"";
+    if (_mPres) h += '<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">'+_mPres+'</div>';
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;margin-top:6px;">';
     if (f.OrigenAsignado) h += filaMini('Origen', f.OrigenAsignado);
     h += filaMini('Destino', f.Campo + (f.Localidad ? ' · ' + f.Localidad : ''));
@@ -3433,10 +3472,10 @@ function mostrarComprobante(fieldsArr, remito) {
   html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);margin-bottom:8px;">Insumos</div>';
   html += '<div style="background:var(--bg);border-radius:10px;border:1px solid var(--border);overflow:hidden;">';
   fieldsArr.forEach(function(f,i){
-    var _cpad  = padronInsumos.find(function(p){ return p.nombre===f.Insumo; }) || {};
-    var _cuni  = f.Unidad       || _cpad.unidad       || "";
-    var _cpres = f.Presentacion || _cpad.presentacion || "";
-    var _ccod  = f.CodigoInsumo || _cpad.codigo       || "";
+    var _cinf  = getInsumoInfo(f.Insumo);
+    var _cuni  = f.Unidad       || _cinf.unidad       || "";
+    var _cpres = f.Presentacion || _cinf.presentacion || "";
+    var _ccod  = f.CodigoInsumo || _cinf.codigo       || "";
     html += '<div style="display:flex;align-items:center;padding:10px 14px;'+(i>0?'border-top:1px solid var(--border);':'')+'">'
       +(_ccod?'<div style="font-size:10px;color:var(--sub);font-family:monospace;margin-right:8px;min-width:48px;">'+_ccod+'</div>':"")
       +'<div style="flex:1;font-weight:700;font-size:13px;">'+(f.Insumo||"-")+'</div>'
