@@ -1771,12 +1771,13 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
     var _uni1  = f.Unidad       || _inf1.unidad       || "";
     var _pres1 = f.Presentacion || _inf1.presentacion || "";
     var _cod1  = f.CodigoInsumo || _inf1.codigo       || "";
-    html += '<div style="font-size:14px;font-weight:600;margin-bottom:6px;">';
-    if (_cod1) html += '<span style="font-size:11px;color:var(--sub);font-family:monospace;margin-right:6px;font-weight:400;">['+_cod1+']</span>';
-    html += f.Insumo+
+    html += '<div style="margin-bottom:6px;">';
+    html += '<div style="font-size:14px;font-weight:600;">'+f.Insumo+
             '<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uni1+'</span>'+
             (_pres1?' <span style="font-size:11px;color:var(--light);">('+_pres1+')</span>':'')+
             '</div>';
+    if (_cod1) html += '<div style="font-size:11px;color:var(--light);margin-top:2px;">Cód. <span style="font-family:monospace;">'+_cod1+'</span></div>';
+    html += '</div>';
     if (esCerrado && f.NroRemito) html += '<div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:6px;">✓ Remito: '+f.NroRemito+'</div>';
   }
 
@@ -2117,14 +2118,16 @@ function renderStockTable() {
         '<td class="r" style="font-weight:700;color:'+(disp>0?'var(--green)':'var(--red)')+';">'+disp.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td></tr>';
     });
   } else {
-    html += '<thead><tr><th style="color:var(--sub);">Código</th><th>Insumo</th><th>Proveedor</th><th>OC (Referencia)</th><th class="r" style="color:var(--blue);">Albor</th><th class="r" style="color:var(--orange);">Pendiente de remito</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
+    html += '<thead><tr><th style="color:var(--sub);">Código</th><th>Insumo</th><th>Unidad</th><th>Proveedor</th><th>OC (Referencia)</th><th class="r" style="color:var(--blue);">Albor</th><th class="r" style="color:var(--orange);">Pendiente de remito</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
     filtered.forEach(function(r){
       var comp = comprometidoPorOC[r.referencia] || 0;
       var disp = Math.max(0, r.pendiente - comp);
       var _oc = getInsumoInfo(r.insumo);
+      var _ocU = _oc.unidad || "";
       html += '<tr>' +
         '<td style="font-size:11px;color:var(--sub);font-family:monospace;">'+(_oc.codigo||'—')+'</td>' +
         '<td style="font-weight:600;">'+r.insumo+'</td>' +
+        '<td style="font-size:12px;color:var(--sub);">'+(_ocU||'—')+'</td>' +
         '<td style="font-size:12px;color:var(--sub);">'+r.proveedor+'</td>' +
         '<td style="font-size:11px;color:var(--light);">'+(r.referencia||'—')+'</td>' +
         '<td class="r" style="color:var(--blue);">'+r.pendiente.toLocaleString("es-AR",{maximumFractionDigits:2})+'</td>' +
