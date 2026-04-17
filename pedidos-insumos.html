@@ -777,6 +777,7 @@ tr:hover td{background:var(--brand-light);}
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--light);margin-bottom:4px;">Asignar origen</div>
         <div class="modal-title" id="modal-origen-titulo"></div>
         <div style="font-size:13px;color:var(--sub);margin-top:2px;" id="modal-origen-sub"></div>
+        <div id="modal-origen-fecha" style="display:none;margin-top:5px;"></div>
       </div>
       <button class="btn-ghost" onclick="cerrarModal('modal-origen')" style="font-size:18px;padding:2px 8px;">✕</button>
     </div>
@@ -2247,7 +2248,7 @@ async function cargarPedidosInsumos() {
                  '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
         htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlA += '<span class="badge badge-pending">Pendiente</span>';
-        htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniA+' ('+esc(_presA)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
+        htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniA+' ('+esc(_presA)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
         htmlA += '</div></div>';
       });
     }
@@ -2282,7 +2283,7 @@ async function cargarPedidosInsumos() {
         htmlL += '</div>';
         htmlL += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlL += '<span class="badge badge-insumos">Pend. logística</span>';
-        htmlL += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniL+' ('+esc(_presL)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\')">✏️ Editar origen</button>';
+        htmlL += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniL+' ('+esc(_presL)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\')">✏️ Editar origen</button>';
         htmlL += '</div></div>';
       });
     }
@@ -2421,10 +2422,20 @@ function filtrarOrigenTab(tab) {
   }
 }
 
-function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersonal) {
+function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersonal, fechaEntrega) {
   pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0, retiroPersonal: retiroPersonal||""};
   document.getElementById("modal-origen-titulo").textContent = insumo;
   document.getElementById("modal-origen-sub").textContent = cantPres + " · 📍 " + campo;
+  var fechaEl = document.getElementById("modal-origen-fecha");
+  if (fechaEl) {
+    if (fechaEntrega) {
+      fechaEl.style.display = "block";
+      fechaEl.innerHTML = '🚚 Fecha de entrega requerida: <span style="font-family:monospace;">' + fechaEntrega + '</span>';
+      fechaEl.style.cssText = "display:block;margin-top:6px;font-size:12px;font-weight:700;color:var(--orange);background:var(--orange-light);border-radius:6px;padding:4px 10px;";
+    } else {
+      fechaEl.style.display = "none";
+    }
+  }
   var inpOrigen = document.getElementById("inp-origen");
   inpOrigen.value = "";
   inpOrigen.setAttribute("readonly","readonly");
