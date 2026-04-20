@@ -2563,7 +2563,8 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
 
   // Poblar listas completas para que la búsqueda libre opere sobre todo el stock
   _origenMatchP  = stockPropio.map(function(r){
-    var consumido  = stockAjustes[r.nombre] || 0;
+    // Usar comprometidoPorPropio (cargado desde SP) — misma fuente que la tabla de stock
+    var consumido  = comprometidoPorPropio[r.nombre + '|' + (r.puntoStock||'')] || 0;
     var disponible = Math.max(0, r.existencia - consumido);
     var ptoLabel   = r.puntoStock ? r.puntoStock + ' — ' : '';
     var texto      = 'Stock propio — ' + ptoLabel + r.nombre +
