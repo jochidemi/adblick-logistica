@@ -781,6 +781,7 @@ tr:hover td{background:var(--brand-light);}
         <div class="modal-title" id="modal-origen-titulo"></div>
         <div style="font-size:13px;color:var(--sub);margin-top:2px;" id="modal-origen-sub"></div>
         <div id="modal-origen-fecha" style="display:none;margin-top:5px;"></div>
+        <div id="modal-origen-retiro" style="display:none;margin-top:5px;"></div>
       </div>
       <button class="btn-ghost" onclick="cerrarModal('modal-origen')" style="font-size:18px;padding:2px 8px;">✕</button>
     </div>
@@ -1669,8 +1670,10 @@ async function enviarUnItem(fields) {
     if (r.ok) return true;
     var errBody = await r.json().catch(function(){ return {}; });
     var badField = errBody.error && errBody.error.message ? errBody.error.message.match(/Field '([^']+)' is not recognized/) : null;
-    if (badField) { delete fields[badField[1]]; }
-    else { throw new Error(errBody.error ? errBody.error.message : "SP POST " + r.status); }
+    if (badField) {
+      console.warn("[pedidos-insumos] SP rechazó el campo '" + badField[1] + "' — verificar que la columna exista en la lista Pedidos de SharePoint con ese nombre interno.");
+      delete fields[badField[1]];
+    } else { throw new Error(errBody.error ? errBody.error.message : "SP POST " + r.status); }
   }
   throw new Error("No se pudo enviar después de varios intentos");
 }
@@ -1706,7 +1709,10 @@ async function enviarPedido() {
       if (formState.fechaEntrega) fields.FechaEntrega  = formState.fechaEntrega;
       if (obs)                    fields.Observaciones = obs;
       var esRetiro = document.getElementById("chk-retiro") && document.getElementById("chk-retiro").checked;
-      if (esRetiro)               fields.RetiroPersonal = "SI";
+      if (esRetiro) {
+        fields.RetiroPersonal = "SI";
+        console.log("[retiro] Enviando RetiroPersonal='SI' al SP para pedido", fields.NumeroPedido);
+      }
       if (formState.localidad)    fields.Localidad      = formState.localidad;
       await enviarUnItem(fields);
     }
@@ -1793,7 +1799,9 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
   var enCamino     = estado === "En camino" || estado === "Listo para retirar";
   var esCerrado    = estado === "Cerrado";
   var esPendiente  = !enCamino && !esCerrado;
-  var listoRetirar = estado === "Listo para retirar";
+  // listoRetirar: estado legacy "Listo para retirar" O nuevo "En camino" con RetiroPersonal="SI"
+  var listoRetirar = estado === "Listo para retirar" ||
+                     (estado === "En camino" && (f0.RetiroPersonal||"").toUpperCase() === "SI");
 
   var html = '<div class="pedido-card">';
 
@@ -1870,7 +1878,7 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
   // Info camión
   if (enCamino) {
     if (listoRetirar) {
-      html += '<div class="info-box" style="margin:10px 0;font-size:12px;background:#EDE9FE;border-color:#A78BFA;"><b>🏃 Listo para retirar</b>';
+      html += '<div class="info-box" style="margin:10px 0;font-size:12px;background:#EDE9FE;border-color:#A78BFA;"><b>🏃 Retiro personal</b>';
       if (f0.OrigenAsignado) html += ' · 📦 '+f0.OrigenAsignado;
       html += '</div>';
     } else if (f0.Chofer) {
@@ -2320,7 +2328,9 @@ async function cargarPedidosInsumos() {
     } else {
       pedidosInsumos.forEach(function(item){
         var f=item.fields; var spId=item.id;
-        var retiroFlag = (f.RetiroPersonal||"").toUpperCase()==="SI" ? "SI" : "";
+        var _rp = f.RetiroPersonal;
+        var retiroFlag = (_rp === true || String(_rp||"").toUpperCase() === "SI") ? "SI" : "";
+        console.log("[retiro] Pedido", f.NumeroPedido, "| RetiroPersonal raw =", JSON.stringify(_rp), "| flag =", retiroFlag||"(vacío)");
         var _ia = getInsumoInfo(f.Insumo);
         var _uniA  = f.Unidad       || _ia.unidad       || "";
         var _presA = f.Presentacion || _ia.presentacion || "";
@@ -2351,7 +2361,8 @@ async function cargarPedidosInsumos() {
     } else {
       pedidosLog.forEach(function(item){
         var f=item.fields; var spId=item.id;
-        var retiroFlag = (f.RetiroPersonal||"").toUpperCase()==="SI" ? "SI" : "";
+        var _rpL = f.RetiroPersonal;
+        var retiroFlag = (_rpL === true || String(_rpL||"").toUpperCase() === "SI") ? "SI" : "";
         var _il = getInsumoInfo(f.Insumo);
         var _uniL  = f.Unidad       || _il.unidad       || "";
         var _presL = f.Presentacion || _il.presentacion || "";
@@ -2398,9 +2409,10 @@ async function cargarPedidosInsumos() {
         htmlEC += '<td style="padding:7px 12px;font-weight:600;">'+( f.Insumo||"-")+'</td>';
         htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.Cantidad||"")+" "+(f.Unidad||(getInsumoInfo(f.Insumo).unidad)||"")+'</td>';
         htmlEC += '<td style="padding:7px 12px;color:var(--blue);">'+( f.OrigenAsignado||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.CamionId||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;">'+( f.Chofer||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;">'+( f.Patente||"-")+'</td>';
+        var _esRetiroEC = (f.RetiroPersonal||"").toUpperCase() === "SI";
+        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+(_esRetiroEC?'🏃 Retiro personal':(f.CamionId||"-"))+'</td>';
+        htmlEC += '<td style="padding:7px 12px;">'+(_esRetiroEC?"-":(f.Chofer||"-"))+'</td>';
+        htmlEC += '<td style="padding:7px 12px;">'+(_esRetiroEC?"-":(f.Patente||"-"))+'</td>';
         htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.FechaEntrega||"-")+'</td>';
         htmlEC += '</tr>';
       });
@@ -2506,9 +2518,24 @@ function filtrarOrigenTab(tab) {
 }
 
 function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersonal, fechaEntrega) {
-  pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0, retiroPersonal: retiroPersonal||""};
+  // Normalizar retiroPersonal: acepta string "SI" o boolean true
+  var retiroNorm = (retiroPersonal === true || String(retiroPersonal||"").toUpperCase() === "SI") ? "SI" : "";
+  console.log("[retiro] abrirModalOrigen — retiroPersonal recibido:", JSON.stringify(retiroPersonal), "→ normalizado:", retiroNorm||"(vacío)");
+  pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0, retiroPersonal: retiroNorm};
   document.getElementById("modal-origen-titulo").textContent = insumo;
   document.getElementById("modal-origen-sub").textContent = cantPres + " · 📍 " + campo;
+
+  // Banner retiro personal
+  var retiroEl = document.getElementById("modal-origen-retiro");
+  if (retiroEl) {
+    if (retiroNorm === "SI") {
+      retiroEl.style.cssText = "display:block;margin-top:6px;font-size:12px;font-weight:700;color:#6D28D9;background:#EDE9FE;border-radius:6px;padding:4px 10px;";
+      retiroEl.textContent = "🏃 Retiro personal — pasará directo a En camino";
+    } else {
+      retiroEl.style.display = "none";
+    }
+  }
+
   var fechaEl = document.getElementById("modal-origen-fecha");
   if (fechaEl) {
     if (fechaEntrega) {
@@ -2698,8 +2725,10 @@ async function confirmarOrigen() {
     var cant = pedidoOrigenActual.cantidad; // definido primero para usarlo en paso 2
 
     // 1. Determinar estado destino según RetiroPersonal
-    var esRetiro = pedidoOrigenActual.retiroPersonal === "SI";
-    var estadoDestino = esRetiro ? "Listo para retirar" : "Pendiente logística";
+    //    Retiro personal → salta logística, va directo a "En camino"
+    var esRetiro = pedidoOrigenActual.retiroPersonal === "SI" || pedidoOrigenActual.retiroPersonal === true;
+    var estadoDestino = esRetiro ? "En camino" : "Pendiente logística";
+    console.log("[retiro] confirmarOrigen — retiroPersonal =", JSON.stringify(pedidoOrigenActual.retiroPersonal), "| esRetiro =", esRetiro, "| estadoDestino =", estadoDestino);
 
     // 2. Construir campo OrdenCompra
     //    OC: "referencia:qty,referencia:qty"
@@ -2741,7 +2770,7 @@ async function confirmarOrigen() {
     selectedStockItem = null;
     selectedOCItems   = [];
     cerrarModal("modal-origen");
-    showToast("Origen asignado ✓"+(esRetiro?" — vuelve al operador para remito":""),"ok");
+    showToast("Origen asignado ✓"+(esRetiro?" — retiro personal, en camino":""),"ok");
     cargarPedidosInsumos();
     await cargarComprometidoSinRemito(); // recalcula Pendiente de remito leyendo SP fresco
   } catch(e) { showToast("Error: "+e.message,"error"); }
@@ -2802,8 +2831,11 @@ function renderPedidosEnviados() {
   var container = document.getElementById("log-enviados-container");
   if (!container) return;
 
-  // Pedidos "En camino" (ya despachados)
-  var enviados = pedidosLogistica.filter(function(p){ return p.fields.Estado === "En camino"; });
+  // Pedidos "En camino" despachados por logística (excluir retiro personal — saltan logística)
+  var enviados = pedidosLogistica.filter(function(p){
+    return p.fields.Estado === "En camino" &&
+           (p.fields.RetiroPersonal||"").toUpperCase() !== "SI";
+  });
 
   // Poblar selects con valores únicos
   var campSel = document.getElementById("inp-env-campo");
@@ -2949,8 +2981,16 @@ async function cargarPedidosLogistica() {
 }
 
 function renderItemsLogistica() {
-  var retiroPersonal = pedidosLogistica.filter(function(p){ return p.fields.Estado === "Listo para retirar"; });
-  var sinAsignar = pedidosLogistica.filter(function(p){ return !p.fields.CamionId && p.fields.Estado !== "Listo para retirar"; });
+  // Retiro personal: estado legacy "Listo para retirar" O nuevo "En camino" + RetiroPersonal="SI"
+  var retiroPersonal = pedidosLogistica.filter(function(p){
+    return p.fields.Estado === "Listo para retirar" ||
+           ((p.fields.RetiroPersonal||"").toUpperCase() === "SI" && p.fields.Estado === "En camino");
+  });
+  // Sin asignar: solo "Pendiente logística" que no sean retiro personal
+  var sinAsignar = pedidosLogistica.filter(function(p){
+    return p.fields.Estado === "Pendiente logística" &&
+           (p.fields.RetiroPersonal||"").toUpperCase() !== "SI";
+  });
   var container = document.getElementById("log-items-list");
 
   var html = "";
