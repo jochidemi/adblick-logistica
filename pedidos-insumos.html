@@ -2088,7 +2088,7 @@ function parsearCuboOC(ws) {
     .sort(function(a,b){ return a.insumo.localeCompare(b.insumo) || a.proveedor.localeCompare(b.proveedor); });
 }
 
-function switchStockTab(tab) {
+async function switchStockTab(tab) {
   stockTabActiva = tab;
   var tabPropio = document.getElementById("stab-propio"), tabPend = document.getElementById("stab-pendiente");
   var wPto      = document.getElementById("wrap-stock-pto");
@@ -2098,7 +2098,6 @@ function switchStockTab(tab) {
   if (tab==="propio") {
     tabPropio.style.background="var(--white)"; tabPropio.style.color="var(--text)"; tabPropio.style.borderBottom="2px solid var(--brand)";
     tabPend.style.background="transparent"; tabPend.style.color="var(--sub)"; tabPend.style.borderBottom="2px solid transparent";
-    // Poblar filtros propio
     var ptoSel  = document.getElementById("inp-stock-pto");
     var insPSel = document.getElementById("inp-stock-ins-propio");
     var ptos = [...new Set(stockPropio.map(function(r){return r.puntoStock||"";}).filter(Boolean))].sort();
@@ -2108,7 +2107,6 @@ function switchStockTab(tab) {
     wPto.style.display   = ptos.length ? "flex" : "none";
     wInsP.style.display  = inss.length ? "flex" : "none";
     wProv.style.display="none"; wIns.style.display="none";
-    cargarComprometidoSinRemito();
   } else {
     tabPend.style.background="var(--white)"; tabPend.style.color="var(--text)"; tabPend.style.borderBottom="2px solid var(--brand)";
     tabPropio.style.background="transparent"; tabPropio.style.color="var(--sub)"; tabPropio.style.borderBottom="2px solid transparent";
@@ -2121,9 +2119,10 @@ function switchStockTab(tab) {
     wPto.style.display="none"; wInsP.style.display="none";
     wProv.style.display = provs.length ? "flex" : "none";
     wIns.style.display  = inss2.length ? "flex" : "none";
-    cargarComprometidoSinRemito();
   }
-  renderStockTable();
+  // Esperar los comprometidos frescos antes de pintar — elimina la race condition
+  await cargarComprometidoSinRemito();
+  // (cargarComprometidoSinRemito ya llama renderStockTable al terminar)
 }
 
 function limpiarFiltro(id) {
@@ -2131,41 +2130,46 @@ function limpiarFiltro(id) {
   if (el) { el.value = ""; renderStockTable(); }
 }
 
+// ── Helper: recalcular comprometidos a partir de un array de pedidos ya cargado ──
+function _recalcularComprometidos(items) {
+  comprometidoPorOC     = {};
+  comprometidoPorPropio = {};
+  items.forEach(function(item) {
+    var f = item.fields;
+    var nroRemito = String(f.NroRemito||"").trim();
+    var origen    = String(f.OrigenAsignado||"").trim();
+    // Requiere: origen asignado + sin remito + no Cerrado
+    if (!origen || nroRemito || f.Estado === "Cerrado") return;
+    var ocField = String(f.OrdenCompra || "").trim();
+    if (!ocField) return;
+    ocField.split(",").forEach(function(part) {
+      part = part.trim();
+      if (!part) return;
+      if (part.startsWith("PROPIO|")) {
+        // Propio: "PROPIO|nombre|puntoStock:qty"
+        var body = part.substring(7);
+        var sep  = body.lastIndexOf(":");
+        if (sep < 0) return;
+        var key = body.substring(0, sep).trim();
+        var qty = parseFloat(body.substring(sep+1)) || 0;
+        if (key && qty > 0) comprometidoPorPropio[key] = (comprometidoPorPropio[key]||0) + qty;
+      } else {
+        // OC: "referencia:qty"
+        var sep2 = part.lastIndexOf(":");
+        if (sep2 < 0) return;
+        var ref  = part.substring(0, sep2).trim();
+        var qty2 = parseFloat(part.substring(sep2+1)) || 0;
+        if (ref && qty2 > 0) comprometidoPorOC[ref] = (comprometidoPorOC[ref]||0) + qty2;
+      }
+    });
+  });
+}
+
 async function cargarComprometidoSinRemito() {
-  // "Pendiente de remito" = pedidos con origen asignado, sin remito todavía, no Cerrados
+  // Fetchea pedidos frescos de SP, recalcula comprometidos y re-pinta la tabla de stock
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
-    comprometidoPorOC     = {};
-    comprometidoPorPropio = {};
-    items.forEach(function(item) {
-      var f = item.fields;
-      var nroRemito = String(f.NroRemito||"").trim();
-      var origen    = String(f.OrigenAsignado||"").trim();
-      // Requiere: origen asignado + sin remito + no Cerrado
-      if (!origen || nroRemito || f.Estado === "Cerrado") return;
-      var ocField = String(f.OrdenCompra || "").trim();
-      if (!ocField) return;
-      ocField.split(",").forEach(function(part) {
-        part = part.trim();
-        if (!part) return;
-        if (part.startsWith("PROPIO|")) {
-          // Propio: "PROPIO|nombre|puntoStock:qty"
-          var body = part.substring(7);
-          var sep = body.lastIndexOf(":");
-          if (sep < 0) return;
-          var key = body.substring(0, sep).trim();
-          var qty = parseFloat(body.substring(sep+1)) || 0;
-          if (key && qty > 0) comprometidoPorPropio[key] = (comprometidoPorPropio[key]||0) + qty;
-        } else {
-          // OC: "referencia:qty"
-          var sep2 = part.lastIndexOf(":");
-          if (sep2 < 0) return;
-          var ref = part.substring(0, sep2).trim();
-          var qty2 = parseFloat(part.substring(sep2+1)) || 0;
-          if (ref && qty2 > 0) comprometidoPorOC[ref] = (comprometidoPorOC[ref]||0) + qty2;
-        }
-      });
-    });
+    _recalcularComprometidos(items);
     renderStockTable();
   } catch(e) { console.warn("Error cargando pendiente de remito:", e.message); }
 }
@@ -2315,6 +2319,9 @@ async function cargarPedidosInsumos() {
   cA.innerHTML = cL.innerHTML = cEC.innerHTML = cCE.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
+    // Recalcular comprometidos con los items ya cargados (sin SP extra)
+    // Garantiza que el modal de origen siempre tenga disponibles correctos
+    _recalcularComprometidos(items);
 
     // ── Tab 1: pendientes de asignación ──────────────────────────
     pedidosInsumos = items.filter(function(i){ return i.fields.Estado==="Pendiente insumos"; });
