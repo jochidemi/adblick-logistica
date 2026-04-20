@@ -150,6 +150,9 @@ textarea{resize:vertical;min-height:72px;}
 .combo-item.sel{font-weight:700;}
 .combo-item-sub{font-size:11px;color:var(--light);margin-top:1px;}
 .combo-group-header{padding:5px 14px 3px;font-size:11px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.04em;background:var(--bg);border-top:1px solid var(--border);pointer-events:none;user-select:none;}
+.combo-group-toggle{pointer-events:auto;cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px;}
+.combo-group-toggle:hover{color:var(--brand);background:var(--brand-light);}
+.combo-group-arrow{font-size:10px;display:inline-block;width:12px;text-align:center;transition:transform 0.15s;}
 .combo-empty{padding:14px;text-align:center;color:var(--light);font-size:13px;}
 
 /* ── TIPO CHIPS ── */
@@ -911,6 +914,7 @@ var CONFIG = {
     padronOperadores:"17a13b1e-217b-40cc-831f-1ea48c8a33ce",
     camiones:        "Camiones",
     padronDestinos:  "6113f5de-e124-4f60-bc6e-69e9a37773f2",
+    padronPuntosStock: "b5cc6040-caf7-4d8e-ae06-eadc35664732",
   },
   redirectUri: "https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html",
 };
@@ -945,18 +949,34 @@ function renderNav(rol) {
 }
 
 // Padrones (en memoria)
-var padronCampos = [], padronInsumos = [], padronTransp = [], padronOperadores = [], padronDestinos = [];
+var padronCampos = [], padronInsumos = [], padronTransp = [], padronOperadores = [], padronDestinos = [], padronPuntosStock = [];
 
 function getCamposYDestinos() {
   var result = [];
+
+  // Grupo 1 — Campos propios
   if (padronCampos.length) {
-    result.push({ _group: true, _label: "🌾 Campos" });
-    padronCampos.forEach(function(c){ result.push({ nombre: c, tipo: "campo" }); });
+    result.push({ _group: true, _label: "🌾 Campos", _id: "campos" });
+    padronCampos.forEach(function(c){ result.push({ nombre: c, tipo: "campo", _groupId: "campos" }); });
   }
-  if (padronDestinos.length) {
-    result.push({ _group: true, _label: "🏭 Puertos / Plantas / Molinos" });
-    padronDestinos.forEach(function(d){ result.push({ nombre: d, tipo: "destino" }); });
+
+  // Grupo 2 — Destinos granos: padronDestinos + PuntosStock con TipoPuntoStock = "Destino granos"
+  var destBase  = padronDestinos.map(function(d){ return { nombre: d, tipo: "destino", _groupId: "destgranos" }; });
+  var destPtos  = padronPuntosStock.filter(function(p){ return p.tipo === "Destino granos"; })
+                    .map(function(p){ return { nombre: p.nombre, tipo: "destino", _groupId: "destgranos" }; });
+  var destGranos = destBase.concat(destPtos).sort(function(a,b){ return a.nombre.localeCompare(b.nombre,"es"); });
+  if (destGranos.length) {
+    result.push({ _group: true, _label: "🏢 Destinos granos", _id: "destgranos" });
+    destGranos.forEach(function(d){ result.push(d); });
   }
+
+  // Grupo 3 — Puntos de stock (todo lo que no sea "Destino granos")
+  var puntos = padronPuntosStock.filter(function(p){ return p.tipo !== "Destino granos"; });
+  if (puntos.length) {
+    result.push({ _group: true, _label: "📦 Puntos de stock", _id: "puntosstock" });
+    puntos.forEach(function(p){ result.push({ nombre: p.nombre, tipo: "puntostock", _groupId: "puntosstock" }); });
+  }
+
   return result;
 }
 var camposLocalidad = {}; // { nombreCampo: localidad }
@@ -1199,14 +1219,21 @@ async function loadAllMasterData() {
     setLoadingText("Cargando destinos...");
     var dests = await spGet(CONFIG.lists.padronDestinos).catch(function(){ return []; });
     await sleep(300);
+    setLoadingText("Cargando puntos de stock...");
+    var puntosStockSP = await spGet(CONFIG.lists.padronPuntosStock).catch(function(){ return []; });
+    await sleep(300);
     setLoadingText("Cargando stock...");
     var snap = await spGet(CONFIG.lists.stockSnapshot, "");
     padronCampos   = campos.map(function(i){ return (i.fields.NombreCampo||i.fields.Title||"").trim(); }).filter(Boolean).sort();
     camposLocalidad = {};
     campos.forEach(function(i){ var n=(i.fields.NombreCampo||i.fields.Title||"").trim(); if(n) camposLocalidad[n]=(i.fields.Localidad||"").trim(); });
     padronDestinos = dests.map(function(i){ return (i.fields.Title||"").trim(); }).filter(Boolean).sort();
+    padronPuntosStock = puntosStockSP.map(function(i){
+      return { nombre: (i.fields.Title||"").trim(), tipo: (i.fields.TipoPuntoStock||"").trim() };
+    }).filter(function(i){ return i.nombre; }).sort(function(a,b){ return a.nombre.localeCompare(b.nombre,"es"); });
     console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0,3));
     console.log("Destinos cargados:", padronDestinos.length, padronDestinos.slice(0,3));
+    console.log("Puntos de stock cargados:", padronPuntosStock.length, padronPuntosStock.slice(0,3));
     padronInsumos  = insumos.map(function(i){
       // Categoria en SP puede venir como "Tipo.1" del Excel (SP lo encodea)
       var cat = i.fields.Categoria || i.fields.TipoInsumo || "";
@@ -1325,23 +1352,50 @@ function buildCombo(containerId, items, value, placeholder, onChange, renderItem
   var list = document.createElement("div");
   list.className = "combo-list"; drop.appendChild(list);
 
+  // ── Colapsado de grupos ──────────────────────────────────────
+  // Determinar qué grupo expandir por defecto:
+  //   • si hay un valor seleccionado → expandir el grupo que lo contiene
+  //   • si no → expandir el primer grupo
+  var expandedGroups = new Set();
+  var firstGroupId = null;
+  var foundValueGroup = false;
+  for (var xi = 0; xi < items.length; xi++) {
+    var xi_item = items[xi];
+    if (xi_item && xi_item._group && xi_item._id) {
+      if (!firstGroupId) firstGroupId = xi_item._id;
+    } else if (value && xi_item && xi_item._groupId) {
+      var xk = typeof xi_item === "string" ? xi_item : (xi_item.nombre || "");
+      if (xk === value) { expandedGroups.add(xi_item._groupId); foundValueGroup = true; }
+    }
+  }
+  if (!foundValueGroup && firstGroupId) expandedGroups.add(firstGroupId);
+
+  // ── Helper: renderizar un ítem seleccionable ─────────────────
+  function renderItemEl(item) {
+    var key = typeof item === "string" ? item : item.nombre;
+    var div = document.createElement("div");
+    div.className = "combo-item" + (value === key ? " sel" : "");
+    if (renderItem) { div.innerHTML = renderItem(item); }
+    else { div.textContent = key; }
+    div.addEventListener("mousedown", function(e){
+      e.preventDefault(); e.stopPropagation();
+      onChange(key, item); closeCombo(wrap); renderList(""); searchInp.value = "";
+    });
+    list.appendChild(div);
+  }
+
   function renderList(q) {
-    var filtered = q ? items.filter(function(i){
-      if (i && i._group) return false; // never filter out group headers by search — re-added contextually below
-      var s = typeof i==="string" ? i : (i.nombre||"");
-      return s.toLowerCase().includes(q.toLowerCase());
-    }) : items;
-    // When searching, remove orphan group headers (headers with no following item)
+    list.innerHTML = "";
     if (q) {
+      // ── Modo búsqueda: lista plana con separadores de grupo contextuales ──
       var withHeaders = [];
-      for (var gi=0; gi<items.length; gi++) {
+      for (var gi = 0; gi < items.length; gi++) {
         if (items[gi] && items[gi]._group) {
-          // include header only if next non-group item matches
           var hasChild = false;
-          for (var gj=gi+1; gj<items.length; gj++) {
+          for (var gj = gi+1; gj < items.length; gj++) {
             if (items[gj] && items[gj]._group) break;
             var gs = typeof items[gj]==="string" ? items[gj] : (items[gj].nombre||"");
-            if (gs.toLowerCase().includes(q.toLowerCase())) { hasChild=true; break; }
+            if (gs.toLowerCase().includes(q.toLowerCase())) { hasChild = true; break; }
           }
           if (hasChild) withHeaders.push(items[gi]);
         } else {
@@ -1349,27 +1403,54 @@ function buildCombo(containerId, items, value, placeholder, onChange, renderItem
           if (ms.toLowerCase().includes(q.toLowerCase())) withHeaders.push(items[gi]);
         }
       }
-      filtered = withHeaders;
+      var nonGroup = withHeaders.filter(function(i){ return !(i&&i._group); });
+      if (!nonGroup.length) { list.innerHTML = '<div class="combo-empty">Sin resultados</div>'; return; }
+      withHeaders.forEach(function(item) {
+        if (item && item._group) {
+          var hdr = document.createElement("div");
+          hdr.className = "combo-group-header";
+          hdr.textContent = item._label;
+          list.appendChild(hdr);
+          return;
+        }
+        renderItemEl(item);
+      });
+    } else {
+      // ── Modo normal: grupos colapsables ──
+      var totalItems = items.filter(function(i){ return !(i&&i._group); }).length;
+      if (!totalItems) { list.innerHTML = '<div class="combo-empty">Sin resultados</div>'; return; }
+      items.forEach(function(item) {
+        if (item && item._group) {
+          if (!item._id) {
+            // Separador estático sin colapso (compatibilidad hacia atrás)
+            var hdr = document.createElement("div");
+            hdr.className = "combo-group-header";
+            hdr.textContent = item._label;
+            list.appendChild(hdr);
+            return;
+          }
+          var isExp = expandedGroups.has(item._id);
+          var hdr = document.createElement("div");
+          hdr.className = "combo-group-header combo-group-toggle";
+          var arrowEl = document.createElement("span");
+          arrowEl.className = "combo-group-arrow";
+          arrowEl.textContent = isExp ? "▾" : "▸";
+          hdr.appendChild(arrowEl);
+          hdr.appendChild(document.createTextNode(" " + item._label));
+          (function(gid) {
+            hdr.addEventListener("mousedown", function(e) {
+              e.preventDefault(); e.stopPropagation();
+              if (expandedGroups.has(gid)) expandedGroups.delete(gid); else expandedGroups.add(gid);
+              renderList("");
+            });
+          })(item._id);
+          list.appendChild(hdr);
+        } else {
+          if (item._groupId && !expandedGroups.has(item._groupId)) return; // grupo colapsado
+          renderItemEl(item);
+        }
+      });
     }
-    list.innerHTML = "";
-    var nonGroupCount = filtered.filter(function(i){ return !(i&&i._group); }).length;
-    if (!nonGroupCount) { list.innerHTML = '<div class="combo-empty">Sin resultados</div>'; return; }
-    filtered.forEach(function(item) {
-      if (item && item._group) {
-        var hdr = document.createElement("div");
-        hdr.className = "combo-group-header";
-        hdr.textContent = item._label;
-        list.appendChild(hdr);
-        return;
-      }
-      var key = typeof item === "string" ? item : item.nombre;
-      var div = document.createElement("div");
-      div.className = "combo-item" + (value===key?" sel":"");
-      if (renderItem) { div.innerHTML = renderItem(item); }
-      else { div.textContent = key; }
-      div.addEventListener("mousedown", function(e){ e.preventDefault(); e.stopPropagation(); onChange(key, item); closeCombo(wrap); renderList(""); searchInp.value=""; });
-      list.appendChild(div);
-    });
   }
   renderList("");
   searchInp.addEventListener("input", function(){ renderList(this.value); });
@@ -3534,8 +3615,9 @@ async function limpiarPadron(listId, event) {
 
 function renderPadronesPanel() {
   var paneles = [
-    { id:"campos",   titulo:"Campos",                      desc:"Columnas requeridas: <b>Campo</b> (nombre del campo) y <b>Localidad</b>.", listId:CONFIG.lists.padronCampos, count:padronCampos.length },
-    { id:"destinos", titulo:"Puertos / Plantas / Molinos", desc:"Columna requerida: <b>Title</b> (nombre del destino).", listId:CONFIG.lists.padronDestinos, count:padronDestinos.length },
+    { id:"campos",      titulo:"Campos",                      desc:"Columnas requeridas: <b>Campo</b> (nombre del campo) y <b>Localidad</b>.", listId:CONFIG.lists.padronCampos, count:padronCampos.length },
+    { id:"destinos",   titulo:"Destinos granos",             desc:"Columna requerida: <b>Title</b> (nombre del destino: puerto, planta, molino).", listId:CONFIG.lists.padronDestinos, count:padronDestinos.length },
+    { id:"puntosstock",titulo:"Puntos de stock",             desc:"Columnas requeridas: <b>Title</b> (nombre) y <b>TipoPuntoStock</b> (Balanza, CAT, Proveedor insumos, Deposito insumos, Destino granos, Otro).", listId:CONFIG.lists.padronPuntosStock, count:padronPuntosStock.length },
     { id:"insumos",  titulo:"Insumos",                     desc:"Excel de Albor. Columnas: Categoría (col D), Tipo.1, Nombre, Presentación.", listId:CONFIG.lists.padronInsumos, count:padronInsumos.length },
     { id:"transp",   titulo:"Transportistas",              desc:"Excel de Albor. Columnas leídas: Nombre, Razón Social, CUIT.", listId:CONFIG.lists.padronTransp, count:padronTransp.length },
     { id:"ops",      titulo:"Operadores",                  desc:"Lista de operadores con email Microsoft para login automático. Columnas: Title (nombre), Iniciales, Email.", listId:CONFIG.lists.padronOperadores, count:padronOperadores.length },
@@ -3664,6 +3746,11 @@ function mapPadronRows(padId, rows) {
   }
   if (padId==="ops")      return rows.map(function(r){ return { Title:String(r["Nombre"]||r["Title"]||"").trim().substring(0,255), Iniciales:String(r["Iniciales"]||"").trim(), Email:String(r["Email"]||"").trim() }; }).filter(function(r){return r.Title;});
   if (padId==="destinos") return rows.map(function(r){ var v=String(r["Title"]||r["Nombre"]||r["Destino"]||"").trim(); return v?{Title:v.substring(0,255)}:null; }).filter(Boolean);
+  if (padId==="puntosstock") return rows.map(function(r){
+    var nombre = String(r["Title"]||r["Etiqueta"]||r["Nombre"]||"").trim();
+    var tipo   = String(r["TipoPuntoStock"]||r["Tipo"]||"").trim();
+    return nombre ? { Title: nombre.substring(0,255), TipoPuntoStock: tipo } : null;
+  }).filter(Boolean);
   return [];
 }
 
