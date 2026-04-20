@@ -980,6 +980,8 @@ var stockPropio = [], stockPendiente = [];
 var stockTabActiva = "propio";
 // Matches del modal "Asignar origen" (evita pasar JSON en atributos onclick)
 var _origenMatchP = [], _origenMatchOC = [];
+// Sub-conjuntos pre-filtrados por nombre del insumo pedido (se muestran cuando el buscador está vacío)
+var _origenPrefilP = [], _origenPrefilOC = [];
 
 // Pedidos
 var pedidosInsumos = [], pedidosLogistica = [];
@@ -2451,13 +2453,8 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
   selectedStockItem = null;
   selectedOCItems = [];
 
-  // Coincidencias en stock (fuzzy por primera palabra)
-  var q0 = insumo.toLowerCase().split(" ")[0];
-  var matchP  = stockPropio.filter(function(r){ return r.nombre.toLowerCase().includes(q0); });
-  var matchOC = stockPendiente.filter(function(r){ return r.insumo.toLowerCase().includes(q0); });
-
-  // Guardar en arrays globales para que el onclick use índice (evita problemas de escaping con JSON)
-  _origenMatchP  = matchP.map(function(r){
+  // Poblar listas completas para que la búsqueda libre opere sobre todo el stock
+  _origenMatchP  = stockPropio.map(function(r){
     var consumido  = stockAjustes[r.nombre] || 0;
     var disponible = Math.max(0, r.existencia - consumido);
     var ptoLabel   = r.puntoStock ? r.puntoStock + ' — ' : '';
@@ -2466,7 +2463,7 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
     return { r: r, consumido: consumido, disponible: disponible, texto: texto,
              stockKey: r.nombre, tipo: 'propio' };
   });
-  _origenMatchOC = matchOC.map(function(r){
+  _origenMatchOC = stockPendiente.map(function(r){
     var comprometido  = comprometidoPorOC[r.referencia] || 0;
     var sesion        = stockAjustes['OC_'+r.proveedor+'_'+r.insumo+'_'+r.referencia] || 0;
     var disponibleOC  = Math.max(0, r.pendiente - comprometido - sesion);
@@ -2475,17 +2472,27 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
              stockKey: 'OC_'+r.proveedor+'_'+r.insumo+'_'+r.referencia, tipo: 'oc' };
   });
 
+  // Sub-conjuntos sugeridos cuando el buscador está vacío (coinciden con el nombre del insumo pedido)
+  var q0 = insumo.toLowerCase().split(" ")[0];
+  _origenPrefilP  = _origenMatchP.filter(function(m){ return m.r.nombre.toLowerCase().includes(q0); });
+  _origenPrefilOC = _origenMatchOC.filter(function(m){ return m.r.insumo.toLowerCase().includes(q0); });
+
   renderPropioCards("");
   renderOCCards("");
   document.getElementById("modal-origen").classList.add("open");
 }
 
 function renderPropioCards(q) {
-  var lista = _origenMatchP;
-  if (q) { var ql = q.toLowerCase(); lista = lista.filter(function(m){ return m.r.nombre.toLowerCase().includes(ql) || (m.r.puntoStock||"").toLowerCase().includes(ql); }); }
+  var lista;
+  if (q) {
+    var ql = q.toLowerCase();
+    lista = _origenMatchP.filter(function(m){ return m.r.nombre.toLowerCase().includes(ql) || (m.r.puntoStock||"").toLowerCase().includes(ql); });
+  } else {
+    lista = _origenPrefilP;
+  }
   var hP = "";
   if (!lista.length) {
-    hP = '<div style="font-size:13px;color:var(--light);font-style:italic;">' + (_origenMatchP.length ? 'Sin resultados para "'+q+'"' : 'Sin coincidencias en stock propio') + '</div>';
+    hP = '<div style="font-size:13px;color:var(--light);font-style:italic;">' + (q ? 'Sin resultados para "'+q+'"' : 'Sin coincidencias en stock propio') + '</div>';
   } else {
     lista.forEach(function(m, i){
       var realIdx  = _origenMatchP.indexOf(m);
@@ -2510,11 +2517,16 @@ function renderPropioCards(q) {
 }
 
 function renderOCCards(q) {
-  var lista = _origenMatchOC;
-  if (q) { var ql = q.toLowerCase(); lista = lista.filter(function(m){ return m.r.insumo.toLowerCase().includes(ql) || m.r.proveedor.toLowerCase().includes(ql) || (m.r.referencia||"").toLowerCase().includes(ql); }); }
+  var lista;
+  if (q) {
+    var ql = q.toLowerCase();
+    lista = _origenMatchOC.filter(function(m){ return m.r.insumo.toLowerCase().includes(ql) || m.r.proveedor.toLowerCase().includes(ql) || (m.r.referencia||"").toLowerCase().includes(ql); });
+  } else {
+    lista = _origenPrefilOC;
+  }
   var hOC = "";
   if (!lista.length) {
-    hOC = '<div style="font-size:13px;color:var(--light);font-style:italic;">' + (_origenMatchOC.length ? 'Sin resultados para "'+q+'"' : 'Sin OC pendientes') + '</div>';
+    hOC = '<div style="font-size:13px;color:var(--light);font-style:italic;">' + (q ? 'Sin resultados para "'+q+'"' : 'Sin OC pendientes') + '</div>';
   } else {
     lista.forEach(function(m){
       var ri       = _origenMatchOC.indexOf(m); // índice real en el array global
