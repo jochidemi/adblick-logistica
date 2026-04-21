@@ -2348,16 +2348,15 @@ async function cargarPedidosInsumos() {
                  '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
         htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlA += '<span class="badge badge-pending">Pendiente</span>';
-        htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniA+' ('+esc(_presA)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
+        htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniA+' ('+esc(_presA)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\',\'Pendiente insumos\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
         htmlA += '</div></div>';
       });
     }
     cA.innerHTML = '<div style="overflow:hidden;">'+htmlA+'</div>';
 
-    // ── Tab 2: pendientes logística (sin camión asignado aún) ─────
+    // ── Tab 2: pendientes logística (editables por insumos, con o sin camión) ─────
     var pedidosLog = items.filter(function(i){
-      var f = i.fields;
-      return f.Estado === "Pendiente logística" && !f.CamionId;
+      return i.fields.Estado === "Pendiente logística";
     });
     var cntL = pedidosLog.length;
     document.getElementById("ins-log-count").textContent = cntL ? "("+cntL+")" : "";
@@ -2384,13 +2383,13 @@ async function cargarPedidosInsumos() {
         htmlL += '</div>';
         htmlL += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlL += '<span class="badge badge-insumos">Pend. logística</span>';
-        htmlL += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniL+' ('+esc(_presL)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\')">✏️ Editar origen</button>';
+        htmlL += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniL+' ('+esc(_presL)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\',\'Pendiente logística\')">✏️ Editar origen</button>';
         htmlL += '</div></div>';
       });
     }
     cL.innerHTML = '<div style="overflow:hidden;">'+htmlL+'</div>';
 
-    // ── Tab 3: en camino ─────────────────────────────────────────
+    // ── Tab 3: en camino (editables por insumos) ─────────────────
     var pedidosEC = items.filter(function(i){ return i.fields.Estado==="En camino"; });
     pedidosEC.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
     var cntEC = pedidosEC.length;
@@ -2399,33 +2398,44 @@ async function cargarPedidosInsumos() {
     if (!cntEC) {
       htmlEC = '<div style="padding:48px;text-align:center;color:var(--light);">No hay pedidos en camino</div>';
     } else {
-      htmlEC += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
-      htmlEC += '<thead><tr style="background:var(--dark);color:#fff;">';
-      ['N° Pedido','Operador','Campo','Localidad','Insumo','Cantidad','Origen','Camión','Chofer','Patente','F. Entrega'].forEach(function(h){
-        htmlEC += '<th style="padding:8px 12px;text-align:left;white-space:nowrap;">'+h+'</th>';
+      pedidosEC.forEach(function(item){
+        var f = item.fields; var spId = item.id;
+        var _rpe = f.RetiroPersonal;
+        var retiroFlagEC = (_rpe === true || String(_rpe||"").toUpperCase() === "SI") ? "SI" : "";
+        var _ie = getInsumoInfo(f.Insumo);
+        var _uniEC  = f.Unidad       || _ie.unidad       || "";
+        var _presEC = f.Presentacion || _ie.presentacion || "";
+        var _esRetiroEC = retiroFlagEC === "SI";
+        htmlEC += '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
+        htmlEC += '<div style="flex:1;min-width:0;">';
+        htmlEC += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+
+                  '<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uniEC+'</span>'+
+                  (_presEC?' <span style="color:var(--light);">('+_presEC+')</span>':'')+' </div>';
+        htmlEC += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
+                  '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span>'+
+                  '<span>👤 '+f.Operador+'</span>'+
+                  (f.FechaEntrega?'<span>🗓 '+f.FechaEntrega+'</span>':'')+
+                  '<span>N° '+f.NumeroPedido+'</span></div>';
+        if (f.OrigenAsignado) {
+          htmlEC += '<div style="margin-top:5px;font-size:12px;color:var(--blue);font-weight:600;">📦 '+f.OrigenAsignado+
+                    (f.NotaInsumos?' · <span style="color:var(--sub);font-weight:400;">'+f.NotaInsumos+'</span>':'')+'</div>';
+        }
+        if (_esRetiroEC) {
+          htmlEC += '<div style="margin-top:3px;font-size:11px;color:#6D28D9;font-weight:600;">🏃 Retiro personal</div>';
+        } else if (f.CamionId || f.Chofer) {
+          htmlEC += '<div style="margin-top:3px;font-size:11px;color:var(--sub);">🚛 '+(f.CamionId||'')+
+                    (f.Chofer?' · '+f.Chofer:'')+(f.Patente?' · '+f.Patente:'')+'</div>';
+        }
+        htmlEC += '</div>';
+        htmlEC += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
+        htmlEC += '<span class="badge badge-transit">En camino</span>';
+        htmlEC += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+
+                  f.Cantidad+' '+_uniEC+' ('+esc(_presEC)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+
+                  ',\''+retiroFlagEC+'\',\''+esc(f.FechaEntrega||'')+'\',\'En camino\')">✏️ Editar origen</button>';
+        htmlEC += '</div></div>';
       });
-      htmlEC += '</tr></thead><tbody>';
-      pedidosEC.forEach(function(item, idx){
-        var f = item.fields;
-        var bg = idx%2===0?"#fff":"#f8f9fa";
-        htmlEC += '<tr style="background:'+bg+';border-bottom:1px solid var(--border);">';
-        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.NumeroPedido||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;">'+( f.Operador||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;">'+( f.Campo||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;color:var(--blue);font-weight:600;">'+( f.Localidad||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;font-weight:600;">'+( f.Insumo||"-")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.Cantidad||"")+" "+(f.Unidad||(getInsumoInfo(f.Insumo).unidad)||"")+'</td>';
-        htmlEC += '<td style="padding:7px 12px;color:var(--blue);">'+( f.OrigenAsignado||"-")+'</td>';
-        var _esRetiroEC = (f.RetiroPersonal||"").toUpperCase() === "SI";
-        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+(_esRetiroEC?'🏃 Retiro personal':(f.CamionId||"-"))+'</td>';
-        htmlEC += '<td style="padding:7px 12px;">'+(_esRetiroEC?"-":(f.Chofer||"-"))+'</td>';
-        htmlEC += '<td style="padding:7px 12px;">'+(_esRetiroEC?"-":(f.Patente||"-"))+'</td>';
-        htmlEC += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.FechaEntrega||"-")+'</td>';
-        htmlEC += '</tr>';
-      });
-      htmlEC += '</tbody></table></div>';
     }
-    cEC.innerHTML = htmlEC;
+    cEC.innerHTML = '<div style="overflow:hidden;">'+htmlEC+'</div>';
 
     // ── Tab 4: cerrados ──────────────────────────────────────────
     var pedidosCE = items.filter(function(i){ return i.fields.Estado==="Cerrado"; });
@@ -2524,11 +2534,11 @@ function filtrarOrigenTab(tab) {
   }
 }
 
-function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersonal, fechaEntrega) {
+function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersonal, fechaEntrega, estadoActual) {
   // Normalizar retiroPersonal: acepta string "SI" o boolean true
   var retiroNorm = (retiroPersonal === true || String(retiroPersonal||"").toUpperCase() === "SI") ? "SI" : "";
   console.log("[retiro] abrirModalOrigen — retiroPersonal recibido:", JSON.stringify(retiroPersonal), "→ normalizado:", retiroNorm||"(vacío)");
-  pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0, retiroPersonal: retiroNorm};
+  pedidoOrigenActual = {spId:spId, insumo:insumo, cantPres:cantPres, campo:campo, cantidad:parseFloat(cantidad)||0, retiroPersonal: retiroNorm, estadoActual: estadoActual||""};
   document.getElementById("modal-origen-titulo").textContent = insumo;
   document.getElementById("modal-origen-sub").textContent = cantPres + " · 📍 " + campo;
 
@@ -2732,10 +2742,13 @@ async function confirmarOrigen() {
   try {
     var cant = pedidoOrigenActual.cantidad; // definido primero para usarlo en paso 2
 
-    // 1. Determinar estado destino según RetiroPersonal
-    //    Retiro personal → salta logística, va directo a "En camino"
-    var esRetiro = pedidoOrigenActual.retiroPersonal === "SI" || pedidoOrigenActual.retiroPersonal === true;
-    var estadoDestino = esRetiro ? "En camino" : "Pendiente logística";
+    // 1. Determinar estado destino
+    //    Retiro personal → salta logística → "En camino"
+    //    Ya estaba "En camino" (edición post-despacho) → mantener "En camino"
+    //    Caso normal → "Pendiente logística"
+    var esRetiro     = pedidoOrigenActual.retiroPersonal === "SI" || pedidoOrigenActual.retiroPersonal === true;
+    var yaEnCamino   = pedidoOrigenActual.estadoActual === "En camino";
+    var estadoDestino = esRetiro ? "En camino" : (yaEnCamino ? "En camino" : "Pendiente logística");
     console.log("[retiro] confirmarOrigen — retiroPersonal =", JSON.stringify(pedidoOrigenActual.retiroPersonal), "| esRetiro =", esRetiro, "| estadoDestino =", estadoDestino);
 
     // 2. Construir campo OrdenCompra
