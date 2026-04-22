@@ -1010,7 +1010,7 @@ var pedidoOrigenActual = null; // {id, spId, insumo, cantidad, presentacion, cam
 var pedidoRemitoActual = null;
 var carritoItems = []; // [{grupoInsumo, tipoInsumo, insumo, presentacion, unidad, cantidad}]
 var editandoPedidoSpId = null;
-var selectedStockItem    = null;  // item propio seleccionado (single-select)
+var selectedPropioItems  = [];    // multi-select existencia propia: [{idx, cantidadAsignada}]
 var selectedOCItems      = [];   // [{idx, cantidadAsignada}] — OC items seleccionados (multi-select)
 var comprometidoPorOC    = {};   // {referencia: cant} — OC pendiente de remito
 var comprometidoPorPropio= {};   // {"nombre|puntoStock": cant} — propio pendiente de remito
@@ -2581,7 +2581,7 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
   document.getElementById("inp-origen-search-propio").value = "";
   document.getElementById("inp-origen-search-oc").value = "";
   switchOrigenTab("propio"); // Abrir siempre en tab Propio
-  selectedStockItem = null;
+  selectedPropioItems = [];
   selectedOCItems = [];
 
   // Poblar listas completas para que la búsqueda libre opere sobre todo el stock
@@ -2627,23 +2627,35 @@ function renderPropioCards(q) {
   if (!lista.length) {
     hP = '<div style="font-size:13px;color:var(--light);font-style:italic;">' + (q ? 'Sin resultados para "'+q+'"' : 'Sin coincidencias en stock propio') + '</div>';
   } else {
-    lista.forEach(function(m, i){
+    lista.forEach(function(m){
       var realIdx  = _origenMatchP.indexOf(m);
       var sinStock = m.disponible <= 0;
-      var isSel    = selectedStockItem && selectedStockItem.r === m.r;
+      var selItem  = selectedPropioItems.find(function(s){ return s.idx === realIdx; });
+      var isSel    = !!selItem;
       var subtitulo  = m.r.puntoStock ? '📍 ' + m.r.puntoStock : (m.r.categoria || '');
       var consumidoTxt = m.consumido > 0 ? ' · <span style="color:var(--orange);">' + m.consumido.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' asignados</span>' : '';
-      hP += '<div onclick="seleccionarOrigenIdx(\'P\',' + realIdx + ',this)" data-origen-item="1" data-origen-propio="1"' +
-            ' style="cursor:'+(sinStock?'not-allowed':'pointer')+';display:flex;justify-content:space-between;align-items:center;' +
-            'padding:9px 12px;border-radius:8px;border:1.5px solid '+(isSel?'var(--brand)':'var(--border)')+';' +
+      hP += '<div onclick="togglePropioItem(' + realIdx + ',this)" data-origen-item="1" data-origen-propio="1"' +
+            ' style="cursor:'+(sinStock?'not-allowed':'pointer')+';padding:9px 12px;border-radius:8px;' +
+            'border:1.5px solid '+(isSel?'var(--brand)':'var(--border)')+';' +
             'background:'+(isSel?'var(--brand-light)':(sinStock?'#fafafa':'var(--bg)'))+';' +
             'margin-bottom:6px;transition:all 0.15s;opacity:'+(sinStock?'0.5':'1')+(isSel?';box-shadow:0 0 0 3px rgba(34,139,34,0.12)':'')+'">';
+      hP += '<div style="display:flex;justify-content:space-between;align-items:center;">';
       hP += '<div><div style="font-weight:600;font-size:13px;">' + m.r.nombre + '</div>' +
             '<div style="font-size:11px;color:var(--sub);">' + subtitulo + consumidoTxt + '</div></div>';
-      hP += '<div style="text-align:right;">' +
+      hP += '<div style="text-align:right;flex-shrink:0;margin-left:12px;">' +
             '<div style="font-weight:800;font-size:15px;color:'+(sinStock?'var(--red)':'var(--green)')+';">' +
             m.disponible.toLocaleString("es-AR",{maximumFractionDigits:2}) + '</div>' +
-            '<div style="font-size:11px;color:var(--light);">' + m.r.unidad + ' disponibles</div></div></div>';
+            '<div style="font-size:11px;color:var(--light);">' + m.r.unidad + ' disponibles</div></div>';
+      hP += '</div>';
+      if (isSel) {
+        hP += '<div style="margin-top:8px;display:flex;align-items:center;gap:8px;" onclick="event.stopPropagation();">' +
+              '<label style="font-size:12px;font-weight:600;white-space:nowrap;">Cantidad a asignar:</label>' +
+              '<input type="number" id="propio-qty-'+realIdx+'" value="'+selItem.cantidadAsignada+'" min="0" max="'+m.disponible+'" ' +
+              'style="width:80px;font-size:13px;font-weight:700;" ' +
+              'oninput="actualizarPropioQty('+realIdx+',this.value)">' +
+              '<span style="font-size:11px;color:var(--sub);">'+m.r.unidad+'</span></div>';
+      }
+      hP += '</div>';
     });
   }
   document.getElementById("stock-propio-match").innerHTML = hP;
@@ -2711,10 +2723,9 @@ function toggleOCItem(idx, el) {
   }
   // Limpiar selección propio al seleccionar OC
   if (selectedOCItems.length > 0) {
-    selectedStockItem = null;
-    document.querySelectorAll('[data-origen-item="1"]').forEach(function(e){
-      if (!e.dataset.origenPropio) { e.style.borderColor=''; e.style.background=''; e.style.boxShadow=''; }
-    });
+    selectedPropioItems = [];
+    var qP2 = (document.getElementById("inp-origen-search-propio")||{}).value||"";
+    renderPropioCards(qP2);
   }
   var qOC = (document.getElementById("inp-origen-search-oc")||{}).value||"";
   renderOCCards(qOC);
@@ -2731,7 +2742,11 @@ function actualizarOCQty(idx, val) {
 
 function actualizarTextoOrigen() {
   var partes = [];
-  if (selectedStockItem) partes.push(selectedStockItem.texto||selectedStockItem.nombre);
+  selectedPropioItems.forEach(function(s){
+    var m = _origenMatchP[s.idx];
+    if (m) partes.push('Stock propio — ' + (m.r.puntoStock || m.r.nombre) +
+      ' (' + (s.cantidadAsignada||0).toLocaleString("es-AR",{maximumFractionDigits:2}) + ' ' + m.r.unidad + ')');
+  });
   selectedOCItems.forEach(function(s){
     var m = _origenMatchOC[s.idx];
     if (m) partes.push(m.r.proveedor + ' — OC: ' + (m.r.referencia||'s/ref') + ' (' + s.cantidadAsignada + ' ' + m.r.tipo + ')');
@@ -2759,12 +2774,18 @@ async function confirmarOrigen() {
     console.log("[retiro] confirmarOrigen — retiroPersonal =", JSON.stringify(pedidoOrigenActual.retiroPersonal), "| esRetiro =", esRetiro, "| estadoDestino =", estadoDestino);
 
     // 2. Construir campo OrdenCompra
-    //    OC: "referencia|insumo:qty,referencia|insumo:qty"  (incluye insumo para distinguir multi-producto)
-    //    Propio: "PROPIO|nombre|puntoStock:qty"
+    //    Propio multi-origen: "PROPIO|nombre|puntoStock:qty,PROPIO|nombre2|puntoStock2:qty2"
+    //    OC multi-producto:   "referencia|insumo:qty,referencia|insumo:qty"
     var ordenCompra = "";
-    if (selectedStockItem && selectedStockItem.tipo === 'propio' && cant > 0) {
-      var propioKey = selectedStockItem.nombre + "|" + (selectedStockItem.r ? (selectedStockItem.r.puntoStock||"") : "");
-      ordenCompra = "PROPIO|" + propioKey + ":" + cant;
+    if (selectedPropioItems.length > 0) {
+      ordenCompra = selectedPropioItems
+        .filter(function(s){ return s.cantidadAsignada > 0; })
+        .map(function(s){
+          var m = _origenMatchP[s.idx];
+          if (!m) return "";
+          return "PROPIO|" + m.r.nombre + "|" + (m.r.puntoStock||"") + ":" + s.cantidadAsignada;
+        })
+        .filter(Boolean).join(",");
     } else {
       ordenCompra = selectedOCItems
         .filter(function(s){ return s.cantidadAsignada > 0; })
@@ -2795,8 +2816,8 @@ async function confirmarOrigen() {
     await spPatch(CONFIG.lists.pedidos, pedidoOrigenActual.spId, patchFields);
 
     // Albor (existencia) no se toca — Disponible = Albor − Pendiente de remito (calculado)
-    selectedStockItem = null;
-    selectedOCItems   = [];
+    selectedPropioItems = [];
+    selectedOCItems     = [];
     cerrarModal("modal-origen");
     showToast("Origen asignado ✓"+(esRetiro?" — retiro personal, en camino":""),"ok");
     cargarPedidosInsumos();
@@ -2805,21 +2826,36 @@ async function confirmarOrigen() {
   btn.disabled=false; btn.textContent="Confirmar origen →";
 }
 
-function seleccionarOrigenIdx(grupo, idx, el) {
-  // Solo para existencia propia (grupo === 'P')
+function togglePropioItem(idx, el) {
   var m = _origenMatchP[idx];
   if (!m) return;
   if (m.disponible <= 0) { showToast('Sin stock disponible', 'error'); return; }
-
+  var pos = selectedPropioItems.findIndex(function(s){ return s.idx === idx; });
+  if (pos >= 0) {
+    selectedPropioItems.splice(pos, 1); // deseleccionar
+  } else {
+    // Cantidad sugerida = lo que falta cubrir hasta el total del pedido
+    var yaAsignado = selectedPropioItems.reduce(function(acc,s){ return acc + s.cantidadAsignada; }, 0);
+    var restante   = Math.max(0, (pedidoOrigenActual ? pedidoOrigenActual.cantidad : 0) - yaAsignado);
+    var defQty     = Math.min(restante, m.disponible);
+    selectedPropioItems.push({ idx: idx, cantidadAsignada: defQty });
+  }
   // Limpiar selección OC al elegir propio
-  selectedOCItems = [];
-  var qOC2 = (document.getElementById("inp-origen-search-oc")||{}).value||"";
-  renderOCCards(qOC2);
-
-  selectedStockItem = { spId: m.r.spId, r: m.r, nombre: m.stockKey, texto: m.texto, disponible: m.disponible, tipo: m.tipo };
-  // Re-render propio cards to show selection highlight
+  if (selectedPropioItems.length > 0) {
+    selectedOCItems = [];
+    var qOC2 = (document.getElementById("inp-origen-search-oc")||{}).value||"";
+    renderOCCards(qOC2);
+  }
   var qP = (document.getElementById("inp-origen-search-propio")||{}).value||"";
   renderPropioCards(qP);
+  actualizarTextoOrigen();
+}
+
+function actualizarPropioQty(idx, val) {
+  var m   = _origenMatchP[idx];
+  var sel = selectedPropioItems.find(function(s){ return s.idx === idx; });
+  if (!m || !sel) return;
+  sel.cantidadAsignada = Math.min(parseFloat(val)||0, m.disponible);
   actualizarTextoOrigen();
 }
 
