@@ -2154,10 +2154,11 @@ function _recalcularComprometidos(items) {
         var qty = parseFloat(body.substring(sep+1)) || 0;
         if (key && qty > 0) comprometidoPorPropio[key] = (comprometidoPorPropio[key]||0) + qty;
       } else {
-        // OC: "referencia:qty"
+        // OC: formato nuevo "referencia|insumo:qty" (multi-producto)
+        //     formato viejo "referencia:qty" (registros anteriores — el lastIndexOf(":") funciona igual para ambos)
         var sep2 = part.lastIndexOf(":");
         if (sep2 < 0) return;
-        var ref  = part.substring(0, sep2).trim();
+        var ref  = part.substring(0, sep2).trim(); // "2026-OC-308|Fulltec" (nuevo) ó "2026-OC-308" (viejo)
         var qty2 = parseFloat(part.substring(sep2+1)) || 0;
         if (ref && qty2 > 0) comprometidoPorOC[ref] = (comprometidoPorOC[ref]||0) + qty2;
       }
@@ -2216,7 +2217,8 @@ function renderStockTable() {
   } else {
     html += '<thead><tr><th style="color:var(--sub);">Código</th><th>Insumo</th><th>Unidad</th><th>Proveedor</th><th>OC (Referencia)</th><th class="r" style="color:var(--blue);">Albor</th><th class="r" style="color:var(--orange);">Pendiente de remito</th><th class="r" style="color:var(--green);">Disponible</th></tr></thead><tbody>';
     filtered.forEach(function(r){
-      var comp = comprometidoPorOC[r.referencia] || 0;
+      // Buscar primero por clave nueva "referencia|insumo" (multi-producto); fallback a clave vieja para registros anteriores
+      var comp = comprometidoPorOC[r.referencia + "|" + r.insumo] || comprometidoPorOC[r.referencia] || 0;
       var disp = Math.max(0, r.pendiente - comp);
       var _oc = getInsumoInfo(r.insumo);
       var _ocU = _oc.unidad || "";
@@ -2590,7 +2592,8 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
              stockKey: r.nombre, tipo: 'propio' };
   });
   _origenMatchOC = stockPendiente.map(function(r){
-    var comprometido  = comprometidoPorOC[r.referencia] || 0;
+    // Clave nueva "referencia|insumo" para multi-producto; fallback a clave vieja para registros anteriores
+    var comprometido  = comprometidoPorOC[r.referencia + "|" + r.insumo] || comprometidoPorOC[r.referencia] || 0;
     var sesion        = stockAjustes['OC_'+r.proveedor+'_'+r.insumo+'_'+r.referencia] || 0;
     var disponibleOC  = Math.max(0, r.pendiente - comprometido - sesion);
     var texto         = r.proveedor + ' — OC: ' + (r.referencia||'s/ref') + ' (' + disponibleOC.toLocaleString("es-AR",{maximumFractionDigits:2}) + ' disp.)';
@@ -2752,7 +2755,7 @@ async function confirmarOrigen() {
     console.log("[retiro] confirmarOrigen — retiroPersonal =", JSON.stringify(pedidoOrigenActual.retiroPersonal), "| esRetiro =", esRetiro, "| estadoDestino =", estadoDestino);
 
     // 2. Construir campo OrdenCompra
-    //    OC: "referencia:qty,referencia:qty"
+    //    OC: "referencia|insumo:qty,referencia|insumo:qty"  (incluye insumo para distinguir multi-producto)
     //    Propio: "PROPIO|nombre|puntoStock:qty"
     var ordenCompra = "";
     if (selectedStockItem && selectedStockItem.tipo === 'propio' && cant > 0) {
@@ -2761,7 +2764,7 @@ async function confirmarOrigen() {
     } else {
       ordenCompra = selectedOCItems
         .filter(function(s){ return s.cantidadAsignada > 0; })
-        .map(function(s){ var m=_origenMatchOC[s.idx]; return m ? (m.r.referencia+":"+s.cantidadAsignada) : ""; })
+        .map(function(s){ var m=_origenMatchOC[s.idx]; return m ? (m.r.referencia+"|"+m.r.insumo+":"+s.cantidadAsignada) : ""; })
         .filter(Boolean).join(",");
     }
 
