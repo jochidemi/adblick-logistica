@@ -2155,12 +2155,16 @@ function _recalcularComprometidos(items) {
         if (key && qty > 0) comprometidoPorPropio[key] = (comprometidoPorPropio[key]||0) + qty;
       } else {
         // OC: formato nuevo "referencia|insumo:qty" (multi-producto)
-        //     formato viejo "referencia:qty" (registros anteriores — el lastIndexOf(":") funciona igual para ambos)
-        var sep2 = part.lastIndexOf(":");
+        //     formato viejo "referencia:qty" → upgradeamos la clave usando f.Insumo del pedido
+        var sep2   = part.lastIndexOf(":");
         if (sep2 < 0) return;
-        var ref  = part.substring(0, sep2).trim(); // "2026-OC-308|Fulltec" (nuevo) ó "2026-OC-308" (viejo)
-        var qty2 = parseFloat(part.substring(sep2+1)) || 0;
-        if (ref && qty2 > 0) comprometidoPorOC[ref] = (comprometidoPorOC[ref]||0) + qty2;
+        var rawRef = part.substring(0, sep2).trim();
+        var qty2   = parseFloat(part.substring(sep2+1)) || 0;
+        if (!rawRef || qty2 <= 0) return;
+        // Si rawRef ya tiene "|" → nuevo formato, usarlo tal cual
+        // Si no → viejo formato: reconstruir clave con el insumo del propio pedido
+        var key2 = rawRef.indexOf("|") >= 0 ? rawRef : rawRef + "|" + String(f.Insumo||"").trim();
+        comprometidoPorOC[key2] = (comprometidoPorOC[key2]||0) + qty2;
       }
     });
   });
