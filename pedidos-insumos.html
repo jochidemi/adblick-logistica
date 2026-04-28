@@ -1304,6 +1304,7 @@ function switchTab(name) {
   document.getElementById("tab-" + name).classList.add("active");
   if (name === "insumos")   { subTab("insumos","pedidos"); cargarPedidosInsumos(); }
   if (name === "logistica") { cargarPedidosLogistica(); }
+  if (name === "operador")  { cargarMisPedidos(); }
 }
 
 function subTab(parent, name) {
@@ -1316,6 +1317,8 @@ function subTab(parent, name) {
     if (p===name){ pill.className="sub-pill on"; panel.style.display="block"; }
     else { pill.className="sub-pill off"; panel.style.display="none"; }
   });
+  // Recargar datos al abrir "Mis pedidos" para que el operador vea el estado actualizado
+  if (parent === "operador" && name === "mispedidos") cargarMisPedidos();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3058,28 +3061,10 @@ function renderItemsLogistica() {
   var container = document.getElementById("log-items-list");
 
   var html = "";
-  // Retiros personales — read-only, sólo visible
-  if (retiroPersonal.length) {
-    html += '<div style="padding:10px 14px;background:#EDE9FE;border-bottom:1px solid #C4B5FD;font-size:12px;color:#6D28D9;font-weight:700;">🏃 Retiro Personalmente ('+retiroPersonal.length+') — sin acción requerida de logística</div>';
-    retiroPersonal.forEach(function(item){
-      var f=item.fields;
-      var _ri = getInsumoInfo(f.Insumo);
-      html += '<div class="item-row" style="opacity:0.7;cursor:default;pointer-events:none;">'+
-        '<div class="checkbox" style="background:#C4B5FD;color:#6D28D9;">🏃</div>'+
-        '<div style="flex:1;min-width:0;">'+
-          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||_ri.unidad||'')+'</span></div>'+
-          '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
-            '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
-            (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
-          '</div>'+
-        '</div>'+
-        '<span class="badge badge-retiro" style="flex-shrink:0;">Retiro personal</span>'+
-      '</div>';
-    });
-  }
+
+  // ── Primero: ítems pendientes de asignación (prioridad logística) ──
   if (!sinAsignar.length) {
     html += '<div style="padding:32px;text-align:center;color:var(--light);font-size:13px;">Todos los ítems tienen camión asignado ✓</div>';
-    container.innerHTML = html;
   } else {
     sinAsignar.forEach(function(item){
       var f=item.fields; var spId=item.id;
@@ -3089,17 +3074,42 @@ function renderItemsLogistica() {
       html += '<div class="item-row '+(sel?"sel":"") +'" onclick="toggleItem(\''+spId+'\')">'+
         '<div class="checkbox '+(sel?"checked":"")+'">'+( sel?"✓":"")+'</div>'+
         '<div style="flex:1;min-width:0;">'+
-          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_siU+'</span>'+(_siP?' <span style="color:var(--light);font-size:11px;">('+_siP+')</span>':'')+' </div>'+
+          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_siU+'</span>'+(_siP?' <span style="color:var(--light);font-size:11px;">('+_siP+')</span>':'')+
+          '<span style="font-weight:400;color:var(--light);margin-left:8px;font-size:11px;">N° '+(f.NumeroPedido||'—')+'</span></div>'+
           '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
             '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
             (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
           '</div>'+
+          (f.Observaciones?'<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>':'')+
         '</div>'+
         '<div style="font-size:11px;color:var(--light);flex-shrink:0;">🗓 '+f.FechaEntrega+'</div>'+
       '</div>';
     });
-    container.innerHTML = html;
   }
+
+  // ── Al final: retiros personales (sin acción requerida de logística) ──
+  if (retiroPersonal.length) {
+    html += '<div style="padding:10px 14px;background:#EDE9FE;border-top:1px solid #C4B5FD;border-bottom:1px solid #C4B5FD;font-size:12px;color:#6D28D9;font-weight:700;margin-top:8px;">🏃 Retiro Personalmente ('+retiroPersonal.length+') — sin acción requerida de logística</div>';
+    retiroPersonal.forEach(function(item){
+      var f=item.fields;
+      var _ri = getInsumoInfo(f.Insumo);
+      html += '<div class="item-row" style="opacity:0.7;cursor:default;pointer-events:none;">'+
+        '<div class="checkbox" style="background:#C4B5FD;color:#6D28D9;">🏃</div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||_ri.unidad||'')+'</span>'+
+          '<span style="font-weight:400;color:var(--light);margin-left:8px;font-size:11px;">N° '+(f.NumeroPedido||'—')+'</span></div>'+
+          '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
+            '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
+            (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
+          '</div>'+
+          (f.Observaciones?'<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>':'')+
+        '</div>'+
+        '<span class="badge badge-retiro" style="flex-shrink:0;">Retiro personal</span>'+
+      '</div>';
+    });
+  }
+
+  container.innerHTML = html;
 
   // Agrupados por camión
   var byCam = document.getElementById("log-by-cam");
@@ -3119,8 +3129,11 @@ function renderItemsLogistica() {
       var _ci2 = getInsumoInfo(f.Insumo);
       var _ci2U = f.Unidad||_ci2.unidad||""; var _ci2P = f.Presentacion||_ci2.presentacion||"";
       html2 += '<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
-      html2 += '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_ci2U+'</span>'+(_ci2P?' <span style="color:var(--light);font-size:11px;">('+_ci2P+')</span>':'')+' </div>';
-      html2 += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' · 👤 '+f.Operador+'</div></div>';
+      html2 += '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_ci2U+'</span>'+(_ci2P?' <span style="color:var(--light);font-size:11px;">('+_ci2P+')</span>':'')+
+        '<span style="font-weight:400;color:var(--light);margin-left:8px;font-size:11px;">N° '+(f.NumeroPedido||'—')+'</span></div>';
+      html2 += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' · 👤 '+f.Operador+'</div>';
+      if (f.Observaciones) html2 += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:2px;">📝 '+esc(f.Observaciones)+'</div>';
+      html2 += '</div>';
       html2 += '<span class="badge badge-transit">En camino</span>';
       html2 += '<button style="font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--sub);" onclick="quitarDeCamion(\''+item.id+'\')">✕ Quitar</button>';
       html2 += '</div>';
