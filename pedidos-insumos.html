@@ -491,6 +491,7 @@ tr:hover td{background:var(--brand-light);}
       <div style="display:flex;gap:8px;margin-bottom:20px;">
         <button class="sub-pill on" id="ipill-stock" onclick="subTab('insumos','stock')">Stock</button>
         <button class="sub-pill off" id="ipill-pedidos" onclick="subTab('insumos','pedidos')">Pedidos <span id="ins-pend-count"></span></button>
+        <button class="sub-pill off" id="ipill-metricas" onclick="subTab('insumos','metricas')">📊 Métricas</button>
       </div>
 
       <!-- STOCK -->
@@ -562,6 +563,11 @@ tr:hover td{background:var(--brand-light);}
         </div>
       </div>
 
+      <!-- MÉTRICAS INSUMOS -->
+      <div id="ins-metricas" style="display:none;">
+        <div id="ins-metricas-content"><div style="padding:48px;text-align:center;color:var(--light);">Cargando métricas...</div></div>
+      </div>
+
       <!-- PEDIDOS INSUMOS -->
       <div id="ins-pedidos" style="display:none;">
         <div class="card" style="padding:0;overflow:hidden;">
@@ -588,6 +594,9 @@ tr:hover td{background:var(--brand-light);}
               <button id="btn-ins-export-cer" class="btn btn-outline btn-sm" onclick="exportarInsumosExcel()" style="display:none;">⬇ Exportar XLSX</button>
               <button class="btn btn-outline btn-sm" onclick="cargarPedidosInsumos()">↺ Actualizar</button>
             </div>
+          </div>
+          <div style="padding:6px 12px 2px 12px;">
+            <input type="text" id="inp-ins-search" placeholder="🔍 Buscar por N° pedido, insumo, campo, operador..." style="font-size:13px;width:100%;box-sizing:border-box;" oninput="filtrarPedidosInsumos(this.value)">
           </div>
           <div id="ins-pedidos-list"><div style="padding:40px;text-align:center;color:var(--light);">Cargando...</div></div>
           <div id="ins-logistica-list" style="display:none;"></div>
@@ -616,6 +625,8 @@ tr:hover td{background:var(--brand-light);}
       <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;background:var(--white);border-radius:10px 10px 0 0;overflow:hidden;border:1px solid var(--border);">
         <button id="ltab-armado" onclick="switchLogTab('armado')" style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:var(--white);color:var(--text);border-bottom:2px solid var(--brand);transition:all 0.15s;">🚛 Armado de pedidos</button>
         <button id="ltab-enviados" onclick="switchLogTab('enviados')" style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">📋 Pedidos enviados</button>
+        <button id="ltab-retiro" onclick="switchLogTab('retiro')" style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">🏃 Retiro Personal</button>
+        <button id="ltab-metricas-log" onclick="switchLogTab('metricas')" style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">📊 Métricas</button>
       </div>
 
       <!-- Tab: Armado de pedidos -->
@@ -651,12 +662,27 @@ tr:hover td{background:var(--brand-light);}
                 <button class="btn btn-outline btn-sm" onclick="cargarPedidosLogistica()">↺</button>
               </div>
             </div>
+            <div style="padding:8px 12px;border-bottom:1px solid var(--border);">
+              <input type="text" id="inp-log-items-search" placeholder="🔍 Buscar por N° pedido, insumo, campo..." style="font-size:13px;width:100%;box-sizing:border-box;" oninput="filtrarItemsLogistica(this.value)">
+            </div>
             <div id="log-items-list"><div style="padding:40px;text-align:center;color:var(--light);">Cargando...</div></div>
 
             <!-- Agrupados por camión -->
             <div id="log-by-cam"></div>
           </div>
         </div>
+      </div>
+
+      <!-- Tab: Retiro Personal -->
+      <div id="log-panel-retiro" style="display:none;">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div id="log-retiro-container" style="padding:8px 0;"></div>
+        </div>
+      </div>
+
+      <!-- Tab: Métricas Logística -->
+      <div id="log-panel-metricas" style="display:none;">
+        <div id="log-metricas-content"><div style="padding:48px;text-align:center;color:var(--light);">Cargando...</div></div>
       </div>
 
       <!-- Tab: Pedidos enviados -->
@@ -1309,7 +1335,7 @@ function switchTab(name) {
 
 function subTab(parent, name) {
   var pills = ["nuevo","mispedidos"];
-  if (parent === "insumos") pills = ["stock","pedidos"];
+  if (parent === "insumos") pills = ["stock","pedidos","metricas"];
   pills.forEach(function(p){
     var pill = document.getElementById((parent==="operador"?"spill":"ipill")+"-"+p);
     var panel = document.getElementById((parent==="operador"?"op-":"ins-")+p);
@@ -1319,6 +1345,7 @@ function subTab(parent, name) {
   });
   // Recargar datos al abrir "Mis pedidos" para que el operador vea el estado actualizado
   if (parent === "operador" && name === "mispedidos") cargarMisPedidos();
+  if (parent === "insumos" && name === "metricas") renderMetricasInsumos();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2350,11 +2377,14 @@ async function cargarPedidosInsumos() {
         var _ia = getInsumoInfo(f.Insumo);
         var _uniA  = f.Unidad       || _ia.unidad       || "";
         var _presA = f.Presentacion || _ia.presentacion || "";
-        htmlA += '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
+        htmlA += '<div data-search="'+(f.NumeroPedido+' '+f.Insumo+' '+f.Campo+' '+f.Operador).toLowerCase().replace(/"/g,'&quot;')+'" style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
         htmlA += '<div style="flex:1;min-width:0;">';
+        htmlA += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:2px;letter-spacing:0.02em;">N° '+f.NumeroPedido+'</div>';
         htmlA += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uniA+'</span>'+(_presA?' <span style="color:var(--light);">('+_presA+')</span>':'')+' </div>';
         htmlA += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
-                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div></div>';
+                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span></div>';
+        if (f.Observaciones) htmlA += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>';
+        htmlA += '</div>';
         htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlA += '<span class="badge badge-pending">Pendiente</span>';
         htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniA+' ('+esc(_presA)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\',\'Pendiente insumos\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
@@ -2381,14 +2411,16 @@ async function cargarPedidosInsumos() {
         var _il = getInsumoInfo(f.Insumo);
         var _uniL  = f.Unidad       || _il.unidad       || "";
         var _presL = f.Presentacion || _il.presentacion || "";
-        htmlL += '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
+        htmlL += '<div data-search="'+(f.NumeroPedido+' '+f.Insumo+' '+f.Campo+' '+f.Operador).toLowerCase().replace(/"/g,'&quot;')+'" style="display:flex;align-items:flex-start;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
         htmlL += '<div style="flex:1;min-width:0;">';
+        htmlL += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:2px;letter-spacing:0.02em;">N° '+f.NumeroPedido+'</div>';
         htmlL += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uniL+'</span>'+(_presL?' <span style="color:var(--light);">('+_presL+')</span>':'')+' </div>';
         htmlL += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
-                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span><span>N° '+f.NumeroPedido+'</span></div>';
+                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span></div>';
         if (f.OrigenAsignado) {
           htmlL += '<div style="margin-top:5px;font-size:12px;color:var(--blue);font-weight:600;">📦 '+f.OrigenAsignado+(f.NotaInsumos?' · <span style="color:var(--sub);font-weight:400;">'+f.NotaInsumos+'</span>':'')+'</div>';
         }
+        if (f.Observaciones) htmlL += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>';
         htmlL += '</div>';
         htmlL += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlL += '<span class="badge badge-insumos">Pend. logística</span>';
@@ -2415,8 +2447,9 @@ async function cargarPedidosInsumos() {
         var _uniEC  = f.Unidad       || _ie.unidad       || "";
         var _presEC = f.Presentacion || _ie.presentacion || "";
         var _esRetiroEC = retiroFlagEC === "SI";
-        htmlEC += '<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
+        htmlEC += '<div data-search="'+(f.NumeroPedido+' '+f.Insumo+' '+f.Campo+' '+f.Operador).toLowerCase().replace(/"/g,'&quot;')+'" style="display:flex;align-items:flex-start;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
         htmlEC += '<div style="flex:1;min-width:0;">';
+        htmlEC += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:2px;letter-spacing:0.02em;">N° '+f.NumeroPedido+'</div>';
         htmlEC += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+
                   '<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uniEC+'</span>'+
                   (_presEC?' <span style="color:var(--light);">('+_presEC+')</span>':'')+' </div>';
@@ -2424,7 +2457,7 @@ async function cargarPedidosInsumos() {
                   '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span>'+
                   '<span>👤 '+f.Operador+'</span>'+
                   (f.FechaEntrega?'<span>🗓 '+f.FechaEntrega+'</span>':'')+
-                  '<span>N° '+f.NumeroPedido+'</span></div>';
+                  '</div>';
         if (f.OrigenAsignado) {
           htmlEC += '<div style="margin-top:5px;font-size:12px;color:var(--blue);font-weight:600;">📦 '+f.OrigenAsignado+
                     (f.NotaInsumos?' · <span style="color:var(--sub);font-weight:400;">'+f.NotaInsumos+'</span>':'')+'</div>';
@@ -2435,6 +2468,7 @@ async function cargarPedidosInsumos() {
           htmlEC += '<div style="margin-top:3px;font-size:11px;color:var(--sub);">🚛 '+(f.CamionId||'')+
                     (f.Chofer?' · '+f.Chofer:'')+(f.Patente?' · '+f.Patente:'')+'</div>';
         }
+        if (f.Observaciones) htmlEC += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>';
         htmlEC += '</div>';
         htmlEC += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlEC += '<span class="badge badge-transit">En camino</span>';
@@ -2459,14 +2493,14 @@ async function cargarPedidosInsumos() {
     } else {
       htmlCE += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
       htmlCE += '<thead><tr style="background:var(--dark);color:#fff;">';
-      ['N° Pedido','Operador','Campo','Localidad','Insumo','Cantidad','Presentación','Origen','OC','Camión','Transportista','Chofer','Patente','F. Entrega','F. Pedido','Remito'].forEach(function(h){
+      ['N° Pedido','Operador','Campo','Localidad','Insumo','Cantidad','Presentación','Retiro Personal','Origen','OC','Camión','Transportista','Chofer','Patente','F. Entrega','F. Pedido','Remito'].forEach(function(h){
         htmlCE += '<th style="padding:8px 12px;text-align:left;white-space:nowrap;">'+h+'</th>';
       });
       htmlCE += '</tr></thead><tbody>';
       pedidosCE.forEach(function(item, idx){
         var f = item.fields;
         var bg = idx%2===0?"#fff":"#f8f9fa";
-        htmlCE += '<tr style="background:'+bg+';border-bottom:1px solid var(--border);">';
+        htmlCE += '<tr data-search="'+(String(f.NumeroPedido||'')+' '+String(f.Insumo||'')+' '+String(f.Campo||'')+' '+String(f.Operador||'')).toLowerCase().replace(/"/g,'&quot;')+'" style="background:'+bg+';border-bottom:1px solid var(--border);">';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.NumeroPedido||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;">'+( f.Operador||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;">'+( f.Campo||"-")+'</td>';
@@ -2475,6 +2509,7 @@ async function cargarPedidosInsumos() {
         htmlCE += '<td style="padding:7px 12px;font-weight:600;">'+( f.Insumo||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.Cantidad||"")+" "+(f.Unidad||_ice.unidad||"")+'</td>';
         htmlCE += '<td style="padding:7px 12px;">'+(f.Presentacion||_ice.presentacion||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;">'+(f.RetiroPersonal===true||String(f.RetiroPersonal||"").toUpperCase()==="SI"?"🏃 Sí":"—")+'</td>';
         htmlCE += '<td style="padding:7px 12px;color:var(--blue);">'+( f.OrigenAsignado||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;">'+( f.OrdenCompra||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.CamionId||"-")+'</td>';
@@ -2492,6 +2527,109 @@ async function cargarPedidosInsumos() {
 
   } catch(e) {
     cA.innerHTML = cL.innerHTML = cEC.innerHTML = cCE.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
+  }
+}
+
+async function renderMetricasInsumos() {
+  var cont = document.getElementById("ins-metricas-content");
+  if (!cont) return;
+  cont.innerHTML = '<div style="padding:48px;text-align:center;color:var(--light);">Cargando métricas...</div>';
+  try {
+    var items = await spGet(CONFIG.lists.pedidos, "");
+    var hoy = new Date(); hoy.setHours(0,0,0,0);
+    var en7dias = new Date(hoy); en7dias.setDate(en7dias.getDate()+7);
+
+    // ── 1. Conteo por estado ──
+    var estados = ["Pendiente insumos","Pendiente logística","En camino","Cerrado"];
+    var colores = {"Pendiente insumos":"var(--orange)","Pendiente logística":"var(--blue)","En camino":"var(--green)","Cerrado":"var(--sub)"};
+    var conteo = {}; estados.forEach(function(e){ conteo[e]=0; });
+    items.forEach(function(i){ var e=i.fields.Estado||"Pendiente insumos"; if(conteo[e]!==undefined) conteo[e]++; });
+    var total = items.length || 1;
+
+    var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;">';
+    estados.forEach(function(e){
+      var n = conteo[e]; var pct = Math.round(n/total*100);
+      html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">';
+      html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);margin-bottom:6px;">'+e+'</div>';
+      html += '<div style="font-size:28px;font-weight:800;color:'+colores[e]+';">'+n+'</div>';
+      html += '<div style="font-size:12px;color:var(--light);margin-top:2px;">'+pct+'% del total</div>';
+      html += '<div style="margin-top:8px;background:var(--border);border-radius:4px;height:5px;overflow:hidden;"><div style="background:'+colores[e]+';width:'+pct+'%;height:100%;border-radius:4px;transition:width 0.4s;"></div></div>';
+      html += '</div>';
+    });
+    html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">';
+    html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);margin-bottom:6px;">Total</div>';
+    html += '<div style="font-size:28px;font-weight:800;">'+items.length+'</div>';
+    html += '<div style="font-size:12px;color:var(--light);margin-top:2px;">pedidos</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // ── 2. Próximos a vencer SIN origen asignado ──
+    var sinOrigen = items.filter(function(i){
+      var f=i.fields;
+      if (f.OrigenAsignado || f.Estado==="Cerrado" || f.Estado==="En camino") return false;
+      if (!f.FechaEntrega) return false;
+      var parts = f.FechaEntrega.split("/"); // DD/MM/YYYY
+      if (parts.length < 3) return false;
+      var fe = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+      return fe <= en7dias;
+    });
+    sinOrigen.sort(function(a,b){
+      var pa=a.fields.FechaEntrega||"", pb=b.fields.FechaEntrega||"";
+      var da=pa.split("/"), db=pb.split("/");
+      var fa=new Date(parseInt(da[2]||0),parseInt(da[1]||1)-1,parseInt(da[0]||1));
+      var fb=new Date(parseInt(db[2]||0),parseInt(db[1]||1)-1,parseInt(db[0]||1));
+      return fa-fb;
+    });
+
+    html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:12px;">⚠️ Próximos a vencer sin origen asignado <span style="font-weight:400;color:var(--sub);">(próximos 7 días)</span></div>';
+    if (!sinOrigen.length) {
+      html += '<div style="font-size:13px;color:var(--sub);text-align:center;padding:16px 0;">✓ Todos los pedidos próximos tienen origen asignado</div>';
+    } else {
+      html += '<div class="tbl-wrap"><table><thead><tr><th>N° Pedido</th><th>Insumo</th><th>Campo</th><th>Operador</th><th>F. Entrega</th><th>Estado</th></tr></thead><tbody>';
+      sinOrigen.forEach(function(i){
+        var f=i.fields;
+        var parts=f.FechaEntrega.split("/");
+        var fe=new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
+        var diasRestantes=Math.round((fe-hoy)/(1000*60*60*24));
+        var urgencia = diasRestantes<=2 ? 'color:var(--red);font-weight:700;' : 'color:var(--orange);font-weight:600;';
+        html += '<tr><td style="font-size:11px;">'+f.NumeroPedido+'</td><td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Campo+'</td><td>'+f.Operador+'</td>';
+        html += '<td style="'+urgencia+'">'+f.FechaEntrega+' <span style="font-size:10px;">('+diasRestantes+'d)</span></td>';
+        html += '<td><span style="font-size:11px;font-weight:600;color:var(--orange);">'+f.Estado+'</span></td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</div>';
+
+    // ── 3. En camino sin remito (seguimiento) ──
+    var sinRemito = items.filter(function(i){
+      var f=i.fields;
+      return f.Estado==="En camino" && !f.NroRemito;
+    });
+    sinRemito.sort(function(a,b){ return (a.fields.FechaPedido||"").localeCompare(b.fields.FechaPedido||""); });
+
+    html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;">';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:12px;">🚛 En camino sin remito</div>';
+    if (!sinRemito.length) {
+      html += '<div style="font-size:13px;color:var(--sub);text-align:center;padding:16px 0;">✓ Todos los pedidos en camino tienen remito</div>';
+    } else {
+      html += '<div class="tbl-wrap"><table><thead><tr><th>N° Pedido</th><th>Insumo</th><th>Campo</th><th>Operador</th><th>F. Pedido</th><th>Días en camino</th></tr></thead><tbody>';
+      sinRemito.forEach(function(i){
+        var f=i.fields;
+        var fechaPed = f.FechaPedido ? new Date(f.FechaPedido) : null;
+        var diasEnCamino = fechaPed ? Math.round((hoy-fechaPed)/(1000*60*60*24)) : "—";
+        var colorDias = (typeof diasEnCamino==="number" && diasEnCamino>5) ? 'color:var(--red);font-weight:700;' : '';
+        html += '<tr><td style="font-size:11px;">'+f.NumeroPedido+'</td><td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Campo+'</td><td>'+f.Operador+'</td>';
+        html += '<td>'+(fechaPed?fechaPed.toLocaleDateString("es-AR"):"—")+'</td>';
+        html += '<td style="'+colorDias+'">'+diasEnCamino+(typeof diasEnCamino==="number"?" días":"")+'</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</div>';
+
+    cont.innerHTML = '<div style="padding:16px 0;">'+html+'</div>';
+  } catch(e) {
+    cont.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
   }
 }
 
@@ -2869,20 +3007,148 @@ var logTabActiva = "armado";
 
 function switchLogTab(tab) {
   logTabActiva = tab;
-  var tA = document.getElementById("ltab-armado"), tE = document.getElementById("ltab-enviados");
-  var pA = document.getElementById("log-panel-armado"), pE = document.getElementById("log-panel-enviados");
+  var tA = document.getElementById("ltab-armado"), tE = document.getElementById("ltab-enviados"), tR = document.getElementById("ltab-retiro"), tM = document.getElementById("ltab-metricas-log");
+  var pA = document.getElementById("log-panel-armado"), pE = document.getElementById("log-panel-enviados"), pR = document.getElementById("log-panel-retiro"), pM = document.getElementById("log-panel-metricas");
   var acts = document.getElementById("log-main-actions");
+  // Reset all tabs
+  [tA, tE, tR, tM].forEach(function(t){ if (t) { t.style.background="transparent"; t.style.color="var(--sub)"; t.style.borderBottom="2px solid transparent"; } });
+  [pA, pE, pR, pM].forEach(function(p){ if (p) p.style.display="none"; });
   if (tab === "armado") {
-    tA.style.background="var(--white)"; tA.style.color="var(--text)"; tA.style.borderBottom="2px solid var(--brand)";
-    tE.style.background="transparent"; tE.style.color="var(--sub)"; tE.style.borderBottom="2px solid transparent";
-    pA.style.display=""; pE.style.display="none";
+    if (tA) { tA.style.background="var(--white)"; tA.style.color="var(--text)"; tA.style.borderBottom="2px solid var(--brand)"; }
+    if (pA) pA.style.display="";
     if (acts) acts.style.display="flex";
-  } else {
-    tE.style.background="var(--white)"; tE.style.color="var(--text)"; tE.style.borderBottom="2px solid var(--brand)";
-    tA.style.background="transparent"; tA.style.color="var(--sub)"; tA.style.borderBottom="2px solid transparent";
-    pA.style.display="none"; pE.style.display="";
+  } else if (tab === "enviados") {
+    if (tE) { tE.style.background="var(--white)"; tE.style.color="var(--text)"; tE.style.borderBottom="2px solid var(--brand)"; }
+    if (pE) pE.style.display="";
     if (acts) acts.style.display="none";
     renderPedidosEnviados();
+  } else if (tab === "retiro") {
+    if (tR) { tR.style.background="var(--white)"; tR.style.color="var(--text)"; tR.style.borderBottom="2px solid var(--brand)"; }
+    if (pR) pR.style.display="";
+    if (acts) acts.style.display="none";
+    renderPedidosRetiro();
+  } else if (tab === "metricas") {
+    if (tM) { tM.style.background="var(--white)"; tM.style.color="var(--text)"; tM.style.borderBottom="2px solid var(--brand)"; }
+    if (pM) pM.style.display="";
+    if (acts) acts.style.display="none";
+    renderMetricasLogistica();
+  }
+}
+
+function renderPedidosRetiro() {
+  var container = document.getElementById("log-retiro-container");
+  if (!container) return;
+  var retiroItems = pedidosLogistica.filter(function(p) {
+    var f = p.fields;
+    var esRetiro = (f.RetiroPersonal === true || String(f.RetiroPersonal||"").toUpperCase() === "SI");
+    return esRetiro && (f.Estado === "En camino" || f.Estado === "Listo para retirar");
+  });
+  if (!retiroItems.length) {
+    container.innerHTML = '<div style="padding:48px;text-align:center;color:var(--light);">Sin pedidos de retiro personal activos</div>';
+    return;
+  }
+  var html = "";
+  retiroItems.forEach(function(item) {
+    var f = item.fields;
+    var _ri = getInsumoInfo(f.Insumo);
+    var _uniR = f.Unidad || _ri.unidad || "";
+    var _presR = f.Presentacion || _ri.presentacion || "";
+    html += '<div style="padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;">';
+    html += '<div style="background:#EDE9FE;color:#6D28D9;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🏃</div>';
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:1px;">N° '+(f.NumeroPedido||'—')+'</div>';
+    html += '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_uniR+'</span>'+(_presR?' <span style="color:var(--light);font-size:11px;">('+_presR+')</span>':'')+' </div>';
+    html += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">';
+    html += '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span>';
+    html += '<span>👤 '+f.Operador+'</span>';
+    if (f.OrigenAsignado) html += '<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>';
+    html += '</div>';
+    html += '</div>';
+    html += '<span class="badge badge-retiro" style="flex-shrink:0;">Retiro personal</span>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+async function renderMetricasLogistica() {
+  var cont = document.getElementById("log-metricas-content");
+  if (!cont) return;
+  cont.innerHTML = '<div style="padding:48px;text-align:center;color:var(--light);">Cargando métricas...</div>';
+  try {
+    var items = await spGet(CONFIG.lists.pedidos, "");
+    // Considerar solo pedidos activos (no cerrados)
+    var activos = items.filter(function(i){ return i.fields.Estado !== "Cerrado"; });
+
+    // ── Agrupados por ORIGEN ──
+    var porOrigen = {};
+    activos.forEach(function(i){
+      var f=i.fields;
+      var origen = f.OrigenAsignado || "(Sin origen asignado)";
+      if (!porOrigen[origen]) porOrigen[origen] = [];
+      porOrigen[origen].push(f);
+    });
+
+    // ── Agrupados por DESTINO (Campo + Localidad) ──
+    var porDestino = {};
+    activos.forEach(function(i){
+      var f=i.fields;
+      var destino = f.Campo + (f.Localidad ? " — " + f.Localidad : "");
+      if (!porDestino[destino]) porDestino[destino] = [];
+      porDestino[destino].push(f);
+    });
+
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0;">';
+
+    // Columna izquierda: por origen
+    html += '<div>';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:12px;">📦 Por origen de stock</div>';
+    var origenesOrdenados = Object.keys(porOrigen).sort(function(a,b){ return porOrigen[b].length - porOrigen[a].length; });
+    origenesOrdenados.forEach(function(origen){
+      var pedidos = porOrigen[origen];
+      var sinAsig = origen === "(Sin origen asignado)";
+      html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+      html += '<div style="font-weight:700;font-size:13px;color:'+(sinAsig?'var(--orange)':'var(--text)')+';">'+origen+'</div>';
+      html += '<span style="background:'+(sinAsig?'var(--orange-light)':'var(--brand-light)')+';color:'+(sinAsig?'var(--orange)':'var(--brand-dark)')+';border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;">'+pedidos.length+' pedidos</span>';
+      html += '</div>';
+      // Agrupar insumos
+      var porInsumo = {};
+      pedidos.forEach(function(f){ var k=f.Insumo||"—"; if(!porInsumo[k])porInsumo[k]={qty:0,uni:""}; porInsumo[k].qty+=(parseFloat(f.Cantidad)||0); porInsumo[k].uni=f.Unidad||""; });
+      Object.keys(porInsumo).forEach(function(ins){
+        html += '<div style="font-size:12px;color:var(--sub);display:flex;justify-content:space-between;margin-top:3px;">';
+        html += '<span>'+ins+'</span><span style="font-weight:600;">'+porInsumo[ins].qty.toLocaleString("es-AR",{maximumFractionDigits:1})+' '+porInsumo[ins].uni+'</span></div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // Columna derecha: por destino
+    html += '<div>';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:12px;">📍 Por destino (campo)</div>';
+    var destinosOrdenados = Object.keys(porDestino).sort(function(a,b){ return porDestino[b].length - porDestino[a].length; });
+    destinosOrdenados.forEach(function(destino){
+      var pedidos = porDestino[destino];
+      html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+      html += '<div style="font-weight:700;font-size:13px;">'+destino+'</div>';
+      html += '<span style="background:var(--brand-light);color:var(--brand-dark);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;">'+pedidos.length+' pedidos</span>';
+      html += '</div>';
+      // Estados
+      var estadoCnt = {};
+      pedidos.forEach(function(f){ var e=f.Estado||"?"; estadoCnt[e]=(estadoCnt[e]||0)+1; });
+      Object.keys(estadoCnt).forEach(function(e){
+        var col = e==="En camino"?"var(--green)":e==="Pendiente logística"?"var(--blue)":e==="Cerrado"?"var(--sub)":"var(--orange)";
+        html += '<div style="font-size:12px;display:flex;justify-content:space-between;margin-top:3px;"><span style="color:'+col+';">'+e+'</span><span style="font-weight:600;color:'+col+';">'+estadoCnt[e]+'</span></div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '</div>'; // grid
+
+    cont.innerHTML = '<div style="padding:16px 0;">'+html+'</div>';
+  } catch(e) {
+    cont.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: '+e.message+'</div>';
   }
 }
 
@@ -3047,15 +3313,19 @@ async function cargarPedidosLogistica() {
   } catch(e) { showToast("Error cargando pedidos: "+e.message,"error"); }
 }
 
+// Devuelve array de camionIds asignados a un pedido (soporta múltiples separados por coma)
+function camionIdsOf(p) {
+  return String(p.fields.CamionId||"").split(",").map(function(s){return s.trim();}).filter(Boolean);
+}
+function pedidoEnCamion(p, camId) {
+  return camionIdsOf(p).indexOf(camId) >= 0;
+}
+
 function renderItemsLogistica() {
-  // Retiro personal: estado legacy "Listo para retirar" O nuevo "En camino" + RetiroPersonal="SI"
-  var retiroPersonal = pedidosLogistica.filter(function(p){
-    return p.fields.Estado === "Listo para retirar" ||
-           ((p.fields.RetiroPersonal||"").toUpperCase() === "SI" && p.fields.Estado === "En camino");
-  });
   // Sin asignar: solo "Pendiente logística" que no sean retiro personal
   var sinAsignar = pedidosLogistica.filter(function(p){
     return p.fields.Estado === "Pendiente logística" &&
+           !p.fields.CamionId &&
            (p.fields.RetiroPersonal||"").toUpperCase() !== "SI";
   });
   var container = document.getElementById("log-items-list");
@@ -3071,11 +3341,11 @@ function renderItemsLogistica() {
       var sel=!!selItems[spId];
       var _si = getInsumoInfo(f.Insumo);
       var _siU = f.Unidad||_si.unidad||""; var _siP = f.Presentacion||_si.presentacion||"";
-      html += '<div class="item-row '+(sel?"sel":"") +'" onclick="toggleItem(\''+spId+'\')">'+
+      html += '<div data-search="'+(String(f.NumeroPedido||'')+' '+String(f.Insumo||'')+' '+String(f.Campo||'')+' '+String(f.Operador||'')).toLowerCase().replace(/"/g,'&quot;')+'" class="item-row '+(sel?"sel":"") +'" onclick="toggleItem(\''+spId+'\')">'+
         '<div class="checkbox '+(sel?"checked":"")+'">'+( sel?"✓":"")+'</div>'+
         '<div style="flex:1;min-width:0;">'+
-          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_siU+'</span>'+(_siP?' <span style="color:var(--light);font-size:11px;">('+_siP+')</span>':'')+
-          '<span style="font-weight:400;color:var(--light);margin-left:8px;font-size:11px;">N° '+(f.NumeroPedido||'—')+'</span></div>'+
+          '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:1px;">N° '+(f.NumeroPedido||'—')+'</div>'+
+          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_siU+'</span>'+(_siP?' <span style="color:var(--light);font-size:11px;">('+_siP+')</span>':'')+' </div>'+
           '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
             '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
             (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
@@ -3087,38 +3357,17 @@ function renderItemsLogistica() {
     });
   }
 
-  // ── Al final: retiros personales (sin acción requerida de logística) ──
-  if (retiroPersonal.length) {
-    html += '<div style="padding:10px 14px;background:#EDE9FE;border-top:1px solid #C4B5FD;border-bottom:1px solid #C4B5FD;font-size:12px;color:#6D28D9;font-weight:700;margin-top:8px;">🏃 Retiro Personalmente ('+retiroPersonal.length+') — sin acción requerida de logística</div>';
-    retiroPersonal.forEach(function(item){
-      var f=item.fields;
-      var _ri = getInsumoInfo(f.Insumo);
-      html += '<div class="item-row" style="opacity:0.7;cursor:default;pointer-events:none;">'+
-        '<div class="checkbox" style="background:#C4B5FD;color:#6D28D9;">🏃</div>'+
-        '<div style="flex:1;min-width:0;">'+
-          '<div style="font-weight:700;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+(f.Unidad||_ri.unidad||'')+'</span>'+
-          '<span style="font-weight:400;color:var(--light);margin-left:8px;font-size:11px;">N° '+(f.NumeroPedido||'—')+'</span></div>'+
-          '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:2px;">'+
-            '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
-            (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
-          '</div>'+
-          (f.Observaciones?'<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>':'')+
-        '</div>'+
-        '<span class="badge badge-retiro" style="flex-shrink:0;">Retiro personal</span>'+
-      '</div>';
-    });
-  }
-
   container.innerHTML = html;
 
   // Agrupados por camión
   var byCam = document.getElementById("log-by-cam");
   var asignados = pedidosLogistica.filter(function(p){ return p.fields.CamionId && p.fields.Estado==="Pendiente logística"; });
-  var camIdsUsados = [...new Set(asignados.map(function(p){ return p.fields.CamionId; }))];
+  var camIdsUsados = [];
+  asignados.forEach(function(p){ camionIdsOf(p).forEach(function(id){ if(camIdsUsados.indexOf(id)<0) camIdsUsados.push(id); }); });
   var html2="";
   camIdsUsados.forEach(function(camId){
     var cam = camiones.find(function(c){ return c.id===camId; });
-    var itemsCam = asignados.filter(function(p){ return p.fields.CamionId===camId; });
+    var itemsCam = asignados.filter(function(p){ return pedidoEnCamion(p, camId); });
     html2 += '<div style="background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:10px;">';
     html2 += '<div style="padding:11px 16px;border-bottom:1px solid var(--border);background:var(--brand-light);display:flex;align-items:center;justify-content:space-between;">';
     html2 += '<div><span style="font-weight:800;font-size:14px;color:var(--text);">'+camId+'</span>';
@@ -3128,14 +3377,17 @@ function renderItemsLogistica() {
       var f=item.fields;
       var _ci2 = getInsumoInfo(f.Insumo);
       var _ci2U = f.Unidad||_ci2.unidad||""; var _ci2P = f.Presentacion||_ci2.presentacion||"";
+      var camIds = camionIdsOf(item);
       html2 += '<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
-      html2 += '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:13px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_ci2U+'</span>'+(_ci2P?' <span style="color:var(--light);font-size:11px;">('+_ci2P+')</span>':'')+
-        '<span style="font-weight:400;color:var(--light);margin-left:8px;font-size:11px;">N° '+(f.NumeroPedido||'—')+'</span></div>';
+      html2 += '<div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:1px;">N° '+(f.NumeroPedido||'—')+'</div><div style="font-weight:600;font-size:13px;">'+f.Insumo+(camIds.length > 1 ? '<span style="font-size:10px;background:#DBEAFE;color:var(--blue);border-radius:10px;padding:1px 6px;margin-left:4px;">'+camIds.length+' camiones</span>' : '')+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_ci2U+'</span>'+(_ci2P?' <span style="color:var(--light);font-size:11px;">('+_ci2P+')</span>':'')+' </div>';
       html2 += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' · 👤 '+f.Operador+'</div>';
       if (f.Observaciones) html2 += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:2px;">📝 '+esc(f.Observaciones)+'</div>';
       html2 += '</div>';
       html2 += '<span class="badge badge-transit">En camino</span>';
       html2 += '<button style="font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--sub);" onclick="quitarDeCamion(\''+item.id+'\')">✕ Quitar</button>';
+      if (camIds.length < 2) {
+        html2 += '<button style="font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:#EFF6FF;cursor:pointer;color:var(--blue);margin-left:4px;" onclick="mostrarAgregarCamion(\''+item.id+'\',this)">➕ 2° camión</button>';
+      }
       html2 += '</div>';
     });
     html2 += '</div>';
@@ -3165,6 +3417,44 @@ function renderItemsLogistica() {
   }
 }
 
+function mostrarAgregarCamion(spId, btnEl) {
+  var item = pedidosLogistica.find(function(p){ return p.id === spId; });
+  if (!item) return;
+  var actuales = camionIdsOf(item);
+  var disponibles = camiones.filter(function(c){ return !c.cerrado && actuales.indexOf(c.id) < 0; });
+  if (!disponibles.length) { showToast("No hay otros camiones activos disponibles","error"); return; }
+
+  // Reemplazar el botón por un mini selector inline
+  var parent = btnEl.parentNode;
+  var selectId = "sel-add-cam-"+spId;
+  var div = document.createElement("div");
+  div.style.cssText = "display:inline-flex;align-items:center;gap:4px;margin-left:4px;";
+  div.innerHTML = '<select id="'+selectId+'" style="font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid var(--border);">' +
+    disponibles.map(function(c){ return '<option value="'+c.id+'">'+c.id+(c.chofer?' · '+c.chofer:'')+'</option>'; }).join("") +
+    '</select>' +
+    '<button style="font-size:11px;padding:3px 8px;border-radius:5px;background:var(--brand);border:none;cursor:pointer;font-weight:700;" onclick="confirmarAgregarCamion(\''+spId+'\',\''+selectId+'\')">✓</button>' +
+    '<button style="font-size:11px;padding:3px 6px;border-radius:5px;background:none;border:1px solid var(--border);cursor:pointer;" onclick="renderItemsLogistica()">✕</button>';
+  parent.replaceChild(div, btnEl);
+}
+
+async function confirmarAgregarCamion(spId, selectId) {
+  var item = pedidosLogistica.find(function(p){ return p.id === spId; });
+  if (!item) return;
+  var nuevoCamId = document.getElementById(selectId).value;
+  if (!nuevoCamId) return;
+  var actuales = camionIdsOf(item);
+  if (actuales.indexOf(nuevoCamId) >= 0) { showToast("Este camión ya está asignado","error"); return; }
+  var nuevoCamionId = actuales.concat([nuevoCamId]).join(",");
+  try {
+    await spPatch(CONFIG.lists.pedidos, spId, { CamionId: nuevoCamionId });
+    // Actualizar localmente
+    item.fields.CamionId = nuevoCamionId;
+    showToast("2° camión agregado ✓","ok");
+    renderItemsLogistica();
+    renderCamiones();
+  } catch(e) { showToast("Error: "+e.message,"error"); }
+}
+
 function toggleItem(spId) {
   selItems[spId] = !selItems[spId];
   if (!selItems[spId]) delete selItems[spId];
@@ -3172,7 +3462,9 @@ function toggleItem(spId) {
 }
 
 function toggleSelectAll() {
-  var sinAsignar = pedidosLogistica.filter(function(p){ return !p.fields.CamionId; });
+  var sinAsignar = pedidosLogistica.filter(function(p){
+    return p.fields.Estado === "Pendiente logística" && !p.fields.CamionId && (p.fields.RetiroPersonal||"").toUpperCase() !== "SI";
+  });
   var allSel = sinAsignar.every(function(p){ return selItems[p.id]; });
   if (allSel) { selItems={}; } else { sinAsignar.forEach(function(p){ selItems[p.id]=true; }); }
   renderItemsLogistica();
@@ -3236,7 +3528,7 @@ function renderCamiones() {
   }
   var html="";
   activos.forEach(function(cam){
-    var count = pedidosLogistica.filter(function(p){return p.fields.CamionId===cam.id && p.fields.Estado==="Pendiente logística";}).length;
+    var count = pedidosLogistica.filter(function(p){return pedidoEnCamion(p, cam.id) && p.fields.Estado==="Pendiente logística";}).length;
     var tieneChofer = !!(cam.chofer && cam.patente);
     html += '<div class="cam-row"><div style="min-width:0;flex:1;">';
     html += '<div class="cam-id">'+cam.id+'</div>';
@@ -3266,7 +3558,7 @@ function renderCamionesEnviados() {
   }
   var html="";
   enviados.forEach(function(cam){
-    var itemsCam = pedidosLogistica.filter(function(p){return p.fields.CamionId===cam.id && p.fields.Estado==="En camino";});
+    var itemsCam = pedidosLogistica.filter(function(p){return pedidoEnCamion(p, cam.id) && p.fields.Estado==="En camino";});
     html += '<div class="cam-row" style="opacity:0.85;"><div style="min-width:0;flex:1;">';
     html += '<div class="cam-id">'+cam.id+' <span style="font-size:10px;background:var(--green-light);color:var(--green);border-radius:10px;padding:1px 6px;font-weight:700;">EN CAMINO</span></div>';
     if (cam.chofer) {
@@ -3302,7 +3594,7 @@ function verDetalleCamion(camId) {
   if (!cam) return;
 
   var items = pedidosLogistica.filter(function(p){
-    return p.fields.CamionId === camId && p.fields.Estado === "Pendiente logística";
+    return pedidoEnCamion(p, camId) && p.fields.Estado === "Pendiente logística";
   });
 
   var fecha = new Date().toLocaleDateString("es-AR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
@@ -3391,7 +3683,7 @@ function abrirModalCamion(camId) {
   editingCamionId = camId;
   var cam = camId ? camiones.find(function(c){return c.id===camId;}) : null;
   var sinTransp = cam && !cam.chofer;
-  var countItems = pedidosLogistica.filter(function(p){return p.fields.CamionId===camId && p.fields.Estado==="Pendiente logística";}).length;
+  var countItems = pedidosLogistica.filter(function(p){return pedidoEnCamion(p, camId) && p.fields.Estado==="Pendiente logística";}).length;
   document.getElementById("modal-cam-title").textContent = "Datos del viaje — " + (cam ? cam.id : "");
   document.getElementById("btn-guardar-cam").textContent  = "🚛 Despachar ("+countItems+" ítems) →";
   document.getElementById("inp-chofer").value           = cam ? (cam.chofer||"")          : "";
@@ -3483,7 +3775,7 @@ async function despacharCamion() {
   var btn = document.getElementById("btn-guardar-cam");
   btn.disabled=true; btn.textContent="Despachando...";
   try {
-    var itemsDelCamion = pedidosLogistica.filter(function(p){ return p.fields.CamionId===camId && p.fields.Estado==="Pendiente logística"; });
+    var itemsDelCamion = pedidosLogistica.filter(function(p){ return pedidoEnCamion(p, camId) && p.fields.Estado==="Pendiente logística"; });
     for (var i=0; i<itemsDelCamion.length; i++) {
       var spId = itemsDelCamion[i].id;
       var fields = { CamionId:camId, Chofer:d.chofer, Patente:d.patente, Estado:"En camino" };
@@ -3714,6 +4006,27 @@ function mostrarComprobante(fieldsArr, remito) {
   document.getElementById("modal-comprobante").classList.add("open");
 }
 
+function filtrarPedidosInsumos(q) {
+  var ql = (q||"").toLowerCase().trim();
+  var containers = ["ins-pedidos-list","ins-logistica-list","ins-encamino-list","ins-cerrados-list"];
+  containers.forEach(function(cid) {
+    var c = document.getElementById(cid);
+    if (!c) return;
+    var rows = c.querySelectorAll("[data-search]");
+    rows.forEach(function(row) {
+      row.style.display = (!ql || row.getAttribute("data-search").includes(ql)) ? "" : "none";
+    });
+  });
+}
+
+function filtrarItemsLogistica(q) {
+  var ql = (q||"").toLowerCase().trim();
+  var rows = document.querySelectorAll("#log-items-list [data-search]");
+  rows.forEach(function(row) {
+    row.style.display = (!ql || row.getAttribute("data-search").includes(ql)) ? "" : "none";
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // PADRONES (upload a SharePoint)
 // ═══════════════════════════════════════════════════════════════
@@ -3754,6 +4067,10 @@ function renderPadronesPanel() {
     html += '</div></label>';
     html += '<input type="file" id="inp-pad-'+p.id+'" accept=".xlsx,.xls" style="display:none;" onchange="loadPadron(this,\''+p.id+'\',\''+p.listId+'\')"/>';
     html += '<button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="limpiarPadron(\''+p.listId+'\',event)">🗑 Limpiar</button>';
+    html += '</div>';
+    html += '<div id="prog-wrap-'+p.id+'" style="display:none;margin-top:10px;">';
+    html += '<div style="font-size:11px;color:var(--sub);margin-bottom:4px;" id="prog-label-'+p.id+'">Subiendo...</div>';
+    html += '<div style="background:var(--border);border-radius:4px;height:7px;overflow:hidden;"><div id="prog-bar-'+p.id+'" style="background:var(--brand);height:100%;width:0%;transition:width 0.2s;border-radius:4px;"></div></div>';
     html += '</div>';
     html += '</div>';
   });
@@ -3796,15 +4113,24 @@ async function processPadron(file, padId, listId) {
     // Subir todos los nuevos
     showToast("Subiendo "+fields_list.length+" registros...","");
     var ok = 0;
+    var progWrap  = document.getElementById("prog-wrap-"+padId);
+    var progBar   = document.getElementById("prog-bar-"+padId);
+    var progLabel = document.getElementById("prog-label-"+padId);
+    if (progWrap) progWrap.style.display = "block";
+    function setProgPadron(done, total) {
+      var pct = total > 0 ? Math.round(done/total*100) : 0;
+      if (progBar)   { progBar.style.width = pct + "%"; }
+      if (progLabel) { progLabel.textContent = "Subiendo: " + done + " / " + total + " (" + pct + "%)"; }
+    }
+    setProgPadron(0, fields_list.length);
     for (var i=0; i<fields_list.length; i++) {
       await spPost(listId, fields_list[i]);
       ok++;
+      setProgPadron(ok, fields_list.length);
       if (i % 5 === 0) await sleep(400);
-      if (i % 50 === 0) {
-        showToast("Subiendo... "+ok+"/"+fields_list.length,"");
-        await acquireToken(); // Renovar token cada 50
-      }
+      if (i % 50 === 0) await acquireToken();
     }
+    if (progWrap) progWrap.style.display = "none";
     showToast(ok+" registros cargados en SharePoint ✓","ok");
     await loadAllMasterData();
   } catch(e) {
