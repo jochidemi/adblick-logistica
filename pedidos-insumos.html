@@ -1839,7 +1839,7 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
   html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">';
   html += '<div><div style="font-weight:800;font-size:15px;">Pedido '+nro+'</div>';
   html += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f0.Campo+(f0.Localidad?' <span style="color:var(--blue);font-weight:600;">'+f0.Localidad+'</span>':'')+' · 🌾 '+(f0.Campa_x00f1_a||f0.Campana||"")+'</div>';
-  html += '<div style="font-size:12px;color:var(--light);margin-top:1px;">'+new Date(f0.FechaPedido).toLocaleDateString("es-AR")+(f0.FechaEntrega?' · Entrega: '+f0.FechaEntrega:'')+'</div></div>';
+  html += '<div style="font-size:12px;color:var(--light);margin-top:1px;">Pedido: '+new Date(f0.FechaPedido).toLocaleDateString("es-AR")+(f0.FechaEntrega?' &nbsp;·&nbsp; <span style="color:var(--orange);font-weight:700;">🗓 Entrega: '+fmtFecha(f0.FechaEntrega)+'</span>':'')+'</div></div>';
   html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'+badgeEstado(estado);
   if (esPendiente) {
     html += '<div style="display:flex;gap:6px;margin-top:2px;">';
@@ -2382,7 +2382,8 @@ async function cargarPedidosInsumos() {
         htmlA += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:2px;letter-spacing:0.02em;">N° '+f.NumeroPedido+'</div>';
         htmlA += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uniA+'</span>'+(_presA?' <span style="color:var(--light);">('+_presA+')</span>':'')+' </div>';
         htmlA += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
-                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span></div>';
+                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span></div>'+
+                 (f.FechaEntrega?'<div style="margin-top:4px;"><span style="display:inline-block;background:var(--orange-light);color:var(--orange);font-weight:700;font-size:12px;border-radius:6px;padding:2px 8px;">🗓 Entrega: '+fmtFecha(f.FechaEntrega)+'</span></div>':'');
         if (f.Observaciones) htmlA += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>';
         htmlA += '</div>';
         htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
@@ -2416,7 +2417,8 @@ async function cargarPedidosInsumos() {
         htmlL += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:2px;letter-spacing:0.02em;">N° '+f.NumeroPedido+'</div>';
         htmlL += '<div style="font-weight:700;font-size:14px;">'+f.Insumo+'<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">'+f.Cantidad+' '+_uniL+'</span>'+(_presL?' <span style="color:var(--light);">('+_presL+')</span>':'')+' </div>';
         htmlL += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
-                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span><span>🚚 '+f.FechaEntrega+'</span></div>';
+                 '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span></div>'+
+                 (f.FechaEntrega?'<div style="margin-top:4px;"><span style="display:inline-block;background:var(--orange-light);color:var(--orange);font-weight:700;font-size:12px;border-radius:6px;padding:2px 8px;">🗓 Entrega: '+fmtFecha(f.FechaEntrega)+'</span></div>':'');
         if (f.OrigenAsignado) {
           htmlL += '<div style="margin-top:5px;font-size:12px;color:var(--blue);font-weight:600;">📦 '+f.OrigenAsignado+(f.NotaInsumos?' · <span style="color:var(--sub);font-weight:400;">'+f.NotaInsumos+'</span>':'')+'</div>';
         }
@@ -2456,8 +2458,8 @@ async function cargarPedidosInsumos() {
         htmlEC += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">'+
                   '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span>'+
                   '<span>👤 '+f.Operador+'</span>'+
-                  (f.FechaEntrega?'<span>🗓 '+f.FechaEntrega+'</span>':'')+
-                  '</div>';
+                  '</div>'+
+                  (f.FechaEntrega?'<div style="margin-top:4px;"><span style="display:inline-block;background:var(--orange-light);color:var(--orange);font-weight:700;font-size:12px;border-radius:6px;padding:2px 8px;">🗓 Entrega: '+fmtFecha(f.FechaEntrega)+'</span></div>':'');
         if (f.OrigenAsignado) {
           htmlEC += '<div style="margin-top:5px;font-size:12px;color:var(--blue);font-weight:600;">📦 '+f.OrigenAsignado+
                     (f.NotaInsumos?' · <span style="color:var(--sub);font-weight:400;">'+f.NotaInsumos+'</span>':'')+'</div>';
@@ -2516,7 +2518,7 @@ async function cargarPedidosInsumos() {
         htmlCE += '<td style="padding:7px 12px;">'+( f.Transportista||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;">'+( f.Chofer||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;">'+( f.Patente||"-")+'</td>';
-        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+( f.FechaEntrega||"-")+'</td>';
+        htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+fmtFecha(f.FechaEntrega)+'</td>';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.FechaPedido ? new Date(f.FechaPedido).toLocaleDateString("es-AR") : "-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;color:var(--green);font-weight:600;">'+( f.NroRemito||"-")+'</td>';
         htmlCE += '</tr>';
@@ -2568,16 +2570,12 @@ async function renderMetricasInsumos() {
       var f=i.fields;
       if (f.OrigenAsignado || f.Estado==="Cerrado" || f.Estado==="En camino") return false;
       if (!f.FechaEntrega) return false;
-      var parts = f.FechaEntrega.split("/"); // DD/MM/YYYY
-      if (parts.length < 3) return false;
-      var fe = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
-      return fe <= en7dias;
+      var fe = parseFechaEntrega(f.FechaEntrega);
+      return fe && fe <= en7dias;
     });
     sinOrigen.sort(function(a,b){
-      var pa=a.fields.FechaEntrega||"", pb=b.fields.FechaEntrega||"";
-      var da=pa.split("/"), db=pb.split("/");
-      var fa=new Date(parseInt(da[2]||0),parseInt(da[1]||1)-1,parseInt(da[0]||1));
-      var fb=new Date(parseInt(db[2]||0),parseInt(db[1]||1)-1,parseInt(db[0]||1));
+      var fa = parseFechaEntrega(a.fields.FechaEntrega) || new Date(9999,0,1);
+      var fb = parseFechaEntrega(b.fields.FechaEntrega) || new Date(9999,0,1);
       return fa-fb;
     });
 
@@ -2589,12 +2587,11 @@ async function renderMetricasInsumos() {
       html += '<div class="tbl-wrap"><table><thead><tr><th>N° Pedido</th><th>Insumo</th><th>Campo</th><th>Operador</th><th>F. Entrega</th><th>Estado</th></tr></thead><tbody>';
       sinOrigen.forEach(function(i){
         var f=i.fields;
-        var parts=f.FechaEntrega.split("/");
-        var fe=new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
-        var diasRestantes=Math.round((fe-hoy)/(1000*60*60*24));
-        var urgencia = diasRestantes<=2 ? 'color:var(--red);font-weight:700;' : 'color:var(--orange);font-weight:600;';
+        var fe=parseFechaEntrega(f.FechaEntrega);
+        var diasRestantes=fe ? Math.round((fe-hoy)/(1000*60*60*24)) : "—";
+        var urgencia = (typeof diasRestantes==="number" && diasRestantes<=2) ? 'color:var(--red);font-weight:700;' : 'color:var(--orange);font-weight:600;';
         html += '<tr><td style="font-size:11px;">'+f.NumeroPedido+'</td><td style="font-weight:600;">'+f.Insumo+'</td><td>'+f.Campo+'</td><td>'+f.Operador+'</td>';
-        html += '<td style="'+urgencia+'">'+f.FechaEntrega+' <span style="font-size:10px;">('+diasRestantes+'d)</span></td>';
+        html += '<td style="'+urgencia+'">'+fmtFecha(f.FechaEntrega)+' <span style="font-size:10px;">'+(typeof diasRestantes==="number"?'('+diasRestantes+'d)':'')+'</span></td>';
         html += '<td><span style="font-size:11px;font-weight:600;color:var(--orange);">'+f.Estado+'</span></td></tr>';
       });
       html += '</tbody></table></div>';
@@ -2625,6 +2622,76 @@ async function renderMetricasInsumos() {
       });
       html += '</tbody></table></div>';
     }
+    html += '</div>';
+
+    // ── 4. Short Notice: pedidos con poca anticipación ──────────────────────────
+    // Anticipo = días entre FechaPedido (creación) y FechaEntrega (entrega)
+    var conAnticipo = items.filter(function(i){
+      var f=i.fields;
+      if (!f.FechaPedido || !f.FechaEntrega) return false;
+      var fp = new Date(f.FechaPedido); fp.setHours(0,0,0,0);
+      var fe = parseFechaEntrega(f.FechaEntrega);
+      if (!fe || isNaN(fp.getTime())) return false;
+      var dias = Math.round((fe-fp)/(1000*60*60*24));
+      i._anticipo = dias;
+      return true;
+    });
+    conAnticipo.sort(function(a,b){ return a._anticipo - b._anticipo; });
+
+    // Resumen por operador
+    var porOp = {};
+    conAnticipo.forEach(function(i){
+      var op = i.fields.Operador||"(sin operador)";
+      if (!porOp[op]) porOp[op] = { total:0, suma:0, min:Infinity, shrt:0 };
+      porOp[op].total++;
+      porOp[op].suma += i._anticipo;
+      if (i._anticipo < porOp[op].min) porOp[op].min = i._anticipo;
+      if (i._anticipo <= 3) porOp[op].shrt++;
+    });
+    var opList = Object.keys(porOp).sort(function(a,b){
+      return (porOp[a].suma/porOp[a].total) - (porOp[b].suma/porOp[b].total);
+    });
+
+    html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">';
+    html += '<div style="font-size:13px;font-weight:800;margin-bottom:4px;">⏱️ Pedidos Short Notice <span style="font-weight:400;color:var(--sub);">— anticipación al hacer el pedido</span></div>';
+    html += '<div style="font-size:12px;color:var(--sub);margin-bottom:14px;">Días entre fecha en que se hizo el pedido y la fecha de entrega requerida. Menos días = menos previsibilidad.</div>';
+
+    // Tarjetas resumen por operador
+    if (opList.length) {
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:18px;">';
+      opList.forEach(function(op){
+        var d = porOp[op];
+        var avg = Math.round(d.suma/d.total);
+        var colorAvg = avg<=2 ? 'var(--red)' : avg<=5 ? 'var(--orange)' : avg<=10 ? '#CA8A04' : 'var(--green)';
+        html += '<div style="border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;">';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+op+'">'+op+'</div>';
+        html += '<div style="font-size:24px;font-weight:800;color:'+colorAvg+';">'+avg+'<span style="font-size:12px;font-weight:400;color:var(--light);"> días prom.</span></div>';
+        html += '<div style="font-size:11px;color:var(--sub);margin-top:4px;">Mín: <b style="color:'+( d.min<=2?'var(--red)':'inherit')+'">'+d.min+'d</b> &nbsp;·&nbsp; Short (≤3d): <b style="color:var(--red);">'+d.shrt+'</b></div>';
+        html += '<div style="font-size:11px;color:var(--light);margin-top:2px;">'+d.total+' pedido'+(d.total!==1?'s':'')+'</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Tabla detalle (todos, ordenados por menor anticipo)
+    html += '<details style="margin-top:4px;"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--blue);user-select:none;">Ver detalle de todos los pedidos ('+conAnticipo.length+')</summary>';
+    html += '<div class="tbl-wrap" style="margin-top:10px;"><table><thead><tr>';
+    html += '<th>N° Pedido</th><th>Insumo</th><th>Campo</th><th>Operador</th><th>F. Pedido</th><th>F. Entrega</th><th style="text-align:center;">Anticipación</th></tr></thead><tbody>';
+    conAnticipo.forEach(function(i){
+      var f=i.fields;
+      var dias=i._anticipo;
+      var bg  = dias<=2 ? 'background:var(--red-light);'   : dias<=5 ? 'background:var(--orange-light);' : '';
+      var col = dias<=2 ? 'color:var(--red);font-weight:700;' : dias<=5 ? 'color:var(--orange);font-weight:700;' : '';
+      var fp  = f.FechaPedido ? new Date(f.FechaPedido).toLocaleDateString("es-AR") : "—";
+      html += '<tr style="'+bg+'"><td style="font-size:11px;">'+f.NumeroPedido+'</td>';
+      html += '<td style="font-weight:600;">'+f.Insumo+'</td>';
+      html += '<td>'+f.Campo+'</td>';
+      html += '<td>'+f.Operador+'</td>';
+      html += '<td style="white-space:nowrap;font-size:12px;">'+fp+'</td>';
+      html += '<td style="white-space:nowrap;font-size:12px;">'+fmtFecha(f.FechaEntrega)+'</td>';
+      html += '<td style="text-align:center;'+col+'">'+dias+' día'+(dias!==1?'s':'')+'</td></tr>';
+    });
+    html += '</tbody></table></div></details>';
     html += '</div>';
 
     cont.innerHTML = '<div style="padding:16px 0;">'+html+'</div>';
@@ -3352,7 +3419,7 @@ function renderItemsLogistica() {
           '</div>'+
           (f.Observaciones?'<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>':'')+
         '</div>'+
-        '<div style="font-size:11px;color:var(--light);flex-shrink:0;">🗓 '+f.FechaEntrega+'</div>'+
+        '<div style="font-size:11px;font-weight:700;color:var(--orange);flex-shrink:0;white-space:nowrap;">🗓 '+fmtFecha(f.FechaEntrega)+'</div>'+
       '</div>';
     });
   }
@@ -3640,7 +3707,7 @@ function verDetalleCamion(camId) {
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;margin-top:6px;">';
     if (f.OrigenAsignado) h += filaMini('Origen', f.OrigenAsignado);
     h += filaMini('Destino', f.Campo + (f.Localidad ? ' · ' + f.Localidad : ''));
-    if (f.FechaEntrega)   h += filaMini('Entrega', f.FechaEntrega);
+    if (f.FechaEntrega)   h += filaMini('Entrega', fmtFecha(f.FechaEntrega));
     h += filaMini('N° Pedido', String(f.NumeroPedido||''));
     h += filaMini('Responsable', f.Operador||'');
     h += '</div>';
@@ -4202,6 +4269,32 @@ function mapPadronRows(padId, rows) {
 // ═══════════════════════════════════════════════════════════════
 function cerrarModal(id) { document.getElementById(id).classList.remove("open"); }
 function esc(s){ return String(s||"").replace(/'/g,"\\'").replace(/"/g,"&quot;"); }
+
+// ── Fecha helpers ──────────────────────────────────────────────────────────────
+// Convierte cualquier formato de fecha a Date (maneja ISO, YYYY-MM-DD, DD/MM/YYYY)
+function parseFechaEntrega(raw) {
+  if (!raw) return null;
+  var s = String(raw).trim();
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+    var p = s.split("/");
+    return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    var p2 = s.substring(0,10).split("-");
+    return new Date(parseInt(p2[0]), parseInt(p2[1])-1, parseInt(p2[2]));
+  }
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+// Formatea cualquier fecha a DD/MM/YYYY (sin hora)
+function fmtFecha(raw) {
+  if (!raw) return "—";
+  var d = parseFechaEntrega(raw);
+  if (!d) return String(raw);
+  var dd = String(d.getDate()).padStart(2,"0");
+  var mm = String(d.getMonth()+1).padStart(2,"0");
+  return dd+"/"+mm+"/"+d.getFullYear();
+}
 
 function showToast(msg, type) {
   var t=document.getElementById("toast");
