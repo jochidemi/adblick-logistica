@@ -318,18 +318,19 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 
       <!-- GRÁFICO: CAMIONES POR DÍA -->
       <div class="card">
-        <div class="card-title">Camiones por día (próximos 7 días)</div>
+        <div class="card-title">Camiones por día — próxima semana</div>
         <div style="position:relative;height:280px;"><canvas id="chartCamionesDia"></canvas></div>
       </div>
 
       <!-- GRÁFICOS: ZONA Y CULTIVO -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
         <div class="card" style="margin-bottom:0;">
-          <div class="card-title">Camiones por zona</div>
+          <div class="card-title">Camiones por zona — próxima semana</div>
           <div style="position:relative;height:280px;"><canvas id="chartCamionesZona"></canvas></div>
         </div>
         <div class="card" style="margin-bottom:0;">
-          <div class="card-title">Camiones por cultivo</div>
+          <div class="card-title">Camiones por cultivo — próxima semana</div>
+          <p style="font-size:11px;color:var(--gray);margin-top:-8px;margin-bottom:8px;">Soja No GMO agrupa todas las variantes (1ra, 2da, tardía). Soja agrupa soja, soja 2 y soja tardía.</p>
           <div style="position:relative;height:280px;"><canvas id="chartCamionesCultivo"></canvas></div>
         </div>
       </div>
@@ -934,6 +935,10 @@ async function cargarMetricas() {
   await cargarPreview();
 }
 
+// Estado global de la previsualización (para filtros)
+var _previewData = { items: null, dates: null, colMap: null, rowMap: null };
+var _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+
 async function cargarPreview() {
   var container = document.getElementById("previewContainer");
   container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
@@ -950,6 +955,7 @@ async function cargarPreview() {
       var key = (item.Campo||"") + "|||" + (item.Cultivo||"");
       if (!rowMap[key]) rowMap[key] = {
         campo: item.Campo||"", cultivo: item.Cultivo||"", zona: item.Zona||"",
+        responsable: CAMPOS_RESPONSABLE[item.Campo||""] || "",
         comentarioLog: item.ComentarioLogistica||"", dias: {}, usuarios: new Set()
       };
       rowMap[key].usuarios.add(item.Usuario||"");
@@ -964,54 +970,156 @@ async function cargarPreview() {
       }
     });
 
-    var keys = Object.keys(rowMap);
-    if (keys.length === 0) {
+    // Guardar estado y resetear filtros
+    _previewData = { items: items, dates: dates, colMap: colMap, rowMap: rowMap };
+    _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+
+    if (Object.keys(rowMap).length === 0) {
       container.innerHTML = "<div class=\"empty-state\">No hay pedidos cargados para los próximos 7 días.</div>";
       return;
     }
 
-    var th = "<tr><th>Campo</th><th>Cultivo</th><th>Zona</th><th>Coment. Logística</th><th>Responsables</th>";
-    for (var di = 0; di < dates.length; di++) {
-      var parts_d = dates[di].split("-"); var dobj = new Date(parseInt(parts_d[0]), parseInt(parts_d[1])-1, parseInt(parts_d[2]));
-      th += "<th>" + fmtDateShort(dobj) + "</th>";
-    }
-    th += "</tr>";
-
-    var tb = "";
-    keys.sort().forEach(function(k) {
-      var row = rowMap[k];
-      var totalCam = 0;
-      for (var di = 0; di < dates.length; di++) { totalCam += (row.dias[di] ? row.dias[di].cam : 0); }
-      if (totalCam === 0) return;
-      tb += "<tr>";
-      tb += "<td style=\"font-weight:600;\">" + row.campo + "</td>";
-      tb += "<td><span class=\"badge\">" + row.cultivo + "</span></td>";
-      tb += "<td>" + (row.zona||"-") + "</td>";
-      tb += "<td style=\"font-size:11px;color:#555;\">" + (row.comentarioLog||"-") + "</td>";
-      tb += "<td style=\"font-size:11px;color:#555;\">" + Array.from(row.usuarios).join(", ") + "</td>";
-      for (var di = 0; di < dates.length; di++) {
-        var dia = row.dias[di] || { cam: 0, emb: false };
-        if (dia.cam > 0) {
-          tb += "<td><strong>" + dia.cam + "</strong>" + (dia.emb ? "<br><span style=\"font-size:10px;color:#c8a000;font-weight:700;\">EMB</span>" : "") + "</td>";
-        } else {
-          tb += "<td style=\"color:#ddd;\">-</td>";
-        }
-      }
-      tb += "</tr>";
-    });
-
-    if (!tb) {
-      container.innerHTML = "<div class=\"empty-state\">No hay camiones asignados en los próximos 7 días.</div>";
-      return;
-    }
-
-    container.innerHTML = "<div class=\"table-wrapper\"><table class=\"preview-table\"><thead>" + th + "</thead><tbody>" + tb + "</tbody></table></div>";
-
-    // Render charts + KPIs si la pestaña Métricas está activa
-    renderMetricas(items, dates, colMap, rowMap);
+    renderPreviewWithFilters();
   } catch(e) {
     container.innerHTML = "<div class=\"empty-state\">Error al cargar: " + e.message + "</div>";
   }
+}
+
+function renderPreviewWithFilters() {
+  var container = document.getElementById("previewContainer");
+  if (!_previewData.rowMap) return;
+  var dates = _previewData.dates;
+  var rowMap = _previewData.rowMap;
+
+  // ── Construir opciones únicas para los filtros ──
+  var setCampos = {}, setCultivos = {}, setZonas = {}, setResp = {}, setUsr = {};
+  Object.keys(rowMap).forEach(function(k) {
+    var r = rowMap[k];
+    if (r.campo) setCampos[r.campo] = true;
+    if (r.cultivo) setCultivos[r.cultivo] = true;
+    if (r.zona) setZonas[r.zona] = true;
+    if (r.responsable) setResp[r.responsable] = true;
+    r.usuarios.forEach(function(u){ if (u) setUsr[u] = true; });
+  });
+  function buildSelect(id, label, values, current) {
+    var html = "<div class='field' style='flex:1;min-width:140px;'><label>" + label + "</label>";
+    html += "<select id='" + id + "' onchange='aplicarFiltrosPreview()'>";
+    html += "<option value=''>Todos</option>";
+    Object.keys(values).sort().forEach(function(v) {
+      html += "<option value='" + v.replace(/'/g,"&#39;") + "'" + (v === current ? " selected" : "") + ">" + v + "</option>";
+    });
+    html += "</select></div>";
+    return html;
+  }
+
+  var filtersHtml = "<div class='card' style='padding:12px 14px;margin-bottom:12px;background:#fffbe8;border-color:#f5e09a;'>";
+  filtersHtml += "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;'>";
+  filtersHtml += "<strong style='font-size:13px;color:var(--dark);'>Filtros</strong>";
+  filtersHtml += "<button class='btn btn-secondary' style='font-size:11px;padding:4px 10px;' onclick='limpiarFiltrosPreview()'>Limpiar filtros</button>";
+  filtersHtml += "</div>";
+  filtersHtml += "<div class='form-row' style='gap:8px;'>";
+  filtersHtml += buildSelect("filtCampo", "Campo", setCampos, _previewFilters.campo);
+  filtersHtml += buildSelect("filtCultivo", "Cultivo", setCultivos, _previewFilters.cultivo);
+  filtersHtml += buildSelect("filtZona", "Zona", setZonas, _previewFilters.zona);
+  filtersHtml += buildSelect("filtResp", "Responsable", setResp, _previewFilters.responsable);
+  filtersHtml += buildSelect("filtUsr", "Cargado por", setUsr, _previewFilters.usuario);
+  filtersHtml += "</div></div>";
+
+  // ── Aplicar filtros sobre rowMap ──
+  var f = _previewFilters;
+  var filteredKeys = Object.keys(rowMap).filter(function(k) {
+    var r = rowMap[k];
+    if (f.campo && r.campo !== f.campo) return false;
+    if (f.cultivo && r.cultivo !== f.cultivo) return false;
+    if (f.zona && r.zona !== f.zona) return false;
+    if (f.responsable && r.responsable !== f.responsable) return false;
+    if (f.usuario && !r.usuarios.has(f.usuario)) return false;
+    return true;
+  });
+
+  // ── Construir tabla ──
+  var th = "<tr><th>Campo</th><th>Cultivo</th><th>Zona</th><th>Responsable</th><th>Coment. Logística</th><th>Cargado por</th>";
+  for (var di = 0; di < dates.length; di++) {
+    var parts_d = dates[di].split("-"); var dobj = new Date(parseInt(parts_d[0]), parseInt(parts_d[1])-1, parseInt(parts_d[2]));
+    th += "<th>" + fmtDateShort(dobj) + "</th>";
+  }
+  th += "<th>Total</th></tr>";
+
+  var tb = "";
+  var totalGeneral = 0;
+  var totalesPorDia = dates.map(function(){ return 0; });
+  filteredKeys.sort().forEach(function(k) {
+    var row = rowMap[k];
+    var totalCam = 0;
+    for (var di = 0; di < dates.length; di++) { totalCam += (row.dias[di] ? row.dias[di].cam : 0); }
+    if (totalCam === 0) return;
+    totalGeneral += totalCam;
+    tb += "<tr>";
+    tb += "<td style=\"font-weight:600;\">" + row.campo + "</td>";
+    tb += "<td><span class=\"badge\">" + row.cultivo + "</span></td>";
+    tb += "<td>" + (row.zona||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + (row.responsable||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + (row.comentarioLog||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + Array.from(row.usuarios).join(", ") + "</td>";
+    for (var di = 0; di < dates.length; di++) {
+      var dia = row.dias[di] || { cam: 0, emb: false };
+      if (dia.cam > 0) {
+        totalesPorDia[di] += dia.cam;
+        tb += "<td><strong>" + dia.cam + "</strong>" + (dia.emb ? "<br><span style=\"font-size:10px;color:#c8a000;font-weight:700;\">EMB</span>" : "") + "</td>";
+      } else {
+        tb += "<td style=\"color:#ddd;\">-</td>";
+      }
+    }
+    tb += "<td style='font-weight:700;background:#fffbe8;'>" + totalCam + "</td>";
+    tb += "</tr>";
+  });
+
+  // Fila total
+  if (tb) {
+    tb += "<tr style='background:#1A1A1A;color:#fff;font-weight:700;'>";
+    tb += "<td colspan='6' style='text-align:right;color:#fff;'>TOTAL</td>";
+    for (var di = 0; di < dates.length; di++) {
+      tb += "<td style='color:#F5B800;'>" + (totalesPorDia[di] || "-") + "</td>";
+    }
+    tb += "<td style='color:#F5B800;'>" + totalGeneral + "</td>";
+    tb += "</tr>";
+  }
+
+  var tableHtml = tb
+    ? "<div class=\"table-wrapper\"><table class=\"preview-table\"><thead>" + th + "</thead><tbody>" + tb + "</tbody></table></div>"
+    : "<div class=\"empty-state\">No hay resultados con los filtros aplicados.</div>";
+
+  container.innerHTML = filtersHtml + tableHtml;
+
+  // ── Re-renderizar gráficos con los datos filtrados ──
+  var filteredRowMap = {};
+  filteredKeys.forEach(function(k) { filteredRowMap[k] = rowMap[k]; });
+  renderMetricas(_previewData.items, dates, _previewData.colMap, filteredRowMap);
+}
+
+function aplicarFiltrosPreview() {
+  _previewFilters.campo = document.getElementById("filtCampo").value;
+  _previewFilters.cultivo = document.getElementById("filtCultivo").value;
+  _previewFilters.zona = document.getElementById("filtZona").value;
+  _previewFilters.responsable = document.getElementById("filtResp").value;
+  _previewFilters.usuario = document.getElementById("filtUsr").value;
+  renderPreviewWithFilters();
+}
+
+function limpiarFiltrosPreview() {
+  _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+  renderPreviewWithFilters();
+}
+
+function agruparCultivo(nombre) {
+  if (!nombre) return "Sin cultivo";
+  var n = nombre.toLowerCase().trim();
+  // Soja No GMO (incluye variantes: 2da, tardía, etc.) — chequear PRIMERO porque contiene "soja"
+  if (n.indexOf("no gmo") !== -1 || n.indexOf("nogmo") !== -1 || n.indexOf("no-gmo") !== -1) return "Soja No GMO";
+  // Soja (incluye soja, soja 2, soja tardía, etc.)
+  if (n.indexOf("soja") !== -1) return "Soja";
+  // Cualquier otro cultivo se mantiene tal cual (capitalizando)
+  return nombre.charAt(0).toUpperCase() + nombre.slice(1);
 }
 
 function renderMetricas(items, dates, colMap, rowMap) {
@@ -1034,7 +1142,7 @@ function renderMetricas(items, dates, colMap, rowMap) {
         totalCamiones += dia.cam;
         var z = row.zona || "Sin zona";
         camPorZona[z] = (camPorZona[z] || 0) + dia.cam;
-        var c = row.cultivo || "Sin cultivo";
+        var c = agruparCultivo(row.cultivo);
         camPorCultivo[c] = (camPorCultivo[c] || 0) + dia.cam;
       }
     }
