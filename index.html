@@ -6,6 +6,7 @@
 <title>ADBlick Granos - Logistica</title>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100vh; }
@@ -212,6 +213,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div class="tab active" onclick="switchTab('nuevo')">Nuevo Pedido</div>
     <div class="tab" onclick="switchTab('mispedidos')">Mis Pedidos</div>
     <div class="tab" onclick="switchTab('descargas')">Descargas</div>
+    <div class="tab" onclick="switchTab('metricas')">Métricas</div>
     <div class="tab" onclick="switchTab('logistica')">Logística</div>
   </div>
 
@@ -300,15 +302,44 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         <button class="btn btn-dark" onclick="descargarHistorico()">Descargar Excel</button>
       </div>
 
-      <!-- PREVISUALIZACIÓN SEMANAL -->
+    </div>
+  </div>
+
+  <!-- TAB: MÉTRICAS -->
+  <div class="tab-content" id="tab-metricas">
+    <div class="main">
+      <div class="section-header" style="margin-bottom:14px;">
+        <h3>Métricas y Planificación Semanal</h3>
+        <button class="btn btn-secondary" onclick="cargarMetricas()" style="font-size:12px;padding:6px 12px;">Actualizar</button>
+      </div>
+
+      <!-- KPIs RESUMEN -->
+      <div id="metricsKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;"></div>
+
+      <!-- GRÁFICO: CAMIONES POR DÍA -->
       <div class="card">
-        <div class="section-header">
-          <h3>Previsualización — Planificación Semanal</h3>
-          <button class="btn btn-secondary" onclick="cargarPreview()" style="font-size:12px;padding:6px 12px;">Actualizar</button>
+        <div class="card-title">Camiones por día (próximos 7 días)</div>
+        <div style="position:relative;height:280px;"><canvas id="chartCamionesDia"></canvas></div>
+      </div>
+
+      <!-- GRÁFICOS: ZONA Y CULTIVO -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-title">Camiones por zona</div>
+          <div style="position:relative;height:280px;"><canvas id="chartCamionesZona"></canvas></div>
         </div>
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-title">Camiones por cultivo</div>
+          <div style="position:relative;height:280px;"><canvas id="chartCamionesCultivo"></canvas></div>
+        </div>
+      </div>
+
+      <!-- PREVISUALIZACIÓN SEMANAL -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Planificación Semanal — detalle</div>
         <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">Todos los pedidos cargados por todos los usuarios, agrupados por campo y cultivo.</p>
         <div id="previewContainer">
-          <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Presioná "Actualizar" para cargar la previsualización.</div>
+          <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Presioná "Actualizar" para cargar la planificación y métricas.</div>
         </div>
       </div>
     </div>
@@ -404,13 +435,14 @@ var editingItemId = null;
 
 // ── TABS ──
 function switchTab(name) {
-  var tabNames = ["nuevo","mispedidos","descargas","logistica"];
+  var tabNames = ["nuevo","mispedidos","descargas","metricas","logistica"];
   document.querySelectorAll(".tab").forEach(function(t, i) {
     t.classList.toggle("active", tabNames[i] === name);
   });
   document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.remove("active"); });
   document.getElementById("tab-" + name).classList.add("active");
   if (name === "mispedidos") cargarMisPedidos();
+  if (name === "metricas") cargarMetricas();
   if (name === "logistica") { renderComentariosActivos(); renderPadronStatus(); }
 }
 
@@ -892,7 +924,16 @@ async function descargarHistorico() {
   } catch(e) { showToast("Error: " + e.message, "error"); }
 }
 
-// ── PREVISUALIZACIÓN SEMANAL ──
+// ── MÉTRICAS Y PREVISUALIZACIÓN SEMANAL ──
+var _charts = { dia: null, zona: null, cultivo: null };
+
+async function cargarMetricas() {
+  var container = document.getElementById("previewContainer");
+  container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
+  document.getElementById("metricsKpis").innerHTML = "";
+  await cargarPreview();
+}
+
 async function cargarPreview() {
   var container = document.getElementById("previewContainer");
   container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
@@ -965,9 +1006,155 @@ async function cargarPreview() {
     }
 
     container.innerHTML = "<div class=\"table-wrapper\"><table class=\"preview-table\"><thead>" + th + "</thead><tbody>" + tb + "</tbody></table></div>";
+
+    // Render charts + KPIs si la pestaña Métricas está activa
+    renderMetricas(items, dates, colMap, rowMap);
   } catch(e) {
     container.innerHTML = "<div class=\"empty-state\">Error al cargar: " + e.message + "</div>";
   }
+}
+
+function renderMetricas(items, dates, colMap, rowMap) {
+  if (typeof Chart === "undefined") return;
+  if (!document.getElementById("chartCamionesDia")) return;
+
+  // ── Agregaciones ──
+  var camPorDia = dates.map(function(){ return 0; });
+  var camPorZona = {};
+  var camPorCultivo = {};
+  var totalCamiones = 0;
+  var diasConPedidos = 0;
+
+  Object.keys(rowMap).forEach(function(k) {
+    var row = rowMap[k];
+    for (var di = 0; di < dates.length; di++) {
+      var dia = row.dias[di];
+      if (dia && dia.cam > 0) {
+        camPorDia[di] += dia.cam;
+        totalCamiones += dia.cam;
+        var z = row.zona || "Sin zona";
+        camPorZona[z] = (camPorZona[z] || 0) + dia.cam;
+        var c = row.cultivo || "Sin cultivo";
+        camPorCultivo[c] = (camPorCultivo[c] || 0) + dia.cam;
+      }
+    }
+  });
+  diasConPedidos = camPorDia.filter(function(n){ return n > 0; }).length;
+  var promedio = diasConPedidos > 0 ? (totalCamiones / diasConPedidos).toFixed(1) : 0;
+  var pico = Math.max.apply(null, camPorDia.concat([0]));
+
+  // ── KPIs ──
+  var kpiDiv = document.getElementById("metricsKpis");
+  if (kpiDiv) {
+    function kpi(label, value, color) {
+      return "<div class='card' style='margin:0;padding:14px;text-align:center;'>" +
+             "<div style='font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;'>" + label + "</div>" +
+             "<div style='font-size:24px;font-weight:800;color:" + (color||"var(--dark)") + ";margin-top:4px;'>" + value + "</div>" +
+             "</div>";
+    }
+    kpiDiv.innerHTML =
+      kpi("Total camiones", totalCamiones, "#D9A300") +
+      kpi("Días con pedidos", diasConPedidos + "/7") +
+      kpi("Promedio diario", promedio) +
+      kpi("Pico diario", pico, "#c0392b") +
+      kpi("Zonas activas", Object.keys(camPorZona).length) +
+      kpi("Cultivos activos", Object.keys(camPorCultivo).length);
+  }
+
+  // ── Etiquetas de fechas ──
+  var labels = dates.map(function(d) {
+    var p = d.split("-");
+    var dobj = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+    return fmtDateShort(dobj);
+  });
+
+  // ── Colores ──
+  var palette = ["#F5B800","#2d7a45","#1a73e8","#c0392b","#7a3eb8","#e07a00","#0fa3a3","#c8a000","#5b6770","#8e44ad","#16a085","#d35400"];
+
+  // ── Chart 1: Camiones por día (línea) ──
+  if (_charts.dia) _charts.dia.destroy();
+  _charts.dia = new Chart(document.getElementById("chartCamionesDia"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Camiones",
+        data: camPorDia,
+        borderColor: "#D9A300",
+        backgroundColor: "rgba(245,184,0,0.18)",
+        fill: true,
+        tension: 0.3,
+        pointBackgroundColor: "#D9A300",
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx){ return ctx.parsed.y + " camiones"; } } }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: "Camiones" } },
+        x: { title: { display: true, text: "Fecha" } }
+      }
+    }
+  });
+
+  // ── Chart 2: Camiones por zona (barras horizontales) ──
+  var zonaEntries = Object.keys(camPorZona).map(function(z){ return [z, camPorZona[z]]; });
+  zonaEntries.sort(function(a,b){ return b[1]-a[1]; });
+  if (_charts.zona) _charts.zona.destroy();
+  _charts.zona = new Chart(document.getElementById("chartCamionesZona"), {
+    type: "bar",
+    data: {
+      labels: zonaEntries.map(function(e){ return e[0]; }),
+      datasets: [{
+        label: "Camiones",
+        data: zonaEntries.map(function(e){ return e[1]; }),
+        backgroundColor: zonaEntries.map(function(_,i){ return palette[i % palette.length]; }),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { precision: 0 } }
+      }
+    }
+  });
+
+  // ── Chart 3: Camiones por cultivo (dona) ──
+  var cultivoEntries = Object.keys(camPorCultivo).map(function(c){ return [c, camPorCultivo[c]]; });
+  cultivoEntries.sort(function(a,b){ return b[1]-a[1]; });
+  if (_charts.cultivo) _charts.cultivo.destroy();
+  _charts.cultivo = new Chart(document.getElementById("chartCamionesCultivo"), {
+    type: "doughnut",
+    data: {
+      labels: cultivoEntries.map(function(e){ return e[0]; }),
+      datasets: [{
+        data: cultivoEntries.map(function(e){ return e[1]; }),
+        backgroundColor: cultivoEntries.map(function(_,i){ return palette[i % palette.length]; }),
+        borderWidth: 2,
+        borderColor: "#fff"
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { font: { size: 11 }, boxWidth: 14 } },
+        tooltip: { callbacks: { label: function(ctx){
+          var total = ctx.dataset.data.reduce(function(a,b){ return a+b; },0);
+          var pct = total > 0 ? Math.round(ctx.parsed*100/total) : 0;
+          return ctx.label + ": " + ctx.parsed + " (" + pct + "%)";
+        } } }
+      }
+    }
+  });
 }
 
 // ── PESTAÑA LOGÍSTICA ──

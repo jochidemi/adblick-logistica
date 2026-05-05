@@ -831,6 +831,7 @@ tr:hover td{background:var(--brand-light);}
       <div class="fld">
         <label class="lbl">Origen asignado <span class="req">*</span></label>
         <input type="text" id="inp-origen" readonly placeholder="Seleccioná un origen de las opciones de arriba" style="background:var(--bg);cursor:default;font-style:italic;">
+        <div id="origen-insumo-cambio" style="display:none;margin-top:8px;padding:8px 12px;background:var(--blue-light);border-radius:8px;font-size:12px;color:var(--blue);font-weight:600;border:1.5px solid #93C5FD;"></div>
         <div style="margin-top:5px;">
           <button type="button" id="btn-manual-origen" onclick="var i=document.getElementById('inp-origen');i.removeAttribute('readonly');i.style.background='';i.style.cursor='';i.style.fontStyle='';i.placeholder='Ej: Galpón Belgrano / pendiente remito...';i.focus();this.style.display='none';" style="font-size:11px;color:var(--sub);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">✏ Ingresar origen manualmente</button>
         </div>
@@ -2548,22 +2549,34 @@ async function renderMetricasInsumos() {
     items.forEach(function(i){ var e=i.fields.Estado||"Pendiente insumos"; if(conteo[e]!==undefined) conteo[e]++; });
     var total = items.length || 1;
 
-    var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;">';
+    // Estilo para secciones colapsables
+    var detStyle = 'background:var(--white);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden;';
+    var sumStyle = 'cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;font-size:13px;font-weight:800;user-select:none;';
+    var bdyStyle = 'padding:0 18px 16px 18px;';
+
+    // Barra de navegación rápida
+    var html = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">';
+    html += '<a href="#met-estado"   style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;background:var(--bg);border:1px solid var(--border);text-decoration:none;color:var(--text);">📊 Estado</a>';
+    html += '<a href="#met-vencer"   style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;background:var(--bg);border:1px solid var(--border);text-decoration:none;color:var(--text);">⚠️ Próximos a vencer</a>';
+    html += '<a href="#met-remito"   style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;background:var(--bg);border:1px solid var(--border);text-decoration:none;color:var(--text);">🚛 Sin remito</a>';
+    html += '<a href="#met-notice"   style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;background:var(--brand);border:1px solid var(--brand-dark);text-decoration:none;color:var(--dark);">⏱️ Short Notice</a>';
+    html += '</div>';
+
+    // ─── Sección 1: Estado ───────────────────────────────────────
+    html += '<details id="met-estado" open style="'+detStyle+'">';
+    html += '<summary style="'+sumStyle+'"><span>📊 Estado de pedidos <span style="font-size:12px;font-weight:400;color:var(--sub);">— '+items.length+' en total</span></span><span style="font-size:18px;color:var(--light);">⌄</span></summary>';
+    html += '<div style="'+bdyStyle+'">';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding-top:4px;">';
     estados.forEach(function(e){
       var n = conteo[e]; var pct = Math.round(n/total*100);
-      html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">';
+      html += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">';
       html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);margin-bottom:6px;">'+e+'</div>';
       html += '<div style="font-size:28px;font-weight:800;color:'+colores[e]+';">'+n+'</div>';
       html += '<div style="font-size:12px;color:var(--light);margin-top:2px;">'+pct+'% del total</div>';
-      html += '<div style="margin-top:8px;background:var(--border);border-radius:4px;height:5px;overflow:hidden;"><div style="background:'+colores[e]+';width:'+pct+'%;height:100%;border-radius:4px;transition:width 0.4s;"></div></div>';
+      html += '<div style="margin-top:8px;background:var(--border);border-radius:4px;height:5px;overflow:hidden;"><div style="background:'+colores[e]+';width:'+pct+'%;height:100%;border-radius:4px;"></div></div>';
       html += '</div>';
     });
-    html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px 18px;">';
-    html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);margin-bottom:6px;">Total</div>';
-    html += '<div style="font-size:28px;font-weight:800;">'+items.length+'</div>';
-    html += '<div style="font-size:12px;color:var(--light);margin-top:2px;">pedidos</div>';
-    html += '</div>';
-    html += '</div>';
+    html += '</div></div></details>';
 
     // ── 2. Próximos a vencer SIN origen asignado ──
     var sinOrigen = items.filter(function(i){
@@ -2579,8 +2592,11 @@ async function renderMetricasInsumos() {
       return fa-fb;
     });
 
-    html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">';
-    html += '<div style="font-size:13px;font-weight:800;margin-bottom:12px;">⚠️ Próximos a vencer sin origen asignado <span style="font-weight:400;color:var(--sub);">(próximos 7 días)</span></div>';
+    // ─── Sección 2: Próximos a vencer ──────────────────────────
+    var badge2 = sinOrigen.length ? '<span style="background:var(--orange-light);color:var(--orange);font-size:11px;font-weight:700;border-radius:20px;padding:2px 8px;margin-left:8px;">'+sinOrigen.length+'</span>' : '<span style="background:var(--green-light);color:var(--green);font-size:11px;font-weight:700;border-radius:20px;padding:2px 8px;margin-left:8px;">✓</span>';
+    html += '<details id="met-vencer" open style="'+detStyle+'">';
+    html += '<summary style="'+sumStyle+'"><span>⚠️ Próximos a vencer sin origen '+badge2+' <span style="font-size:12px;font-weight:400;color:var(--sub);">próximos 7 días</span></span><span style="font-size:18px;color:var(--light);">⌄</span></summary>';
+    html += '<div style="'+bdyStyle+'">';
     if (!sinOrigen.length) {
       html += '<div style="font-size:13px;color:var(--sub);text-align:center;padding:16px 0;">✓ Todos los pedidos próximos tienen origen asignado</div>';
     } else {
@@ -2596,7 +2612,7 @@ async function renderMetricasInsumos() {
       });
       html += '</tbody></table></div>';
     }
-    html += '</div>';
+    html += '</div></details>';
 
     // ── 3. En camino sin remito (seguimiento) ──
     var sinRemito = items.filter(function(i){
@@ -2605,8 +2621,11 @@ async function renderMetricasInsumos() {
     });
     sinRemito.sort(function(a,b){ return (a.fields.FechaPedido||"").localeCompare(b.fields.FechaPedido||""); });
 
-    html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;">';
-    html += '<div style="font-size:13px;font-weight:800;margin-bottom:12px;">🚛 En camino sin remito</div>';
+    // ─── Sección 3: En camino sin remito ─────────────────────────
+    var badge3 = sinRemito.length ? '<span style="background:var(--red-light);color:var(--red);font-size:11px;font-weight:700;border-radius:20px;padding:2px 8px;margin-left:8px;">'+sinRemito.length+'</span>' : '<span style="background:var(--green-light);color:var(--green);font-size:11px;font-weight:700;border-radius:20px;padding:2px 8px;margin-left:8px;">✓</span>';
+    html += '<details id="met-remito" open style="'+detStyle+'">';
+    html += '<summary style="'+sumStyle+'"><span>🚛 En camino sin remito '+badge3+'</span><span style="font-size:18px;color:var(--light);">⌄</span></summary>';
+    html += '<div style="'+bdyStyle+'">';
     if (!sinRemito.length) {
       html += '<div style="font-size:13px;color:var(--sub);text-align:center;padding:16px 0;">✓ Todos los pedidos en camino tienen remito</div>';
     } else {
@@ -2622,7 +2641,7 @@ async function renderMetricasInsumos() {
       });
       html += '</tbody></table></div>';
     }
-    html += '</div>';
+    html += '</div></details>';
 
     // ── 4. Short Notice: pedidos con poca anticipación ──────────────────────────
     // Anticipo = días entre FechaPedido (creación) y FechaEntrega (entrega)
@@ -2652,9 +2671,13 @@ async function renderMetricasInsumos() {
       return (porOp[a].suma/porOp[a].total) - (porOp[b].suma/porOp[b].total);
     });
 
-    html += '<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;">';
-    html += '<div style="font-size:13px;font-weight:800;margin-bottom:4px;">⏱️ Pedidos Short Notice <span style="font-weight:400;color:var(--sub);">— anticipación al hacer el pedido</span></div>';
-    html += '<div style="font-size:12px;color:var(--sub);margin-bottom:14px;">Días entre fecha en que se hizo el pedido y la fecha de entrega requerida. Menos días = menos previsibilidad.</div>';
+    // ─── Sección 4: Short Notice ─────────────────────────────────
+    var shortCount = conAnticipo.filter(function(i){ return i._anticipo <= 3; }).length;
+    var badge4 = shortCount ? '<span style="background:var(--red-light);color:var(--red);font-size:11px;font-weight:700;border-radius:20px;padding:2px 8px;margin-left:8px;">'+shortCount+' ≤3d</span>' : '';
+    html += '<details id="met-notice" open style="'+detStyle+'">';
+    html += '<summary style="'+sumStyle+'"><span>⏱️ Short Notice '+badge4+' <span style="font-size:12px;font-weight:400;color:var(--sub);">anticipación al hacer el pedido</span></span><span style="font-size:18px;color:var(--light);">⌄</span></summary>';
+    html += '<div style="'+bdyStyle+'">';
+    html += '<div style="font-size:12px;color:var(--sub);margin-bottom:14px;padding-top:4px;">Días entre la fecha en que se hizo el pedido y la fecha de entrega requerida. <b>Menos días = menos previsibilidad.</b></div>';
 
     // Tarjetas resumen por operador
     if (opList.length) {
@@ -2673,8 +2696,8 @@ async function renderMetricasInsumos() {
       html += '</div>';
     }
 
-    // Tabla detalle (todos, ordenados por menor anticipo)
-    html += '<details style="margin-top:4px;"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--blue);user-select:none;">Ver detalle de todos los pedidos ('+conAnticipo.length+')</summary>';
+    // Tabla detalle (todos, ordenados por menor anticipo), abierta por defecto
+    html += '<details open style="margin-top:4px;"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--blue);user-select:none;padding:6px 0;">▾ Todos los pedidos ordenados por anticipación ('+conAnticipo.length+')</summary>';
     html += '<div class="tbl-wrap" style="margin-top:10px;"><table><thead><tr>';
     html += '<th>N° Pedido</th><th>Insumo</th><th>Campo</th><th>Operador</th><th>F. Pedido</th><th>F. Entrega</th><th style="text-align:center;">Anticipación</th></tr></thead><tbody>';
     conAnticipo.forEach(function(i){
@@ -2692,7 +2715,7 @@ async function renderMetricasInsumos() {
       html += '<td style="text-align:center;'+col+'">'+dias+' día'+(dias!==1?'s':'')+'</td></tr>';
     });
     html += '</tbody></table></div></details>';
-    html += '</div>';
+    html += '</div></details>';
 
     cont.innerHTML = '<div style="padding:16px 0;">'+html+'</div>';
   } catch(e) {
@@ -2948,6 +2971,35 @@ function actualizarOCQty(idx, val) {
   actualizarTextoOrigen();
 }
 
+// Devuelve el nombre del insumo del stock seleccionado (Propio o OC)
+function getInsumoAsignado() {
+  if (selectedPropioItems.length > 0) {
+    var s0 = selectedPropioItems[0];
+    var m0 = _origenMatchP[s0.idx];
+    return m0 ? m0.r.nombre : null;
+  }
+  if (selectedOCItems.length > 0) {
+    var s1 = selectedOCItems[0];
+    var m1 = _origenMatchOC[s1.idx];
+    return m1 ? m1.r.insumo : null;
+  }
+  return null;
+}
+
+// Muestra aviso en el modal si el insumo asignado ≠ insumo del pedido
+function actualizarNoticiaInsumo() {
+  var el = document.getElementById("origen-insumo-cambio");
+  if (!el || !pedidoOrigenActual) return;
+  var asignado = getInsumoAsignado();
+  var original = pedidoOrigenActual.insumo || "";
+  if (asignado && asignado.trim().toLowerCase() !== original.trim().toLowerCase()) {
+    el.style.display = "block";
+    el.innerHTML = '🔄 El insumo del pedido cambiará de <b>"' + esc(original) + '"</b> → <b>"' + esc(asignado) + '"</b> para el resto del proceso.';
+  } else {
+    el.style.display = "none";
+  }
+}
+
 function actualizarTextoOrigen() {
   var partes = [];
   selectedPropioItems.forEach(function(s){
@@ -2962,6 +3014,7 @@ function actualizarTextoOrigen() {
   var inp = document.getElementById("inp-origen");
   inp.value = partes.join(" + ") || "";
   inp.style.fontStyle = inp.value ? "normal" : "italic";
+  actualizarNoticiaInsumo();
 }
 
 async function confirmarOrigen() {
@@ -3021,6 +3074,11 @@ async function confirmarOrigen() {
       OrdenCompra:    ordenCompra,
     };
     if (campanaOC) patchFields.CampanaOC = campanaOC;
+    // Si el stock asignado es de un insumo distinto al del pedido, actualizar el campo Insumo en SP
+    var insumoAsignado = getInsumoAsignado();
+    if (insumoAsignado && insumoAsignado.trim().toLowerCase() !== (pedidoOrigenActual.insumo||"").trim().toLowerCase()) {
+      patchFields.Insumo = insumoAsignado.trim();
+    }
     await spPatch(CONFIG.lists.pedidos, pedidoOrigenActual.spId, patchFields);
 
     // Albor (existencia) no se toca — Disponible = Albor − Pendiente de remito (calculado)
