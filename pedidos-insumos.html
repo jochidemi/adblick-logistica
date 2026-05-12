@@ -1859,9 +1859,13 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
 
   // Líneas de productos
   if (lineas.length > 1) {
+    // ¿Alguna línea ya tiene origen asignado?
+    var tieneOrigen = lineas.some(function(l){ return !!l.fields.OrigenAsignado; });
     html += '<div class="tbl-wrap" style="margin-bottom:8px;"><table>';
     html += '<thead><tr>'+(enCamino?'<th style="width:28px;"></th>':'')+
-            '<th style="color:var(--sub);font-size:11px;">Cód.</th><th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+(enCamino?'<th></th>':'')+
+            '<th style="color:var(--sub);font-size:11px;">Cód.</th><th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+
+            (tieneOrigen?'<th>Origen / OC</th>':'')+
+            (enCamino?'<th></th>':'')+
             (esCerrado?'<th>Remito</th>':'')+'</tr></thead><tbody>';
     lineas.forEach(function(item) {
       var f=item.fields;
@@ -1879,6 +1883,10 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
               '<td style="font-weight:600;">'+f.Insumo+'</td>'+
               '<td>'+f.Cantidad+' '+_uni+'</td>'+
               '<td style="font-size:12px;color:var(--light);">'+_pres+'</td>';
+      if (tieneOrigen) {
+        html += '<td style="font-size:11px;color:var(--blue);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+(f.OrigenAsignado||'')+'">'+
+                (f.OrigenAsignado ? '📦 '+f.OrigenAsignado : '<span style="color:var(--light);">—</span>')+'</td>';
+      }
       if (enCamino) {
         if (!f.NroRemito) html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\')">Remito</button></td>';
         else              html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</span></td>';
@@ -1900,11 +1908,10 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
             (_pres1?' <span style="font-size:11px;color:var(--light);">('+_pres1+')</span>':'')+
             '</div>';
     if (_cod1) html += '<div style="font-size:11px;color:var(--light);margin-top:2px;">Cód. <span style="font-family:monospace;">'+_cod1+'</span></div>';
+    if (f.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-top:4px;">📦 '+f.OrigenAsignado+'</div>';
     html += '</div>';
     if (esCerrado && f.NroRemito) html += '<div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:6px;">✓ Remito: '+f.NroRemito+'</div>';
   }
-
-  if (f0.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-bottom:6px;">📦 Origen: '+f0.OrigenAsignado+'</div>';
 
   // Info camión
   if (enCamino) {
