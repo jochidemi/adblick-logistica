@@ -316,13 +316,22 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
       <!-- KPIs RESUMEN -->
       <div id="metricsKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;"></div>
 
-      <!-- GRÁFICO: CAMIONES POR DÍA -->
-      <div class="card">
-        <div class="card-title">Camiones por día — próxima semana</div>
-        <div style="position:relative;height:280px;"><canvas id="chartCamionesDia"></canvas></div>
+      <!-- FILA 1: CAMIONES POR DÍA + PROYECCIÓN DE COSECHA -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px;">
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-title">Camiones por día — próxima semana</div>
+          <div style="position:relative;height:320px;"><canvas id="chartCamionesDia"></canvas></div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-title">Proyección de cosecha — próximos 4 días</div>
+          <p style="font-size:11px;color:var(--gray);margin-top:-8px;margin-bottom:12px;">Cantidad de camiones por cultivo y zona (sin agrupar variantes).</p>
+          <div id="proyeccionCosechaContainer" style="max-height:320px;overflow-y:auto;">
+            <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Cargando...</div>
+          </div>
+        </div>
       </div>
 
-      <!-- GRÁFICOS: ZONA Y CULTIVO -->
+      <!-- FILA 2: ZONA Y CULTIVO -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
         <div class="card" style="margin-bottom:0;">
           <div class="card-title">Camiones por zona — próxima semana</div>
@@ -332,15 +341,6 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
           <div class="card-title">Camiones por cultivo — próxima semana</div>
           <p style="font-size:11px;color:var(--gray);margin-top:-8px;margin-bottom:8px;">Soja No GMO agrupa todas las variantes (1ra, 2da, tardía). Soja agrupa soja, soja 2 y soja tardía.</p>
           <div style="position:relative;height:280px;"><canvas id="chartCamionesCultivo"></canvas></div>
-        </div>
-      </div>
-
-      <!-- PROYECCIÓN DE COSECHA — PRÓXIMOS 4 DÍAS -->
-      <div class="card" style="margin-top:16px;">
-        <div class="card-title">Proyección de cosecha — próximos 4 días</div>
-        <p style="font-size:11px;color:var(--gray);margin-top:-8px;margin-bottom:12px;">Cantidad de camiones por cultivo y zona (sin agrupar variantes).</p>
-        <div id="proyeccionCosechaContainer">
-          <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Cargando...</div>
         </div>
       </div>
 
