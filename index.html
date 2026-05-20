@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100vh; }
@@ -323,8 +324,11 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
           <div style="position:relative;height:320px;"><canvas id="chartCamionesDia"></canvas></div>
         </div>
         <div class="card" style="margin-bottom:0;">
-          <div class="card-title">Proyección de cosecha — próximos 4 días</div>
-          <p style="font-size:11px;color:var(--gray);margin-top:-8px;margin-bottom:12px;">Cantidad de camiones por cultivo y zona (sin agrupar variantes).</p>
+          <div class="section-header" style="margin-bottom:6px;">
+            <h3 style="font-size:14px;font-weight:700;color:var(--dark);">Proyección de cosecha — próximos 4 días</h3>
+            <button class="btn btn-green" onclick="descargarProyeccionCosechaPNG()" style="font-size:11px;padding:5px 10px;" title="Descargar tabla como imagen PNG">📥 PNG</button>
+          </div>
+          <p style="font-size:11px;color:var(--gray);margin-bottom:12px;">Cantidad de camiones por cultivo y zona. Soja agrupa todas sus variantes (1ra, 2da, tardía); Soja No GMO también.</p>
           <div id="proyeccionCosechaContainer" style="max-height:320px;overflow-y:auto;">
             <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Cargando...</div>
           </div>
@@ -1151,11 +1155,11 @@ function renderProyeccionCosecha(dates, rowMap) {
   // Tomar SOLO los próximos 4 días
   var dias4 = dates.slice(0, 4);
 
-  // Agrupar por (cultivo, zona) — SIN agrupar variantes de cultivo
+  // Agrupar por (cultivo agrupado, zona) — Soja y Soja No GMO se agrupan
   var pivot = {};
   Object.keys(rowMap).forEach(function(k) {
     var row = rowMap[k];
-    var cultivo = row.cultivo || "Sin cultivo";
+    var cultivo = agruparCultivo(row.cultivo);
     var zona = row.zona || "Sin zona";
     var pkey = cultivo + "|||" + zona;
     if (!pivot[pkey]) pivot[pkey] = { cultivo: cultivo, zona: zona, dias: [0,0,0,0] };
@@ -1190,21 +1194,27 @@ function renderProyeccionCosecha(dates, rowMap) {
     var p = d.split("-");
     th += "<th style='" + thStyle + "'>" + p[2] + "/" + p[1] + "/" + p[0] + "</th>";
   });
+  th += "<th style='" + thStyle + "'>Total</th>";
   th += "</tr>";
 
   // Construir filas
   var tb = "";
   var totalesPorDia = [0,0,0,0];
+  var totalGeneral = 0;
   pkeys.forEach(function(k) {
     var r = pivot[k];
+    var totalFila = 0;
     tb += "<tr>";
     tb += "<td style='font-weight:600;'>" + r.cultivo + "</td>";
     tb += "<td>" + r.zona + "</td>";
     for (var di = 0; di < 4; di++) {
       var v = r.dias[di];
       totalesPorDia[di] += v;
+      totalFila += v;
       tb += "<td>" + v + "</td>";
     }
+    totalGeneral += totalFila;
+    tb += "<td style='font-weight:700;background:#fffbe8;'>" + totalFila + "</td>";
     tb += "</tr>";
   });
 
@@ -1214,9 +1224,89 @@ function renderProyeccionCosecha(dates, rowMap) {
   for (var di = 0; di < 4; di++) {
     tb += "<td>" + totalesPorDia[di] + "</td>";
   }
+  tb += "<td>" + totalGeneral + "</td>";
   tb += "</tr>";
 
   container.innerHTML = "<div class='table-wrapper'><table class='preview-table' style='font-size:13px;'><thead style='background:#F5B800;'>" + th + "</thead><tbody>" + tb + "</tbody></table></div>";
+}
+
+async function descargarProyeccionCosechaPNG() {
+  if (typeof html2canvas === "undefined") {
+    showToast("Librería de captura no disponible", "error");
+    return;
+  }
+  var container = document.getElementById("proyeccionCosechaContainer");
+  if (!container || !container.querySelector("table")) {
+    showToast("No hay tabla para descargar", "error");
+    return;
+  }
+
+  showToast("Generando imagen...", "success");
+
+  // Guardar estilos originales del contenedor (scrollable)
+  var originalMaxHeight = container.style.maxHeight;
+  var originalOverflow = container.style.overflowY;
+
+  // Construir un wrapper temporal off-screen con título + tabla completa
+  var temp = document.createElement("div");
+  temp.style.position = "fixed";
+  temp.style.left = "-10000px";
+  temp.style.top = "0";
+  temp.style.background = "#ffffff";
+  temp.style.padding = "24px";
+  temp.style.fontFamily = "Segoe UI, sans-serif";
+  temp.style.display = "inline-block";
+
+  var fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  var headerHtml =
+    "<div style='margin-bottom:14px;'>" +
+    "<div style='font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;'>ADBlick Granos · Logística</div>" +
+    "<div style='font-size:22px;font-weight:800;color:#1A1A1A;margin-top:2px;'>Proyección de cosecha — próximos 4 días</div>" +
+    "<div style='font-size:12px;color:#666;margin-top:4px;'>Cantidad de camiones por cultivo y zona · Generado " + fechaHoy + "</div>" +
+    "</div>";
+
+  // Clonar la tabla
+  var tableClone = container.querySelector("table").cloneNode(true);
+  // Asegurar estilos inline para que html2canvas los respete
+  tableClone.style.borderCollapse = "collapse";
+  tableClone.style.fontSize = "13px";
+  tableClone.style.minWidth = "560px";
+  // Forzar borde y padding en celdas
+  tableClone.querySelectorAll("td").forEach(function(td){
+    td.style.padding = "8px 12px";
+    td.style.borderBottom = "1px solid #f0f0f0";
+    td.style.textAlign = td.style.textAlign || "center";
+  });
+  tableClone.querySelectorAll("th").forEach(function(th){
+    th.style.padding = "10px 12px";
+    th.style.fontWeight = "700";
+  });
+
+  temp.innerHTML = headerHtml;
+  temp.appendChild(tableClone);
+  document.body.appendChild(temp);
+
+  try {
+    var canvas = await html2canvas(temp, {
+      backgroundColor: "#ffffff",
+      scale: 2, // alta resolución para informes/mails
+      logging: false,
+      useCORS: true
+    });
+    var link = document.createElement("a");
+    link.download = "proyeccion_cosecha_" + fmtDateKey(new Date()) + ".png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    showToast("Imagen descargada ✓", "success");
+  } catch(e) {
+    console.error("Error generando PNG:", e);
+    showToast("Error al generar imagen: " + e.message, "error");
+  }
+
+  // Limpiar
+  document.body.removeChild(temp);
+  container.style.maxHeight = originalMaxHeight;
+  container.style.overflowY = originalOverflow;
 }
 
 function renderMetricas(items, dates, colMap, rowMap) {
