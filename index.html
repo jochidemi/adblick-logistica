@@ -335,6 +335,15 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         </div>
       </div>
 
+      <!-- PROYECCIÓN DE COSECHA — PRÓXIMOS 4 DÍAS -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Proyección de cosecha — próximos 4 días</div>
+        <p style="font-size:11px;color:var(--gray);margin-top:-8px;margin-bottom:12px;">Cantidad de camiones por cultivo y zona (sin agrupar variantes).</p>
+        <div id="proyeccionCosechaContainer">
+          <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Cargando...</div>
+        </div>
+      </div>
+
       <!-- PREVISUALIZACIÓN SEMANAL -->
       <div class="card" style="margin-top:16px;">
         <div class="card-title">Planificación Semanal — detalle</div>
@@ -886,8 +895,16 @@ async function descargarProyeccion() {
       }
     });
     var excelRows = [cols];
+    var filasIncluidas = 0;
     Object.keys(rowMap).forEach(function(k) {
       var row = rowMap[k];
+      // Calcular total de camiones en los 7 días — saltar si es 0
+      var totalCamiones = 0;
+      for (var di = 0; di < dates.length; di++) {
+        if (row.dias[di]) totalCamiones += row.dias[di].cam;
+      }
+      if (totalCamiones === 0) return;
+
       var line = [row.usuario, row.campo, row.cultivo, row.zona, row.comentarioLog];
       for (var di = 0; di < dates.length; di++) {
         var dia = row.dias[di] || { cam: 0, emb: false };
@@ -895,9 +912,14 @@ async function descargarProyeccion() {
         line.push(dia.emb ? "Si" : "");
       }
       excelRows.push(line);
+      filasIncluidas++;
     });
+    if (filasIncluidas === 0) {
+      showToast("No hay camiones cargados en los próximos 7 días", "error");
+      return;
+    }
     downloadExcel(excelRows, "proyeccion_semanal_" + fmtDateKey(today) + ".xlsx");
-    showToast("Descargado", "success");
+    showToast("Descargado: " + filasIncluidas + " filas", "success");
   } catch(e) { showToast("Error: " + e.message, "error"); }
 }
 
@@ -1122,9 +1144,86 @@ function agruparCultivo(nombre) {
   return nombre.charAt(0).toUpperCase() + nombre.slice(1);
 }
 
+function renderProyeccionCosecha(dates, rowMap) {
+  var container = document.getElementById("proyeccionCosechaContainer");
+  if (!container) return;
+
+  // Tomar SOLO los próximos 4 días
+  var dias4 = dates.slice(0, 4);
+
+  // Agrupar por (cultivo, zona) — SIN agrupar variantes de cultivo
+  var pivot = {};
+  Object.keys(rowMap).forEach(function(k) {
+    var row = rowMap[k];
+    var cultivo = row.cultivo || "Sin cultivo";
+    var zona = row.zona || "Sin zona";
+    var pkey = cultivo + "|||" + zona;
+    if (!pivot[pkey]) pivot[pkey] = { cultivo: cultivo, zona: zona, dias: [0,0,0,0] };
+    for (var di = 0; di < 4; di++) {
+      if (row.dias[di]) pivot[pkey].dias[di] += row.dias[di].cam;
+    }
+  });
+
+  // Filtrar combinaciones sin camiones
+  var pkeys = Object.keys(pivot).filter(function(k) {
+    var total = pivot[k].dias.reduce(function(a,b){ return a+b; }, 0);
+    return total > 0;
+  });
+
+  if (!pkeys.length) {
+    container.innerHTML = "<div class='empty-state' style='padding:20px;font-size:13px;'>No hay camiones cargados en los próximos 4 días.</div>";
+    return;
+  }
+
+  // Ordenar por cultivo y luego por zona
+  pkeys.sort(function(a,b) {
+    var ra = pivot[a], rb = pivot[b];
+    if (ra.cultivo !== rb.cultivo) return ra.cultivo.localeCompare(rb.cultivo);
+    return ra.zona.localeCompare(rb.zona);
+  });
+
+  // Construir header (override de estilo verde del preview-table)
+  var thStyle = "background:#F5B800;color:#1A1A1A;text-align:center;";
+  var thLeft = "background:#F5B800;color:#1A1A1A;text-align:left;";
+  var th = "<tr><th style='" + thLeft + "'>Cultivo</th><th style='" + thLeft + "'>Zona</th>";
+  dias4.forEach(function(d) {
+    var p = d.split("-");
+    th += "<th style='" + thStyle + "'>" + p[2] + "/" + p[1] + "/" + p[0] + "</th>";
+  });
+  th += "</tr>";
+
+  // Construir filas
+  var tb = "";
+  var totalesPorDia = [0,0,0,0];
+  pkeys.forEach(function(k) {
+    var r = pivot[k];
+    tb += "<tr>";
+    tb += "<td style='font-weight:600;'>" + r.cultivo + "</td>";
+    tb += "<td>" + r.zona + "</td>";
+    for (var di = 0; di < 4; di++) {
+      var v = r.dias[di];
+      totalesPorDia[di] += v;
+      tb += "<td>" + v + "</td>";
+    }
+    tb += "</tr>";
+  });
+
+  // Fila total
+  tb += "<tr style='background:#1A1A1A;color:#F5B800;font-weight:700;'>";
+  tb += "<td colspan='2' style='color:#F5B800;text-align:left;'>Total</td>";
+  for (var di = 0; di < 4; di++) {
+    tb += "<td>" + totalesPorDia[di] + "</td>";
+  }
+  tb += "</tr>";
+
+  container.innerHTML = "<div class='table-wrapper'><table class='preview-table' style='font-size:13px;'><thead style='background:#F5B800;'>" + th + "</thead><tbody>" + tb + "</tbody></table></div>";
+}
+
 function renderMetricas(items, dates, colMap, rowMap) {
   if (typeof Chart === "undefined") return;
   if (!document.getElementById("chartCamionesDia")) return;
+
+  renderProyeccionCosecha(dates, rowMap);
 
   // ── Agregaciones ──
   var camPorDia = dates.map(function(){ return 0; });
