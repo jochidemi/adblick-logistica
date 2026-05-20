@@ -1826,13 +1826,16 @@ async function cargarMisPedidos() {
 
 function renderGrupoPedido(nro, lineas, tabTipo) {
   var f0 = lineas[0].fields;
-  var estado = f0.Estado || "Pendiente insumos";
-  var enCamino     = estado === "En camino" || estado === "Listo para retirar";
-  var esCerrado    = estado === "Cerrado";
-  var esPendiente  = !enCamino && !esCerrado;
-  // listoRetirar: estado legacy "Listo para retirar" O nuevo "En camino" con RetiroPersonal="SI"
+  // Estado del card: Cerrado solo si TODOS los ítems están Cerrados
+  var allCerrado  = lineas.every(function(l){ return l.fields.Estado === "Cerrado"; });
+  var anyEnCamino = lineas.some(function(l){ return l.fields.Estado === "En camino" || l.fields.Estado === "Listo para retirar"; });
+  var estado      = allCerrado ? "Cerrado" : (f0.Estado || "Pendiente insumos");
+  var enCamino    = anyEnCamino;
+  var esCerrado   = allCerrado;
+  var esPendiente = !enCamino && !esCerrado;
+  // listoRetirar: estado legacy "Listo para retirar" O "En camino" con RetiroPersonal="SI"
   var listoRetirar = estado === "Listo para retirar" ||
-                     (estado === "En camino" && (f0.RetiroPersonal||"").toUpperCase() === "SI");
+                     (anyEnCamino && lineas.some(function(l){ return (l.fields.RetiroPersonal||"").toUpperCase() === "SI"; }));
 
   var html = '<div class="pedido-card">';
 
@@ -1860,24 +1863,32 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
   // Líneas de productos
   if (lineas.length > 1) {
     // ¿Alguna línea ya tiene origen asignado?
-    var tieneOrigen = lineas.some(function(l){ return !!l.fields.OrigenAsignado; });
+    var tieneOrigen   = lineas.some(function(l){ return !!l.fields.OrigenAsignado; });
+    // Mostrar columna remito si alguna línea está en camino O ya tiene remito
+    var showRemitoCols = anyEnCamino || lineas.some(function(l){ return !!l.fields.NroRemito; });
     html += '<div class="tbl-wrap" style="margin-bottom:8px;"><table>';
-    html += '<thead><tr>'+(enCamino?'<th style="width:28px;"></th>':'')+
+    html += '<thead><tr>'+
+            (anyEnCamino?'<th style="width:28px;"></th>':'')+
             '<th style="color:var(--sub);font-size:11px;">Cód.</th><th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+
             (tieneOrigen?'<th>Origen / OC</th>':'')+
-            (enCamino?'<th></th>':'')+
-            (esCerrado?'<th>Remito</th>':'')+'</tr></thead><tbody>';
+            (showRemitoCols?'<th>Remito</th>':'')+
+            '</tr></thead><tbody>';
     lineas.forEach(function(item) {
       var f=item.fields;
-      // Enriquecer unidad/presentacion/codigo desde padrón si falta en el pedido SP
       var _inf = getInsumoInfo(f.Insumo);
       var _uni  = f.Unidad       || _inf.unidad       || "";
       var _pres = f.Presentacion || _inf.presentacion || "-";
       var _cod  = f.CodigoInsumo || _inf.codigo       || "-";
+      // Estado propio de esta línea (no del card)
+      var lineaCamino = f.Estado === "En camino" || f.Estado === "Listo para retirar";
       html += '<tr>';
-      if (enCamino) {
-        if (!f.NroRemito) html += '<td><input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+item.id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);"></td>';
-        else              html += '<td></td>';
+      // Columna checkbox (solo si alguna línea sigue en camino)
+      if (anyEnCamino) {
+        if (lineaCamino && !f.NroRemito) {
+          html += '<td><input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+item.id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);"></td>';
+        } else {
+          html += '<td></td>';
+        }
       }
       html += '<td style="font-size:11px;color:var(--sub);font-family:monospace;">'+_cod+'</td>'+
               '<td style="font-weight:600;">'+f.Insumo+'</td>'+
@@ -1887,11 +1898,16 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
         html += '<td style="font-size:11px;color:var(--blue);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+(f.OrigenAsignado||'')+'">'+
                 (f.OrigenAsignado ? '📦 '+f.OrigenAsignado : '<span style="color:var(--light);">—</span>')+'</td>';
       }
-      if (enCamino) {
-        if (!f.NroRemito) html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\')">Remito</button></td>';
-        else              html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</span></td>';
+      // Columna remito: botón si en camino sin remito, número si ya tiene, — si cerrado sin remito
+      if (showRemitoCols) {
+        if (lineaCamino && !f.NroRemito) {
+          html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\')">Remito</button></td>';
+        } else if (f.NroRemito) {
+          html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+(f.NroRemito||'')+'</span></td>';
+        } else {
+          html += '<td><span style="font-size:11px;color:var(--light);">—</span></td>';
+        }
       }
-      if (esCerrado) html += '<td style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
@@ -1910,7 +1926,9 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
     if (_cod1) html += '<div style="font-size:11px;color:var(--light);margin-top:2px;">Cód. <span style="font-family:monospace;">'+_cod1+'</span></div>';
     if (f.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-top:4px;">📦 '+f.OrigenAsignado+'</div>';
     html += '</div>';
-    if (esCerrado && f.NroRemito) html += '<div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:6px;">✓ Remito: '+f.NroRemito+'</div>';
+    var _nr1 = f.NroRemito && String(f.NroRemito) !== "undefined" ? f.NroRemito : null;
+    if (esCerrado && _nr1) html += '<div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:6px;">✓ Remito: '+_nr1+'</div>';
+    else if (esCerrado) html += '<div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--light);">Sin remito asignado</div>';
   }
 
   // Info camión
@@ -2528,7 +2546,8 @@ async function cargarPedidosInsumos() {
         htmlCE += '<td style="padding:7px 12px;">'+( f.Patente||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+fmtFecha(f.FechaEntrega)+'</td>';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.FechaPedido ? new Date(f.FechaPedido).toLocaleDateString("es-AR") : "-")+'</td>';
-        htmlCE += '<td style="padding:7px 12px;color:var(--green);font-weight:600;">'+( f.NroRemito||"-")+'</td>';
+        var _nrCE = f.NroRemito && String(f.NroRemito) !== "undefined" ? f.NroRemito : "-";
+        htmlCE += '<td style="padding:7px 12px;color:var(--green);font-weight:600;">'+_nrCE+'</td>';
         htmlCE += '</tr>';
       });
       htmlCE += '</tbody></table></div>';
@@ -4000,25 +4019,6 @@ function limpiarSelRemito() {
   // desmarcar todos los checkboxes
   document.querySelectorAll(".chk-remito").forEach(function(c){ c.checked = false; });
 }
-async function aplicarRemitoLote() {
-  var remito = document.getElementById("inp-remito-lote").value.trim();
-  if (!remito) { showToast("Ingresá el número de remito","error"); return; }
-  var ids = Object.keys(selRemitoItems);
-  if (!ids.length) return;
-  var btn = document.querySelector("#bar-remito .btn-brand");
-  btn.disabled = true; btn.textContent = "Guardando...";
-  try {
-    for (var i = 0; i < ids.length; i++) {
-      await spPatch(CONFIG.lists.pedidos, ids[i], { NroRemito: remito, Estado: "Cerrado" });
-    }
-    limpiarSelRemito();
-    document.getElementById("inp-remito-lote").value = "";
-    showToast("Remito aplicado a "+ids.length+" ítem"+(ids.length===1?"":"s")+" ✓","ok");
-    cargarMisPedidos();
-  } catch(e) { showToast("Error: "+e.message,"error"); }
-  btn.disabled = false; btn.textContent = "✓ Aplicar remito";
-}
-
 var remitoSpId = null;
 function abrirModalRemito(spId) {
   remitoSpId = spId;
