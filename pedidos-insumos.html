@@ -463,6 +463,15 @@ tr:hover td{background:var(--brand-light);}
 
       <!-- MIS PEDIDOS -->
       <div id="op-mispedidos" style="display:none;">
+        <!-- Banner superadmin: selector de operador -->
+        <div id="superadmin-banner" style="display:none;background:var(--dark);border-radius:10px;padding:12px 16px;margin-bottom:14px;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span style="color:var(--brand);font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;">👁 Superadmin</span>
+          <span style="color:rgba(255,255,255,0.5);font-size:12px;">Ver como operador:</span>
+          <select id="sel-operador-view" onchange="superAdminCambiarOperador(this.value)" style="font-size:13px;background:#2D2D30;color:#fff;border:1px solid #444;border-radius:7px;padding:5px 10px;min-width:180px;font-family:'Montserrat',sans-serif;">
+            <option value="">— Seleccioná un operador —</option>
+          </select>
+          <span id="superadmin-viewlabel" style="font-size:12px;color:rgba(255,255,255,0.4);"></span>
+        </div>
         <!-- Sub-tabs por estado -->
         <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
           <button class="sub-pill on"  id="mppill-encamino"    onclick="switchMisPedTab('encamino')">🚛 En camino <span id="cnt-encamino"></span></button>
@@ -960,7 +969,9 @@ var ROL_TABS = {
   "insumos":       [["insumos","Insumos"],["padrones","Padrones"]],
   "logistica":     [["logistica","Logística"],["padrones","Padrones"]],
   "administrador": [["operador","Operador"],["insumos","Insumos"],["logistica","Logística"],["padrones","Padrones"]],
+  "superadmin":    [["operador","👁 Operadores"],["insumos","Insumos"],["logistica","Logística"],["padrones","Padrones"]],
 };
+var superadminViewUser = ""; // Para superadmin: nombre del operador cuya vista se está mostrando
 
 function renderNav(rol) {
   var tabs = ROL_TABS[rol] || ROL_TABS["operador"];
@@ -1331,7 +1342,39 @@ function switchTab(name) {
   document.getElementById("tab-" + name).classList.add("active");
   if (name === "insumos")   { subTab("insumos","pedidos"); cargarPedidosInsumos(); }
   if (name === "logistica") { cargarPedidosLogistica(); }
-  if (name === "operador")  { cargarMisPedidos(); }
+  if (name === "operador")  {
+    // Mostrar banner superadmin y cargar dropdown de operadores
+    var banner = document.getElementById("superadmin-banner");
+    if (banner) {
+      if (currentUserRol === "superadmin") {
+        banner.style.display = "flex";
+        var sel = document.getElementById("sel-operador-view");
+        if (sel && sel.options.length <= 1) {
+          padronOperadores
+            .filter(function(o){ return o.rol === "operador"; })
+            .sort(function(a,b){ return (a.nombre||"").localeCompare(b.nombre||"","es"); })
+            .forEach(function(o){
+              var opt = document.createElement("option");
+              opt.value = o.nombre;
+              opt.textContent = o.nombre;
+              sel.appendChild(opt);
+            });
+        }
+        // Restaurar selección previa
+        if (superadminViewUser) sel.value = superadminViewUser;
+      } else {
+        banner.style.display = "none";
+      }
+    }
+    cargarMisPedidos();
+  }
+}
+
+function superAdminCambiarOperador(nombre) {
+  superadminViewUser = nombre;
+  var label = document.getElementById("superadmin-viewlabel");
+  if (label) label.textContent = nombre ? "Viendo como: " + nombre : "";
+  cargarMisPedidos();
 }
 
 function subTab(parent, name) {
@@ -1769,7 +1812,9 @@ async function cargarMisPedidos() {
   });
   try {
     var items = await spGet(CONFIG.lists.pedidos, "");
-    misPedidosData = items.filter(function(i){ return i.fields.Operador === currentUser; });
+    // Superadmin puede ver pedidos de otro operador; el resto siempre ve los propios
+    var filtroOp = (currentUserRol === "superadmin" && superadminViewUser) ? superadminViewUser : currentUser;
+    misPedidosData = items.filter(function(i){ return i.fields.Operador === filtroOp; });
     misPedidosData.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
     document.getElementById("mis-count").textContent = misPedidosData.length ? "("+misPedidosData.length+")" : "";
 
@@ -1781,15 +1826,17 @@ async function cargarMisPedidos() {
       grupos[num].push(item);
     });
 
-    // Clasificar grupos por estado
+    // Clasificar grupos por estado (usando TODOS los ítems, no solo el primero)
     var tabs = { encamino:[], pendinsumos:[], pendlog:[], cerrados:[] };
     ordenGrupos.forEach(function(nro) {
       var lineas = grupos[nro];
-      var estado = lineas[0].fields.Estado || "Pendiente insumos";
-      if (estado === "En camino" || estado === "Listo para retirar") tabs.encamino.push(nro);
-      else if (estado === "Pendiente insumos")                        tabs.pendinsumos.push(nro);
-      else if (estado === "Pendiente logística")                      tabs.pendlog.push(nro);
-      else if (estado === "Cerrado")                                  tabs.cerrados.push(nro);
+      var allClosed   = lineas.every(function(l){ return l.fields.Estado === "Cerrado"; });
+      var anyEnCamino = lineas.some(function(l){ return l.fields.Estado === "En camino" || l.fields.Estado === "Listo para retirar"; });
+      var anyPendLog  = lineas.some(function(l){ return l.fields.Estado === "Pendiente logística"; });
+      if      (allClosed)        tabs.cerrados.push(nro);
+      else if (anyEnCamino)      tabs.encamino.push(nro);
+      else if (anyPendLog)       tabs.pendlog.push(nro);
+      else                       tabs.pendinsumos.push(nro);
     });
 
     // Actualizar contadores
@@ -1826,16 +1873,14 @@ async function cargarMisPedidos() {
 
 function renderGrupoPedido(nro, lineas, tabTipo) {
   var f0 = lineas[0].fields;
-  // Estado del card: Cerrado solo si TODOS los ítems están Cerrados
+  // Estado del card: Cerrado solo cuando TODOS los ítems están Cerrados
   var allCerrado  = lineas.every(function(l){ return l.fields.Estado === "Cerrado"; });
   var anyEnCamino = lineas.some(function(l){ return l.fields.Estado === "En camino" || l.fields.Estado === "Listo para retirar"; });
   var estado      = allCerrado ? "Cerrado" : (f0.Estado || "Pendiente insumos");
   var enCamino    = anyEnCamino;
   var esCerrado   = allCerrado;
   var esPendiente = !enCamino && !esCerrado;
-  // listoRetirar: estado legacy "Listo para retirar" O "En camino" con RetiroPersonal="SI"
-  var listoRetirar = estado === "Listo para retirar" ||
-                     (anyEnCamino && lineas.some(function(l){ return (l.fields.RetiroPersonal||"").toUpperCase() === "SI"; }));
+  var listoRetirar = anyEnCamino && lineas.some(function(l){ return (l.fields.RetiroPersonal||"").toUpperCase() === "SI"; });
 
   var html = '<div class="pedido-card">';
 
@@ -1845,50 +1890,45 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
   html += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f0.Campo+(f0.Localidad?' <span style="color:var(--blue);font-weight:600;">'+f0.Localidad+'</span>':'')+' · 🌾 '+(f0.Campa_x00f1_a||f0.Campana||"")+'</div>';
   html += '<div style="font-size:12px;color:var(--light);margin-top:1px;">Pedido: '+new Date(f0.FechaPedido).toLocaleDateString("es-AR")+(f0.FechaEntrega?' &nbsp;·&nbsp; <span style="color:var(--orange);font-weight:700;">🗓 Entrega: '+fmtFecha(f0.FechaEntrega)+'</span>':'')+'</div></div>';
   html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'+badgeEstado(estado);
-  if (esPendiente) {
-    html += '<div style="display:flex;gap:6px;margin-top:2px;">';
-    html += '<button class="btn btn-danger btn-sm" onclick="eliminarPedido(\''+lineas.map(function(l){return l.id;}).join(",")+'\')">🗑 Eliminar</button>';
-    if (lineas.length === 1) {
-      var l0=lineas[0]; var lf=l0.fields;
-      html += '<button class="btn btn-outline btn-sm" onclick="abrirEditarPedido(\''+l0.id+'\',\''+esc(lf.Campo||'')+'\',\''+lf.Cantidad+'\',\''+lf.FechaEntrega+'\',\''+esc(lf.Observaciones||'')+'\')">✏ Editar</button>';
-    }
-    html += '</div>';
+  html += '<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap;justify-content:flex-end;">';
+  // Botón eliminar siempre disponible
+  html += '<button class="btn btn-danger btn-sm" onclick="eliminarPedido(\''+lineas.map(function(l){return l.id;}).join(",")+'\')">🗑 Eliminar</button>';
+  if (esPendiente && lineas.length === 1) {
+    var l0=lineas[0]; var lf=l0.fields;
+    html += '<button class="btn btn-outline btn-sm" onclick="abrirEditarPedido(\''+l0.id+'\',\''+esc(lf.Campo||'')+'\',\''+lf.Cantidad+'\',\''+lf.FechaEntrega+'\',\''+esc(lf.Observaciones||'')+'\')">✏ Editar</button>';
   }
   if (esCerrado) {
-    // Botón ver comprobante — usa el primer item del grupo
-    html += '<button class="btn btn-outline btn-sm" style="margin-top:4px;" onclick="verComprobanteGrupo(\''+nro+'\')">📋 Ver comprobante</button>';
+    html += '<button class="btn btn-outline btn-sm" onclick="verComprobanteGrupo(\''+nro+'\')">📋 Ver comprobante</button>';
   }
+  html += '</div>';
   html += '</div></div>';
 
   // Líneas de productos
   if (lineas.length > 1) {
     // ¿Alguna línea ya tiene origen asignado?
-    var tieneOrigen   = lineas.some(function(l){ return !!l.fields.OrigenAsignado; });
-    // Mostrar columna remito si alguna línea está en camino O ya tiene remito
-    var showRemitoCols = anyEnCamino || lineas.some(function(l){ return !!l.fields.NroRemito; });
+    var tieneOrigen = lineas.some(function(l){ return !!l.fields.OrigenAsignado; });
+    // Mostrar columna remito si alguna línea está en camino, cerrada o ya tiene remito
+    var showRemitoCols = lineas.some(function(l){
+      return l.fields.NroRemito || l.fields.Estado === "En camino" || l.fields.Estado === "Listo para retirar" || l.fields.Estado === "Cerrado";
+    });
     html += '<div class="tbl-wrap" style="margin-bottom:8px;"><table>';
-    html += '<thead><tr>'+
-            (anyEnCamino?'<th style="width:28px;"></th>':'')+
+    html += '<thead><tr>'+(showRemitoCols?'<th style="width:28px;"></th>':'')+
             '<th style="color:var(--sub);font-size:11px;">Cód.</th><th>Insumo</th><th>Cantidad</th><th>Presentación</th>'+
             (tieneOrigen?'<th>Origen / OC</th>':'')+
-            (showRemitoCols?'<th>Remito</th>':'')+
-            '</tr></thead><tbody>';
+            (showRemitoCols?'<th>Remito</th>':'')+'</tr></thead><tbody>';
     lineas.forEach(function(item) {
       var f=item.fields;
+      // Estado individual de esta línea
+      var lineaCamino = (f.Estado === "En camino" || f.Estado === "Listo para retirar");
+      // Enriquecer unidad/presentacion/codigo desde padrón si falta en el pedido SP
       var _inf = getInsumoInfo(f.Insumo);
       var _uni  = f.Unidad       || _inf.unidad       || "";
       var _pres = f.Presentacion || _inf.presentacion || "-";
       var _cod  = f.CodigoInsumo || _inf.codigo       || "-";
-      // Estado propio de esta línea (no del card)
-      var lineaCamino = f.Estado === "En camino" || f.Estado === "Listo para retirar";
       html += '<tr>';
-      // Columna checkbox (solo si alguna línea sigue en camino)
-      if (anyEnCamino) {
-        if (lineaCamino && !f.NroRemito) {
-          html += '<td><input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+item.id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);"></td>';
-        } else {
-          html += '<td></td>';
-        }
+      if (showRemitoCols) {
+        if (lineaCamino && !f.NroRemito) html += '<td><input type="checkbox" class="chk-remito" onchange="toggleRemitoItem(\''+item.id+'\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--brand);"></td>';
+        else html += '<td></td>';
       }
       html += '<td style="font-size:11px;color:var(--sub);font-family:monospace;">'+_cod+'</td>'+
               '<td style="font-weight:600;">'+f.Insumo+'</td>'+
@@ -1898,14 +1938,13 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
         html += '<td style="font-size:11px;color:var(--blue);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="'+(f.OrigenAsignado||'')+'">'+
                 (f.OrigenAsignado ? '📦 '+f.OrigenAsignado : '<span style="color:var(--light);">—</span>')+'</td>';
       }
-      // Columna remito: botón si en camino sin remito, número si ya tiene, — si cerrado sin remito
       if (showRemitoCols) {
-        if (lineaCamino && !f.NroRemito) {
+        if (f.NroRemito) {
+          html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+f.NroRemito+'</span></td>';
+        } else if (lineaCamino) {
           html += '<td><button class="btn btn-brand btn-sm" onclick="abrirModalRemito(\''+item.id+'\')">Remito</button></td>';
-        } else if (f.NroRemito) {
-          html += '<td><span style="font-size:11px;color:var(--green);font-weight:700;">✓ '+(f.NroRemito||'')+'</span></td>';
         } else {
-          html += '<td><span style="font-size:11px;color:var(--light);">—</span></td>';
+          html += '<td><span style="color:var(--light);font-size:11px;">—</span></td>';
         }
       }
       html += '</tr>';
@@ -1926,9 +1965,7 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
     if (_cod1) html += '<div style="font-size:11px;color:var(--light);margin-top:2px;">Cód. <span style="font-family:monospace;">'+_cod1+'</span></div>';
     if (f.OrigenAsignado) html += '<div style="font-size:12px;color:var(--blue);margin-top:4px;">📦 '+f.OrigenAsignado+'</div>';
     html += '</div>';
-    var _nr1 = f.NroRemito && String(f.NroRemito) !== "undefined" ? f.NroRemito : null;
-    if (esCerrado && _nr1) html += '<div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:6px;">✓ Remito: '+_nr1+'</div>';
-    else if (esCerrado) html += '<div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--light);">Sin remito asignado</div>';
+    if (f.NroRemito) html += '<div style="font-size:12px;color:var(--green);font-weight:700;margin-bottom:6px;">✓ Remito: '+f.NroRemito+'</div>';
   }
 
   // Info camión
@@ -2415,6 +2452,7 @@ async function cargarPedidosInsumos() {
         htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlA += '<span class="badge badge-pending">Pendiente</span>';
         htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniA+' ('+esc(_presA)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\',\'Pendiente insumos\')">Asignar origen'+(retiroFlag?' 🏃':'')+'</button>';
+        htmlA += '<button class="btn btn-danger btn-sm" title="Eliminar pedido" onclick="eliminarPedido(\''+spId+'\')">🗑</button>';
         htmlA += '</div></div>';
       });
     }
@@ -2453,6 +2491,7 @@ async function cargarPedidosInsumos() {
         htmlL += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
         htmlL += '<span class="badge badge-insumos">Pend. logística</span>';
         htmlL += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+f.Cantidad+' '+_uniL+' ('+esc(_presL)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+',\''+retiroFlag+'\',\''+esc(f.FechaEntrega||'')+'\',\'Pendiente logística\')">✏️ Editar origen</button>';
+        htmlL += '<button class="btn btn-danger btn-sm" title="Eliminar pedido" onclick="eliminarPedido(\''+spId+'\')">🗑</button>';
         htmlL += '</div></div>';
       });
     }
@@ -2503,6 +2542,7 @@ async function cargarPedidosInsumos() {
         htmlEC += '<button class="btn btn-outline btn-sm" onclick="abrirModalOrigen(\''+spId+'\',\''+esc(f.Insumo)+'\',\''+
                   f.Cantidad+' '+_uniEC+' ('+esc(_presEC)+')'+'\',\''+esc(f.Campo)+'\','+parseFloat(f.Cantidad||0)+
                   ',\''+retiroFlagEC+'\',\''+esc(f.FechaEntrega||'')+'\',\'En camino\')">✏️ Editar origen</button>';
+        htmlEC += '<button class="btn btn-danger btn-sm" title="Eliminar pedido" onclick="eliminarPedido(\''+spId+'\')">🗑</button>';
         htmlEC += '</div></div>';
       });
     }
@@ -2546,8 +2586,7 @@ async function cargarPedidosInsumos() {
         htmlCE += '<td style="padding:7px 12px;">'+( f.Patente||"-")+'</td>';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+fmtFecha(f.FechaEntrega)+'</td>';
         htmlCE += '<td style="padding:7px 12px;white-space:nowrap;">'+(f.FechaPedido ? new Date(f.FechaPedido).toLocaleDateString("es-AR") : "-")+'</td>';
-        var _nrCE = f.NroRemito && String(f.NroRemito) !== "undefined" ? f.NroRemito : "-";
-        htmlCE += '<td style="padding:7px 12px;color:var(--green);font-weight:600;">'+_nrCE+'</td>';
+        htmlCE += '<td style="padding:7px 12px;color:var(--green);font-weight:600;">'+( f.NroRemito||"-")+'</td>';
         htmlCE += '</tr>';
       });
       htmlCE += '</tbody></table></div>';
@@ -4019,6 +4058,25 @@ function limpiarSelRemito() {
   // desmarcar todos los checkboxes
   document.querySelectorAll(".chk-remito").forEach(function(c){ c.checked = false; });
 }
+async function aplicarRemitoLote() {
+  var remito = document.getElementById("inp-remito-lote").value.trim();
+  if (!remito) { showToast("Ingresá el número de remito","error"); return; }
+  var ids = Object.keys(selRemitoItems);
+  if (!ids.length) return;
+  var btn = document.querySelector("#bar-remito .btn-brand");
+  btn.disabled = true; btn.textContent = "Guardando...";
+  try {
+    for (var i = 0; i < ids.length; i++) {
+      await spPatch(CONFIG.lists.pedidos, ids[i], { NroRemito: remito, Estado: "Cerrado" });
+    }
+    limpiarSelRemito();
+    document.getElementById("inp-remito-lote").value = "";
+    showToast("Remito aplicado a "+ids.length+" ítem"+(ids.length===1?"":"s")+" ✓","ok");
+    cargarMisPedidos();
+  } catch(e) { showToast("Error: "+e.message,"error"); }
+  btn.disabled = false; btn.textContent = "✓ Aplicar remito";
+}
+
 var remitoSpId = null;
 function abrirModalRemito(spId) {
   remitoSpId = spId;
