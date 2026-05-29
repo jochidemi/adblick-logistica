@@ -3420,7 +3420,8 @@ function renderPedidosEnviados() {
       var _linf = getInsumoInfo(f.Insumo);
       var _luni  = f.Unidad       || _linf.unidad       || "";
       var _lpres = f.Presentacion || _linf.presentacion || "—";
-      html += '<tr style="border-top:1px solid var(--border);background:'+(pi%2===0?'var(--white)':'var(--bg)')+'">' +
+      var rowBg = pi%2===0?'var(--white)':'var(--bg)';
+      html += '<tr style="border-top:1px solid var(--border);background:'+rowBg+'">' +
         '<td style="padding:8px 14px;font-size:12px;color:var(--light);">'+(f.NumeroPedido||'—')+'</td>' +
         '<td style="padding:8px 14px;font-weight:600;">'+f.Insumo+'</td>' +
         '<td style="padding:8px 14px;text-align:right;font-weight:700;">'+f.Cantidad+' '+_luni+'</td>' +
@@ -3428,6 +3429,14 @@ function renderPedidosEnviados() {
         '<td style="padding:8px 14px;font-size:12px;">📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+'</td>' +
         '<td style="padding:8px 14px;font-size:12px;color:var(--sub);">'+f.Operador+'</td>' +
         '</tr>';
+      if (f.Observaciones || f.NotaInsumos) {
+        html += '<tr style="background:'+rowBg+';">' +
+          '<td colspan="6" style="padding:0 14px 7px 28px;line-height:1.6;">' +
+          (f.Observaciones?'<span style="font-size:11px;font-weight:600;color:var(--orange);">📝 <span style="font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--sub);">OPERADOR:</span> '+esc(f.Observaciones)+'</span>':'') +
+          (f.Observaciones && f.NotaInsumos ? '&emsp;' : '') +
+          (f.NotaInsumos?'<span style="font-size:11px;font-weight:600;color:var(--blue);">💬 <span style="font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--sub);">INSUMOS:</span> '+esc(f.NotaInsumos)+'</span>':'') +
+          '</td></tr>';
+      }
     });
     html += '</tbody></table></div>';
   });
@@ -3540,7 +3549,8 @@ function renderItemsLogistica() {
             '<span>📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' </span><span>👤 '+f.Operador+'</span>'+
             (f.OrigenAsignado?'<span style="color:var(--green);">📦 '+f.OrigenAsignado+'</span>':'')+
           '</div>'+
-          (f.Observaciones?'<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 '+esc(f.Observaciones)+'</div>':'')+
+          (f.Observaciones?'<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 <span style="font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--sub);">OPERADOR:</span> '+esc(f.Observaciones)+'</div>':'')+
+          (f.NotaInsumos?'<div style="font-size:12px;font-weight:600;color:var(--blue);margin-top:2px;">💬 <span style="font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--sub);">INSUMOS:</span> '+esc(f.NotaInsumos)+'</div>':'')+
         '</div>'+
         '<div style="font-size:11px;font-weight:700;color:var(--orange);flex-shrink:0;white-space:nowrap;">🗓 '+fmtFecha(f.FechaEntrega)+'</div>'+
       '</div>';
@@ -3571,7 +3581,8 @@ function renderItemsLogistica() {
       html2 += '<div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">';
       html2 += '<div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:1px;">N° '+(f.NumeroPedido||'—')+'</div><div style="font-weight:600;font-size:13px;">'+f.Insumo+(camIds.length > 1 ? '<span style="font-size:10px;background:#DBEAFE;color:var(--blue);border-radius:10px;padding:1px 6px;margin-left:4px;">'+camIds.length+' camiones</span>' : '')+'<span style="font-weight:400;color:var(--sub);margin-left:6px;font-size:12px;">'+f.Cantidad+' '+_ci2U+'</span>'+(_ci2P?' <span style="color:var(--light);font-size:11px;">('+_ci2P+')</span>':'')+' </div>';
       html2 += '<div style="font-size:12px;color:var(--sub);margin-top:2px;">📍 '+f.Campo+(f.Localidad?' <b style="color:var(--blue);">'+f.Localidad+'</b>':'')+' · 👤 '+f.Operador+'</div>';
-      if (f.Observaciones) html2 += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:2px;">📝 '+esc(f.Observaciones)+'</div>';
+      if (f.Observaciones) html2 += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:2px;">📝 <span style="font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--sub);">OPERADOR:</span> '+esc(f.Observaciones)+'</div>';
+      if (f.NotaInsumos)   html2 += '<div style="font-size:12px;font-weight:600;color:var(--blue);margin-top:2px;">💬 <span style="font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--sub);">INSUMOS:</span> '+esc(f.NotaInsumos)+'</div>';
       html2 += '</div>';
       html2 += '<span class="badge badge-transit">En camino</span>';
       html2 += '<button style="font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--sub);" onclick="quitarDeCamion(\''+item.id+'\')">✕ Quitar</button>';
