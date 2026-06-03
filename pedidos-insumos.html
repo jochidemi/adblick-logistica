@@ -841,6 +841,14 @@ tr:hover td{background:var(--brand-light);}
         <label class="lbl">Origen asignado <span class="req">*</span></label>
         <input type="text" id="inp-origen" readonly placeholder="Seleccioná un origen de las opciones de arriba" style="background:var(--bg);cursor:default;font-style:italic;">
         <div id="origen-insumo-cambio" style="display:none;margin-top:8px;padding:8px 12px;background:var(--blue-light);border-radius:8px;font-size:12px;color:var(--blue);font-weight:600;border:1.5px solid #93C5FD;"></div>
+        <div id="origen-cantidad-wrap" style="display:none;margin-top:8px;padding:10px 12px;background:#F0FDF4;border-radius:8px;border:1.5px solid #86EFAC;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#15803D;margin-bottom:7px;">📐 Ajustar cantidad <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--sub);font-size:11px;">— el insumo tiene distinta concentración</span></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <input type="number" id="inp-cantidad-origen" min="0.001" step="any" style="width:110px;font-weight:700;font-size:14px;" placeholder="0">
+            <span id="inp-cantidad-unidad" style="font-size:13px;color:var(--sub);font-weight:600;"></span>
+            <span style="font-size:11px;color:var(--light);">Original: <b id="inp-cantidad-original" style="color:var(--sub);"></b></span>
+          </div>
+        </div>
         <div style="margin-top:5px;">
           <button type="button" id="btn-manual-origen" onclick="var i=document.getElementById('inp-origen');i.removeAttribute('readonly');i.style.background='';i.style.cursor='';i.style.fontStyle='';i.placeholder='Ej: Galpón Belgrano / pendiente remito...';i.focus();this.style.display='none';" style="font-size:11px;color:var(--sub);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;">✏ Ingresar origen manualmente</button>
         </div>
@@ -2876,6 +2884,11 @@ function abrirModalOrigen(spId, insumo, cantPres, campo, cantidad, retiroPersona
   document.getElementById("inp-nota-origen").value = "";
   document.getElementById("inp-origen-search-propio").value = "";
   document.getElementById("inp-origen-search-oc").value = "";
+  // Resetear campo de cantidad ajustada
+  var cantWrapR = document.getElementById("origen-cantidad-wrap");
+  if (cantWrapR) cantWrapR.style.display = "none";
+  var inpCantR = document.getElementById("inp-cantidad-origen");
+  if (inpCantR) inpCantR.value = "";
   switchOrigenTab("propio"); // Abrir siempre en tab Propio
   selectedPropioItems = [];
   selectedOCItems = [];
@@ -3052,16 +3065,39 @@ function getInsumoAsignado() {
 }
 
 // Muestra aviso en el modal si el insumo asignado ≠ insumo del pedido
+// y habilita el campo de ajuste de cantidad cuando el producto cambia
 function actualizarNoticiaInsumo() {
-  var el = document.getElementById("origen-insumo-cambio");
+  var el       = document.getElementById("origen-insumo-cambio");
+  var cantWrap = document.getElementById("origen-cantidad-wrap");
   if (!el || !pedidoOrigenActual) return;
   var asignado = getInsumoAsignado();
   var original = pedidoOrigenActual.insumo || "";
   if (asignado && asignado.trim().toLowerCase() !== original.trim().toLowerCase()) {
     el.style.display = "block";
     el.innerHTML = '🔄 El insumo del pedido cambiará de <b>"' + esc(original) + '"</b> → <b>"' + esc(asignado) + '"</b> para el resto del proceso.';
+    // Mostrar campo de ajuste de cantidad
+    if (cantWrap) {
+      cantWrap.style.display = "block";
+      var inpCant = document.getElementById("inp-cantidad-origen");
+      var inpUnit = document.getElementById("inp-cantidad-unidad");
+      var inpOrig = document.getElementById("inp-cantidad-original");
+      // Pre-llenar con la cantidad original solo si el campo está vacío
+      if (inpCant && !inpCant.value) inpCant.value = pedidoOrigenActual.cantidad || "";
+      // Unidad del nuevo insumo con fallback al original
+      var infoNuevo = getInsumoInfo(asignado);
+      var infoOrig  = getInsumoInfo(original);
+      var unidad = infoNuevo.unidad || infoOrig.unidad || "";
+      if (inpUnit) inpUnit.textContent = unidad;
+      if (inpOrig) inpOrig.textContent = (pedidoOrigenActual.cantidad || "") + (unidad ? " " + unidad : "");
+    }
   } else {
     el.style.display = "none";
+    // Ocultar y limpiar cantidad al volver al insumo original
+    if (cantWrap) {
+      cantWrap.style.display = "none";
+      var ic = document.getElementById("inp-cantidad-origen");
+      if (ic) ic.value = "";
+    }
   }
 }
 
@@ -3139,10 +3175,19 @@ async function confirmarOrigen() {
       OrdenCompra:    ordenCompra,
     };
     if (campanaOC) patchFields.CampanaOC = campanaOC;
-    // Si el stock asignado es de un insumo distinto al del pedido, actualizar el campo Insumo en SP
+    // Si el stock asignado es de un insumo distinto al del pedido, actualizar Insumo en SP
     var insumoAsignado = getInsumoAsignado();
     if (insumoAsignado && insumoAsignado.trim().toLowerCase() !== (pedidoOrigenActual.insumo||"").trim().toLowerCase()) {
       patchFields.Insumo = insumoAsignado.trim();
+      // Si además se ajustó la cantidad (por distinta concentración), aplicarla también
+      var cantWrapC = document.getElementById("origen-cantidad-wrap");
+      var inpCantC  = document.getElementById("inp-cantidad-origen");
+      if (cantWrapC && cantWrapC.style.display !== "none" && inpCantC && inpCantC.value !== "") {
+        var nuevaCant = parseFloat(inpCantC.value);
+        if (!isNaN(nuevaCant) && nuevaCant > 0 && nuevaCant !== pedidoOrigenActual.cantidad) {
+          patchFields.Cantidad = nuevaCant;
+        }
+      }
     }
     await spPatch(CONFIG.lists.pedidos, pedidoOrigenActual.spId, patchFields);
 
