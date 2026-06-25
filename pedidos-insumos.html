@@ -1324,9 +1324,9 @@ async function loadAllMasterData() {
       snap.forEach(function(s) {
         var sf = s.fields;
         if (sf.TipoStock === "ExistenciaPropia") {
-          stockPropio.push({ spId: s.id, categoria: sf.Categoria||"", puntoStock: sf.Proveedor||"", codigo: sf.Codigo||"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0 });
+          stockPropio.push({ spId: s.id, categoria: sf.Categoria||"", puntoStock: sf.Proveedor||"", codigo: sf.Codigo||"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0, precio: parseFloat(sf.PrecioUnitario)||0 });
         } else if (sf.TipoStock === "CuboOC") {
-          stockPendiente.push({ spId: s.id, proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Unidad||"", referencia: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0 });
+          stockPendiente.push({ spId: s.id, proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Unidad||"", referencia: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0, precio: parseFloat(sf.PrecioUnitario)||0 });
         }
       });
       renderStockTable();
@@ -2124,7 +2124,17 @@ function parsearExistenciaCSV(ws) {
     var exStr = String(rawEx||"").trim().replace(/\./g,"").replace(",",".");
     var ex = parseFloat(exStr) || 0;
     if (!nom || !cod || ex <= 0) return;
-    items.push({ categoria: cat, puntoStock: pto, codigo: cod, nombre: nom, unidad: uni, existencia: ex });
+    // Precio unitario USD = valor USD de la línea ÷ cantidad (Disp + Pend OC).
+    // Requiere el export bajado en moneda "Dólar Compra Billete":
+    //   Precio_Cotizado → valor total USD de la línea ("Dolares Compra Billete")
+    //   Textbox36       → Disp + Pend OC (cantidad valorizada)
+    // Si el export está en Pesos, Precio_Cotizado dice "Sin cotización" → precio = 0.
+    var valStr = String(row["Precio_Cotizado"]||"").trim().replace(/\./g,"").replace(",",".");
+    var dpStr  = String(row["Textbox36"]||"").trim().replace(/\./g,"").replace(",",".");
+    var valorUsd = parseFloat(valStr) || 0;
+    var dispPend = parseFloat(dpStr) || 0;
+    var precio = (dispPend > 0) ? valorUsd / dispPend : 0;
+    items.push({ categoria: cat, puntoStock: pto, codigo: cod, nombre: nom, unidad: uni, existencia: ex, precio: precio });
   });
   return items;
 }
@@ -2158,8 +2168,13 @@ function parsearExistencia(ws) {
     var e = String(row[4]||"").trim(); // Col E: nombre del insumo
     var h = String(row[7]||"").trim(); // Col H: unidad
     var ex = parseFloat(row[8]) || 0;  // Col I: existencia
+    // Precio unitario USD = valor ("Dolares Compra Billete", col S=18) ÷ Disp + Pend OC (col R=17).
+    // Solo aplica si el xlsx se bajó en moneda USD; si no, queda 0. (El flujo recomendado es el CSV en USD.)
+    var dpX  = parseFloat(String(row[17]||"").replace(/\./g,"").replace(",",".")) || 0; // R: Disp + Pend OC
+    var valX = parseFloat(String(row[18]||"").replace(/\./g,"").replace(",",".")) || 0; // S: valor USD
+    var precioX = (dpX > 0) ? valX / dpX : 0;
     if (e && ex > 0) {
-      items.push({ categoria: cat, puntoStock: puntoStock, codigo: b, nombre: e, unidad: h, existencia: ex });
+      items.push({ categoria: cat, puntoStock: puntoStock, codigo: b, nombre: e, unidad: h, existencia: ex, precio: precioX });
     }
   });
   return items;
@@ -2179,10 +2194,14 @@ function parsearCuboOC(ws) {
     var ref  = String(row["Referencia"]||"").trim(); // col J
     if (!ins || !prov) return;
     var camp = String(row["Campa\u00f1as"]||row["Campanas"]||row["Campa\u00f1a"]||row["Campana"]||"").trim();
+    // Precio unitario de la OC: se toma directo de la columna "Precio Unitario" del cubo.
+    // NO se suma (hay varias filas por OC): se conserva el primer valor no nulo de la OC.
+    var pu = parseFloat(row["Precio Unitario"]) || 0;
     var key = prov + "||" + ins + "||" + ref;
-    if (!mapa[key]) mapa[key] = { proveedor:prov, insumo:ins, tipo:tipo, referencia:ref, pendiente:0, campana:camp };
+    if (!mapa[key]) mapa[key] = { proveedor:prov, insumo:ins, tipo:tipo, referencia:ref, pendiente:0, campana:camp, precio:0 };
     mapa[key].pendiente += pend;
     if (camp && !mapa[key].campana) mapa[key].campana = camp;
+    if (pu && !mapa[key].precio) mapa[key].precio = pu;
   });
   return Object.values(mapa)
     .filter(function(r){ return r.pendiente > 0; })
@@ -2361,9 +2380,9 @@ async function guardarStockEnSP() {
     setProgress(0, 1, "Borrando snapshot anterior…");
     await spDeleteAll(CONFIG.lists.stockSnapshot);
     var allRows = [];
-    stockPropio.forEach(function(r){ allRows.push({TipoStock:"ExistenciaPropia",Title:r.nombre.substring(0,255),Insumo:r.nombre,Categoria:r.categoria,Unidad:r.unidad,Cantidad:r.existencia,Proveedor:r.puntoStock||"",CargadoPor:currentUser,Codigo:(r.codigo||"").substring(0,50)}); });
+    stockPropio.forEach(function(r){ allRows.push({TipoStock:"ExistenciaPropia",Title:r.nombre.substring(0,255),Insumo:r.nombre,Categoria:r.categoria,Unidad:r.unidad,Cantidad:r.existencia,Proveedor:r.puntoStock||"",CargadoPor:currentUser,Codigo:(r.codigo||"").substring(0,50),PrecioUnitario:Math.round((r.precio||0)*10000)/10000}); });
     // CuboOC: Categoria guarda la referencia OC (col J del cubo); Proveedor guarda el proveedor
-    stockPendiente.forEach(function(r){ allRows.push({TipoStock:"CuboOC",Title:(r.insumo+" "+r.referencia).substring(0,255),Insumo:r.insumo,Categoria:r.referencia||"",Unidad:r.tipo||"",Cantidad:r.pendiente,Proveedor:r.proveedor,CargadoPor:currentUser}); });
+    stockPendiente.forEach(function(r){ allRows.push({TipoStock:"CuboOC",Title:(r.insumo+" "+r.referencia).substring(0,255),Insumo:r.insumo,Categoria:r.referencia||"",Unidad:r.tipo||"",Cantidad:r.pendiente,Proveedor:r.proveedor,CargadoPor:currentUser,PrecioUnitario:Math.round((r.precio||0)*10000)/10000}); });
     var total = allRows.length;
     var guardados = 0;
     setProgress(0, total, "Iniciando carga de " + total + " registros…");
