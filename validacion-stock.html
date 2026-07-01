@@ -88,10 +88,10 @@ tr.diff td{background:#fff7ed;}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:500;box-shadow:0 8px 30px rgba(0,0,0,.3);display:none;}
 .toast.ok{background:var(--green);} .toast.err{background:var(--red);}
 </style></head><body>
-<div id="gate"><div class="logo-sq">AB</div><div class="sp" id="gate-sp"></div><div id="gate-msg">Iniciando sesión con Microsoft…</div></div>
+<div id="gate"><div class="logo-sq">ADB</div><div class="sp" id="gate-sp"></div><div id="gate-msg">Iniciando sesión con Microsoft…</div></div>
 <div id="app" style="display:none;">
 <header>
-  <div class="logo-sq">AB</div>
+  <div class="logo-sq">ADB</div>
   <h1>Validación <span>Stock Insumos</span></h1>
   <div class="who"><span id="demoBadge" class="demo-badge" style="display:none;">Demo local</span><span id="headerUser"></span></div>
 </header>
@@ -210,8 +210,24 @@ async function loadFromSharePoint(){
   document.getElementById("gate-msg").textContent="Cargando responsables y zonas…";
   var rp=await spGet(CONFIG.lists.responsables,"");
   ZONA={};RESP={};
-  rp.forEach(function(s){var f=s.fields||{};var p=(f.Title||f.PuntoStock||"").trim();if(!p)return;ZONA[p]=f.Zona||"";RESP[p]=f.Responsable||f.Responsable0||"";});
+  if(rp.length){
+    var norm=x=>String(x==null?"":x).toLowerCase().trim().replace(/\s+/g," ");
+    var ptoByNorm={}; allPtos.forEach(function(p){ptoByNorm[norm(p)]=p;});
+    var fkeys=Object.keys(rp[0].fields||{});
+    // 1) campo del punto = el que más coincide con los puntos del snapshot
+    var puntoField=null,best=-1;
+    fkeys.forEach(function(fk){var hits=0;rp.forEach(function(s){if(ptoByNorm[norm((s.fields||{})[fk])])hits++;});if(hits>best){best=hits;puntoField=fk;}});
+    // 2) zona y responsable por nombre de columna
+    var zonaField=fkeys.find(k=>/zona/i.test(k));
+    var respField=fkeys.find(k=>/responsable|personal.*cargo|encargad/i.test(k)) || fkeys.find(k=>/cargo/i.test(k));
+    rp.forEach(function(s){var f=s.fields||{};var key=puntoField?ptoByNorm[norm(f[puntoField])]:null;if(!key)return;ZONA[key]=zonaField?(f[zonaField]||""):"";RESP[key]=respField?(f[respField]||""):"";});
+    window.__respDbg={filas:rp.length,puntoField:puntoField,matcheados:best,zonaField:zonaField,respField:respField,columnas:fkeys};
+    console.log("Responsables_PuntosStock →",window.__respDbg);
+    var conZ=allPtos.filter(p=>ZONA[p]).length, conR=allPtos.filter(p=>RESP[p]).length;
+    RESP_DIAG=" · Zonas/Resp: "+conZ+"/"+conR+" de "+allPtos.length+" (col punto: "+puntoField+", zona: "+(zonaField||"?")+", resp: "+(respField||"?")+")";
+  }
 }
+var RESP_DIAG="";
 
 async function onLoggedIn(){
   try{
@@ -229,7 +245,7 @@ function bootApp(){
   document.getElementById("foot").textContent=DEMO
     ? "Modo demo local · lo que cargues se guarda solo en este navegador. Publicá la app para conectar login + SharePoint."
     : "Conectado a SharePoint · las confirmaciones se guardan en la lista ValidacionStock.";
-  document.getElementById("src-p").textContent=srcTxt(SNAP_EXIST);
+  document.getElementById("src-p").textContent=srcTxt(SNAP_EXIST)+(DEMO?"":RESP_DIAG);
   renderMetricas();
 }
 
