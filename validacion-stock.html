@@ -194,6 +194,9 @@ async function spPost(listId,fields){
   var r=await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+listId+"/items",{method:"POST",headers:{Authorization:"Bearer "+graphToken,"Content-Type":"application/json"},body:JSON.stringify({fields:fields})});
   if(!r.ok)throw new Error("SP POST "+r.status);return r.json();
 }
+async function spColumns(listId){
+  try{var r=await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+listId+"/columns",{headers:{Authorization:"Bearer "+graphToken}});if(!r.ok)return [];var d=await r.json();return d.value||[];}catch(e){return [];}
+}
 
 async function loadFromSharePoint(){
   document.getElementById("gate-msg").textContent="Cargando stock desde SharePoint…";
@@ -209,23 +212,25 @@ async function loadFromSharePoint(){
   if(meta.usuario){SNAP_EXIST.usuario=meta.usuario;SNAP_OC.usuario=meta.usuario;}
   document.getElementById("gate-msg").textContent="Cargando responsables y zonas…";
   var rp=await spGet(CONFIG.lists.responsables,"");
+  var cols=await spColumns(CONFIG.lists.responsables);
   ZONA={};RESP={};
-  if(rp.length){
-    var norm=x=>String(x==null?"":x).toLowerCase().trim().replace(/\s+/g," ");
-    var ptoByNorm={}; allPtos.forEach(function(p){ptoByNorm[norm(p)]=p;});
-    var fkeys=Object.keys(rp[0].fields||{});
-    // 1) campo del punto = el que más coincide con los puntos del snapshot
-    var puntoField=null,best=-1;
-    fkeys.forEach(function(fk){var hits=0;rp.forEach(function(s){if(ptoByNorm[norm((s.fields||{})[fk])])hits++;});if(hits>best){best=hits;puntoField=fk;}});
-    // 2) zona y responsable por nombre de columna
-    var zonaField=fkeys.find(k=>/zona/i.test(k));
-    var respField=fkeys.find(k=>/responsable|personal.*cargo|encargad/i.test(k)) || fkeys.find(k=>/cargo/i.test(k));
-    rp.forEach(function(s){var f=s.fields||{};var key=puntoField?ptoByNorm[norm(f[puntoField])]:null;if(!key)return;ZONA[key]=zonaField?(f[zonaField]||""):"";RESP[key]=respField?(f[respField]||""):"";});
-    window.__respDbg={filas:rp.length,puntoField:puntoField,matcheados:best,zonaField:zonaField,respField:respField,columnas:fkeys};
-    console.log("Responsables_PuntosStock →",window.__respDbg);
-    var conZ=allPtos.filter(p=>ZONA[p]).length, conR=allPtos.filter(p=>RESP[p]).length;
-    RESP_DIAG=" · Zonas/Resp: "+conZ+"/"+conR+" de "+allPtos.length+" (col punto: "+puntoField+", zona: "+(zonaField||"?")+", resp: "+(respField||"?")+")";
-  }
+  var norm=x=>String(x==null?"":x).toLowerCase().trim().replace(/\s+/g," ");
+  var ptoByNorm={}; allPtos.forEach(function(p){ptoByNorm[norm(p)]=p;});
+  // union de TODAS las claves de fields (Graph omite campos vacíos por ítem)
+  var fset={}; rp.forEach(s=>Object.keys(s.fields||{}).forEach(k=>fset[k]=1)); var fkeys=Object.keys(fset);
+  // interno de una columna por su displayName o nombre interno
+  function colInt(rx){var c=cols.find(c=>rx.test(c.displayName||"")||rx.test(c.name||""));return c?c.name:null;}
+  var zonaField=colInt(/^zona$/i)||colInt(/zona/i)||fkeys.find(k=>/zona/i.test(k));
+  var respField=colInt(/responsable/i)||colInt(/personal.*cargo|encargad|cargo/i)||fkeys.find(k=>/responsable|cargo|personal/i.test(k));
+  // campo del punto = el que más coincide con los puntos del snapshot
+  var puntoField=null,best=-1;
+  fkeys.forEach(function(fk){var hits=0;rp.forEach(function(s){if(ptoByNorm[norm((s.fields||{})[fk])])hits++;});if(hits>best){best=hits;puntoField=fk;}});
+  rp.forEach(function(s){var f=s.fields||{};var key=puntoField?ptoByNorm[norm(f[puntoField])]:null;if(!key)return;if(zonaField&&f[zonaField])ZONA[key]=f[zonaField];if(respField&&f[respField])RESP[key]=f[respField];});
+  var conZ=allPtos.filter(p=>ZONA[p]).length,conR=allPtos.filter(p=>RESP[p]).length;
+  var exL=rp.slice(0,3).map(s=>(s.fields||{})[puntoField]||"—").join(" / ");
+  var exS=allPtos.slice(0,3).join(" / ");
+  RESP_DIAG=" · 🔧 lista:"+rp.length+"filas · cols:["+(cols.map(c=>c.displayName).join(",")||fkeys.join(","))+"] · punto="+puntoField+"("+best+" match) zona="+zonaField+" resp="+respField+" · cargadas z/r:"+conZ+"/"+conR+"/"+allPtos.length+" · ej.lista:["+exL+"] ej.snap:["+exS+"]";
+  window.__respDbg=RESP_DIAG; console.log("DIAG",RESP_DIAG);
 }
 var RESP_DIAG="";
 
@@ -271,7 +276,7 @@ function isDiff(p,e){var k=vKey(p,e.codigo);var v=val[k]&&val[k].real;if(v===und
 function statCard(cls,n,l){return "<div class=\"s-item "+cls+"\"><div class=\"n\">"+n+"</div><div class=\"l\">"+l+"</div></div>";}
 
 function renderMetricas(){
-  document.getElementById("src-m").textContent=srcTxt(SNAP_EXIST);
+  document.getElementById("src-m").textContent=srcTxt(SNAP_EXIST)+(DEMO?"":RESP_DIAG);
   var valTot=EXIST.reduce((s,e)=>s+e.valor,0),items=EXIST.length,tipos=new Set(EXIST.map(e=>e.codigo)).size,deps=allPtos.length;
   var okc=allPtos.filter(p=>dep[p]&&dep[p].ok).length,pct=deps?Math.round(okc/deps*100):0,diff=0;
   EXIST.forEach(e=>{if(isDiff(e.puntoStock,e))diff++;});
