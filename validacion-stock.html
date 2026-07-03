@@ -256,8 +256,31 @@ async function loadFromSharePoint(){
   var exS=allPtos.slice(0,3).join(" / ");
   RESP_DIAG=" · 🔧 lista:"+rp.length+"filas · cols:["+(cols.map(c=>c.displayName).join(",")||fkeys.join(","))+"] · punto="+puntoField+"("+best+" match) zona="+zonaField+" resp="+respField+" · cargadas z/r:"+conZ+"/"+conR+"/"+allPtos.length+" · ej.lista:["+exL+"] ej.snap:["+exS+"]";
   window.__respDbg=RESP_DIAG; console.log("DIAG",RESP_DIAG);
+  document.getElementById("gate-msg").textContent="Cargando validaciones…";
+  await loadValidacion();
 }
 var RESP_DIAG="";
+// Lee la lista ValidacionStock y reconstruye el estado validado (la ÚLTIMA validación por punto)
+async function loadValidacion(){
+  if(DEMO)return;
+  var items=[]; try{items=await spGet(CONFIG.lists.validacion,"");}catch(e){console.log("ValidacionStock read err",e);return;}
+  dep={};val={};
+  var booly=function(v){return v===true||v==="true"||v===1||v==="1"||v==="Sí"||v==="Si"||v==="SI";};
+  var byP={};
+  items.forEach(function(s){var f=s.fields||{};var p=f.PuntoStock;if(!p)return;(byP[p]=byP[p]||[]).push(f);});
+  Object.keys(byP).forEach(function(p){
+    var rows=byP[p],latestId=null,latestF="";
+    rows.forEach(function(f){var fe=String(f.FechaValidacion||f.ValidacionID||"");if(fe>latestF){latestF=fe;latestId=f.ValidacionID;}});
+    var latest=rows.filter(function(f){return f.ValidacionID===latestId;});
+    var ok=latest.some(function(f){return booly(f.ExistenciaChequeadaOK);});
+    var com=(latest.find(function(f){return f.ComentarioDeposito;})||{}).ComentarioDeposito||"";
+    if(ok||com)dep[p]={ok:ok,com:com};
+    latest.forEach(function(f){var cr=f.CantidadReal;if(cr!==null&&cr!==undefined&&cr!==""){val[p+"||"+f.Codigo]={real:String(cr)};}});
+  });
+  save(LS.d,dep);save(LS.v,val);
+  window.__valInfo="ValidacionStock: "+items.length+" filas · "+Object.keys(byP).length+" puntos con validación";
+  console.log(window.__valInfo);
+}
 
 async function onLoggedIn(){
   try{
@@ -377,8 +400,20 @@ function renderPuntos(){
 function toggleZona(z){if(zcol.has(z))zcol.delete(z);else zcol.add(z);localStorage.setItem(LS.zc,JSON.stringify([...zcol]));renderPuntos();}
 function togglePto(e,el){if(e.target.tagName!=="INPUT"&&e.target.tagName!=="LABEL"&&e.target.tagName!=="BUTTON")el.parentNode.classList.toggle("open");}
 function setMeta(inp){var p=inp.getAttribute("data-p"),v=inp.value.trim();if(inp.getAttribute("data-t")==="z"){if(v===(ZONA[p]||""))delete oz[p];else oz[p]=v;save(LS.z,oz);}else{if(v===(RESP[p]||""))delete orr[p];else orr[p]=v;save(LS.r,orr);}renderPuntos();}
-function setReal(inp){var k=inp.getAttribute("data-k"),v=inp.value.trim();if(!val[k])val[k]={};if(v==="")delete val[k].real;else val[k].real=v;if(val[k]&&val[k].real===undefined)delete val[k];save(LS.v,val);renderPuntos();}
-function setDepOk(cb){var p=cb.getAttribute("data-p");if(!dep[p])dep[p]={};dep[p].ok=cb.checked;if(!dep[p].ok&&!dep[p].com)delete dep[p];save(LS.d,dep);renderPuntos();}
+function setReal(inp){
+  var k=inp.getAttribute("data-k"),v=inp.value.trim();
+  if(!val[k])val[k]={};if(v==="")delete val[k].real;else val[k].real=v;if(val[k]&&val[k].real===undefined)delete val[k];
+  save(LS.v,val);
+  // Actualizar SOLO esta fila (no reconstruir la lista → no colapsa ni pierde el foco)
+  var i=k.lastIndexOf("||"),p=k.substring(0,i),cod=k.substring(i+2);
+  var e=EXIST.find(x=>x.puntoStock===p&&x.codigo===cod),diff=e?isDiff(p,e):false;
+  var tr=inp.closest("tr");if(tr)tr.classList.toggle("diff",diff);
+  inp.classList.toggle("diff",diff);
+}
+function setDepOk(cb){
+  var p=cb.getAttribute("data-p");if(!dep[p])dep[p]={};dep[p].ok=cb.checked;if(!dep[p].ok&&!dep[p].com)delete dep[p];save(LS.d,dep);
+  var pto=cb.closest(".pto");if(pto)pto.classList.toggle("okdep",cb.checked);
+}
 function setDepCom(inp){var p=inp.getAttribute("data-p"),v=inp.value.trim();if(!dep[p])dep[p]={};if(v)dep[p].com=v;else delete dep[p].com;if(!dep[p].ok&&!dep[p].com)delete dep[p];save(LS.d,dep);}
 
 // ===== Confirmar depósito: congela valores y guarda en ValidacionStock =====
@@ -389,7 +424,7 @@ function buildRows(p){
 }
 async function confirmarDeposito(p){
   var rows=buildRows(p);
-  function marcarValidado(){if(!dep[p])dep[p]={};dep[p].ok=true;save(LS.d,dep);renderPuntos();}
+  function marcarValidado(){if(!dep[p])dep[p]={};dep[p].ok=true;save(LS.d,dep);renderPuntos();renderMetricas();}
   if(DEMO){
     var csv=[Object.keys(rows[0]).join(";")].concat(rows.map(r=>Object.values(r).map(v=>v===null?"":v).join(";"))).join("\n");
     var b=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="confirmacion_"+p.replace(/[^a-z0-9]/gi,"_")+".csv";a.click();
