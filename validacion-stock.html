@@ -76,6 +76,7 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums;}
 td.val{font-weight:700;color:var(--money);}
 tr.diff td{background:#fff7ed;}
 .real-in{width:92px;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;font-family:inherit;text-align:right;background:#fff;}
+.com-in{width:100%;min-width:150px;padding:5px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;font-family:inherit;background:#fffdf5;}
 .real-in.diff{border-color:var(--orange);background:#fff7ed;font-weight:700;color:var(--orange);}
 .cat-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;}
 .c-Fertilizantes{background:#dbeafe;color:#1d4ed8;}.c-Agroquimicos{background:#ffedd5;color:var(--orange);}.c-Semillas{background:var(--green-l);color:var(--green);}.c-Otros{background:#f3f4f6;color:var(--sub);}.c-Granos{background:#fee2e2;color:#b91c1c;}.c-Herbicidas{background:#ffedd5;color:var(--orange);}.c-Insecticidas{background:#fce7f3;color:#be185d;}.c-Fungicidas{background:#ede9fe;color:var(--purple);}
@@ -216,8 +217,14 @@ async function spGet(listId,params){
   return items;
 }
 async function spPost(listId,fields){
-  var r=await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+listId+"/items",{method:"POST",headers:{Authorization:"Bearer "+graphToken,"Content-Type":"application/json"},body:JSON.stringify({fields:fields})});
-  if(!r.ok)throw new Error("SP POST "+r.status);return r.json();
+  var r401=false;
+  while(true){
+    var r=await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+listId+"/items",{method:"POST",headers:{Authorization:"Bearer "+graphToken,"Content-Type":"application/json"},body:JSON.stringify({fields:fields})});
+    if(r.status===429){await sleep(parseInt(r.headers.get("Retry-After")||"5")*1000);continue;}
+    if(r.status===401&&!r401){r401=true;try{await acquireToken();}catch(e){}continue;} // token vencido → renovar y reintentar
+    if(!r.ok)throw new Error("SP POST "+r.status);
+    return r.json();
+  }
 }
 async function spColumns(listId){
   try{var r=await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+listId+"/columns",{headers:{Authorization:"Bearer "+graphToken}});if(!r.ok)return [];var d=await r.json();return d.value||[];}catch(e){return [];}
@@ -275,7 +282,7 @@ async function loadValidacion(){
     var ok=latest.some(function(f){return booly(f.ExistenciaChequeadaOK);});
     var com=(latest.find(function(f){return f.ComentarioDeposito;})||{}).ComentarioDeposito||"";
     if(ok||com)dep[p]={ok:ok,com:com};
-    latest.forEach(function(f){var cr=f.CantidadReal;if(cr!==null&&cr!==undefined&&cr!==""){val[p+"||"+f.Codigo]={real:String(cr)};}});
+    latest.forEach(function(f){var o=null,cr=f.CantidadReal,ci=f.ComentarioItem;if(cr!==null&&cr!==undefined&&cr!==""){o=o||{};o.real=String(cr);}if(ci){o=o||{};o.com=ci;}if(o)val[p+"||"+f.Codigo]=o;});
   });
   save(LS.d,dep);save(LS.v,val);
   window.__valInfo="ValidacionStock: "+items.length+" filas · "+Object.keys(byP).length+" puntos con validación";
@@ -377,11 +384,11 @@ function ptoCard(g,q){
   h+="<span class=\"count\">"+g.items.length+" ítems</span><span class=\"val\">"+usd(tot)+"</span>";
   h+="<span class=\"dep-com\"><input type=\"text\" data-p=\""+esc(p)+"\" value=\""+esc(dcom)+"\" placeholder=\"Comentario del depósito...\" onclick=\"event.stopPropagation()\" onchange=\"setDepCom(this)\"></span>";
   h+="<button class=\"confirm-btn"+(dok?" done":"")+"\" onclick=\"event.stopPropagation();confirmarDeposito('"+p.replace(/'/g,"\\'")+"')\">"+(dok?"✓ Validado":"Confirmar depósito")+"</button>";
-  h+="</div><div class=\"pto-body\"><table><thead><tr><th>Categoría</th><th>Código</th><th>Insumo</th><th>Unidad</th><th class=\"r\">Contable</th><th class=\"r\">Física</th><th class=\"r\">Precio U. (US$)</th><th class=\"r\">Valor (US$)</th></tr></thead><tbody>";
+  h+="</div><div class=\"pto-body\"><table><thead><tr><th>Categoría</th><th>Código</th><th>Insumo</th><th>Unidad</th><th class=\"r\">Contable</th><th class=\"r\">Física</th><th>Comentario</th><th class=\"r\">Precio U. (US$)</th><th class=\"r\">Valor (US$)</th></tr></thead><tbody>";
   var items=g.items.slice().sort(function(a,b){return String(a.categoria).localeCompare(String(b.categoria),"es")||String(a.nombre).localeCompare(String(b.nombre),"es");});
   items.forEach(function(e){
-    var k=vKey(p,e.codigo),real=(val[k]&&val[k].real!==undefined)?val[k].real:"",diff=isDiff(p,e);
-    h+="<tr class=\""+(diff?"diff":"")+"\"><td><span class=\"cat-badge c-"+esc(e.categoria)+"\">"+esc(e.categoria)+"</span></td><td style=\"color:var(--sub);font-family:monospace;\">"+esc(e.codigo)+"</td><td>"+hl(e.nombre,q)+"</td><td style=\"color:var(--sub);\">"+esc(e.unidad)+"</td><td class=\"r\">"+fmtN(e.existencia)+"</td><td class=\"r\"><input class=\"real-in"+(diff?" diff":"")+"\" data-k=\""+esc(k)+"\" value=\""+esc(real)+"\" placeholder=\""+fmtN(e.existencia)+"\" onchange=\"setReal(this)\"></td><td class=\"r\">"+fmtN(e.precio)+"</td><td class=\"r val\">"+usd(e.valor)+"</td></tr>";
+    var k=vKey(p,e.codigo),real=(val[k]&&val[k].real!==undefined)?val[k].real:"",icom=(val[k]&&val[k].com)?val[k].com:"",diff=isDiff(p,e);
+    h+="<tr class=\""+(diff?"diff":"")+"\"><td><span class=\"cat-badge c-"+esc(e.categoria)+"\">"+esc(e.categoria)+"</span></td><td style=\"color:var(--sub);font-family:monospace;\">"+esc(e.codigo)+"</td><td>"+hl(e.nombre,q)+"</td><td style=\"color:var(--sub);\">"+esc(e.unidad)+"</td><td class=\"r\">"+fmtN(e.existencia)+"</td><td class=\"r\"><input class=\"real-in"+(diff?" diff":"")+"\" data-k=\""+esc(k)+"\" value=\""+esc(real)+"\" placeholder=\""+fmtN(e.existencia)+"\" onchange=\"setReal(this)\"></td><td><input class=\"com-in\" data-k=\""+esc(k)+"\" value=\""+esc(icom)+"\" placeholder=\"Comentario...\" onchange=\"setItemCom(this)\"></td><td class=\"r\">"+fmtN(e.precio)+"</td><td class=\"r val\">"+usd(e.valor)+"</td></tr>";
   });
   return h+"</tbody></table></div></div>";
 }
@@ -402,13 +409,18 @@ function togglePto(e,el){if(e.target.tagName!=="INPUT"&&e.target.tagName!=="LABE
 function setMeta(inp){var p=inp.getAttribute("data-p"),v=inp.value.trim();if(inp.getAttribute("data-t")==="z"){if(v===(ZONA[p]||""))delete oz[p];else oz[p]=v;save(LS.z,oz);}else{if(v===(RESP[p]||""))delete orr[p];else orr[p]=v;save(LS.r,orr);}renderPuntos();}
 function setReal(inp){
   var k=inp.getAttribute("data-k"),v=inp.value.trim();
-  if(!val[k])val[k]={};if(v==="")delete val[k].real;else val[k].real=v;if(val[k]&&val[k].real===undefined)delete val[k];
+  if(!val[k])val[k]={};if(v==="")delete val[k].real;else val[k].real=v;if(val[k]&&val[k].real===undefined&&val[k].com===undefined)delete val[k];
   save(LS.v,val);
   // Actualizar SOLO esta fila (no reconstruir la lista → no colapsa ni pierde el foco)
   var i=k.lastIndexOf("||"),p=k.substring(0,i),cod=k.substring(i+2);
   var e=EXIST.find(x=>x.puntoStock===p&&x.codigo===cod),diff=e?isDiff(p,e):false;
   var tr=inp.closest("tr");if(tr)tr.classList.toggle("diff",diff);
   inp.classList.toggle("diff",diff);
+}
+function setItemCom(inp){
+  var k=inp.getAttribute("data-k"),v=inp.value.trim();
+  if(!val[k])val[k]={};if(v)val[k].com=v;else delete val[k].com;if(val[k]&&val[k].real===undefined&&val[k].com===undefined)delete val[k];
+  save(LS.v,val);
 }
 function setDepOk(cb){
   var p=cb.getAttribute("data-p");if(!dep[p])dep[p]={};dep[p].ok=cb.checked;if(!dep[p].ok&&!dep[p].com)delete dep[p];save(LS.d,dep);
@@ -434,7 +446,8 @@ async function confirmarDeposito(p){
   if(!confirm("Confirmar "+rows.length+" ítems del depósito \""+p+"\"? Se guardará un registro con fecha en ValidacionStock."))return;
   try{
     toast("Guardando "+rows.length+" ítems…");
-    for(var i=0;i<rows.length;i+=5){await Promise.all(rows.slice(i,i+5).map(f=>spPost(CONFIG.lists.validacion,f)));await sleep(150);}
+    try{await acquireToken();}catch(e){} // token fresco antes de empezar
+    for(var i=0;i<rows.length;i+=5){await Promise.all(rows.slice(i,i+5).map(f=>spPost(CONFIG.lists.validacion,f)));await sleep(150);if(i>0&&i%50===0){try{await acquireToken();}catch(e){}}}
     marcarValidado();
     toast("Depósito \""+p+"\" validado ✓ ("+rows.length+" ítems)","ok");
   }catch(e){toast("Error al guardar: "+e.message,"err");}
