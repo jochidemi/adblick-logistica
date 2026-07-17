@@ -741,7 +741,7 @@ tr:hover td{background:var(--brand-light);}
     </div>
     <div class="modal-footer" style="gap:8px;">
       <button class="btn btn-outline" onclick="cerrarModal('modal-detalle-cam')">Cerrar</button>
-      <button class="btn btn-brand" onclick="descargarDetalleCamion()">📸 Descargar JPG</button>
+      <button class="btn btn-brand" onclick="descargarDetalleCamion(event)">📸 Descargar JPG</button>
     </div>
   </div>
 </div>
@@ -1324,9 +1324,13 @@ async function loadAllMasterData() {
       snap.forEach(function(s) {
         var sf = s.fields;
         if (sf.TipoStock === "ExistenciaPropia") {
-          stockPropio.push({ spId: s.id, categoria: sf.Categoria||"", puntoStock: sf.Proveedor||"", codigo: sf.Codigo||"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0, precio: parseFloat(sf.PrecioUnitario)||0 });
+          var _sp = { spId: s.id, categoria: sf.Categoria||"", puntoStock: sf.Proveedor||"", codigo: sf.Codigo||"", nombre: sf.Insumo||sf.Title||"", unidad: sf.Unidad||"", existencia: parseFloat(sf.Cantidad)||0, precio: parseFloat(sf.PrecioUnitario)||0 };
+          _sp._searchText = [_sp.categoria, _sp.puntoStock, _sp.codigo, _sp.nombre, _sp.unidad].join(' ').toLowerCase();
+          stockPropio.push(_sp);
         } else if (sf.TipoStock === "CuboOC") {
-          stockPendiente.push({ spId: s.id, proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Unidad||"", referencia: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0, precio: parseFloat(sf.PrecioUnitario)||0 });
+          var _op = { spId: s.id, proveedor: sf.Proveedor||"", insumo: sf.Insumo||sf.Title||"", tipo: sf.Unidad||"", referencia: sf.Categoria||"", pendiente: parseFloat(sf.Cantidad)||0, precio: parseFloat(sf.PrecioUnitario)||0 };
+          _op._searchText = [_op.proveedor, _op.insumo, _op.tipo, _op.referencia].join(' ').toLowerCase();
+          stockPendiente.push(_op);
         }
       });
       renderStockTable();
@@ -1819,10 +1823,23 @@ async function cargarMisPedidos() {
     if (el) el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
   });
   try {
-    var items = await spGet(CONFIG.lists.pedidos, "");
-    // Superadmin puede ver pedidos de otro operador; el resto siempre ve los propios
+    // [PERF Fix B] Filtrado en servidor: solo trae pedidos del operador actual.
+    // Antes: spGet sin params → trae TODOS los pedidos → filtra en cliente.
+    // Con $filter, el servidor devuelve solo los registros relevantes.
+    // Si el nombre tiene comillas simples, se escapan duplicándolas (estándar OData).
+    // Fallback silencioso: si el $filter falla, se recae al filtrado cliente.
     var filtroOp = (currentUserRol === "superadmin" && superadminViewUser) ? superadminViewUser : currentUser;
-    misPedidosData = items.filter(function(i){ return i.fields.Operador === filtroOp; });
+    var filtroOData = "&$filter=fields/Operador eq '" + filtroOp.replace(/'/g, "''") + "'";
+    var items;
+    try {
+      items = await spGet(CONFIG.lists.pedidos, filtroOData);
+    } catch(e) {
+      // Fallback: fetch completo + filtrado cliente (comportamiento anterior)
+      console.warn("[PERF] $filter no soportado, cayendo a filtrado cliente:", e.message);
+      var allItems = await spGet(CONFIG.lists.pedidos, "");
+      items = allItems.filter(function(i){ return i.fields.Operador === filtroOp; });
+    }
+    misPedidosData = items;
     misPedidosData.sort(function(a,b){ return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
     document.getElementById("mis-count").textContent = misPedidosData.length ? "("+misPedidosData.length+")" : "";
 
@@ -2134,7 +2151,10 @@ function parsearExistenciaCSV(ws) {
     var valorUsd = parseFloat(valStr) || 0;
     var dispPend = parseFloat(dpStr) || 0;
     var precio = (dispPend > 0) ? valorUsd / dispPend : 0;
-    items.push({ categoria: cat, puntoStock: pto, codigo: cod, nombre: nom, unidad: uni, existencia: ex, precio: precio });
+    var _item = { categoria: cat, puntoStock: pto, codigo: cod, nombre: nom, unidad: uni, existencia: ex, precio: precio };
+    // [PERF Fix A] Campo de búsqueda precalculado — evita JSON.stringify en cada keystroke
+    _item._searchText = [cat, pto, cod, nom, uni].join(' ').toLowerCase();
+    items.push(_item);
   });
   return items;
 }
@@ -2174,7 +2194,10 @@ function parsearExistencia(ws) {
     var valX = parseFloat(String(row[18]||"").replace(/\./g,"").replace(",",".")) || 0; // S: valor USD
     var precioX = (dpX > 0) ? valX / dpX : 0;
     if (e && ex > 0) {
-      items.push({ categoria: cat, puntoStock: puntoStock, codigo: b, nombre: e, unidad: h, existencia: ex, precio: precioX });
+      var _itemX = { categoria: cat, puntoStock: puntoStock, codigo: b, nombre: e, unidad: h, existencia: ex, precio: precioX };
+      // [PERF Fix A] Campo de búsqueda precalculado — evita JSON.stringify en cada keystroke
+      _itemX._searchText = [cat, puntoStock, b, e, h].join(' ').toLowerCase();
+      items.push(_itemX);
     }
   });
   return items;
@@ -2198,7 +2221,11 @@ function parsearCuboOC(ws) {
     // NO se suma (hay varias filas por OC): se conserva el primer valor no nulo de la OC.
     var pu = parseFloat(row["Precio Unitario"]) || 0;
     var key = prov + "||" + ins + "||" + ref;
-    if (!mapa[key]) mapa[key] = { proveedor:prov, insumo:ins, tipo:tipo, referencia:ref, pendiente:0, campana:camp, precio:0 };
+    if (!mapa[key]) {
+      mapa[key] = { proveedor:prov, insumo:ins, tipo:tipo, referencia:ref, pendiente:0, campana:camp, precio:0 };
+      // [PERF Fix A] Campo de búsqueda precalculado — evita JSON.stringify en cada keystroke
+      mapa[key]._searchText = [prov, ins, tipo, ref].join(' ').toLowerCase();
+    }
     mapa[key].pendiente += pend;
     if (camp && !mapa[key].campana) mapa[key].campana = camp;
     if (pu && !mapa[key].precio) mapa[key].precio = pu;
@@ -2312,7 +2339,10 @@ function renderStockTable() {
     return;
   }
   var filtered = rows.filter(function(r){
-    if (q && !JSON.stringify(r).toLowerCase().includes(q.toLowerCase())) return false;
+    // [PERF Fix A] Reemplaza JSON.stringify(r) por campo _searchText precalculado al cargar datos.
+    // JSON.stringify serializa el objeto entero (incluyendo spId, comprometidos, etc.) por cada
+    // ítem en cada keystroke — O(n×m). Con _searchText es O(n) sobre un string ya en memoria.
+    if (q && !(r._searchText || [r.nombre||'', r.puntoStock||'', r.codigo||'', r.categoria||'', r.proveedor||'', r.insumo||'', r.referencia||''].join(' ').toLowerCase()).includes(q.toLowerCase())) return false;
     if (stockTabActiva === "propio") {
       if (filtPto  && (r.puntoStock||"") !== filtPto) return false;
       if (filtInsP && r.nombre !== filtInsP) return false;
@@ -3215,8 +3245,11 @@ async function confirmarOrigen() {
     selectedOCItems     = [];
     cerrarModal("modal-origen");
     showToast("Origen asignado ✓"+(esRetiro?" — retiro personal, en camino":""),"ok");
-    cargarPedidosInsumos();
-    await cargarComprometidoSinRemito(); // recalcula Pendiente de remito leyendo SP fresco
+    // [FIXED: Bug 3] Race condition eliminada.
+    // cargarPedidosInsumos() ya hace fetch y recalcula comprometidos internamente.
+    // Antes se llamaba sin await + otro fetch redundante en paralelo, pisándose el estado.
+    // Ahora esperamos que termine primero para garantizar datos consistentes.
+    await cargarPedidosInsumos();
   } catch(e) { showToast("Error: "+e.message,"error"); }
   btn.disabled=false; btn.textContent="Confirmar origen →";
 }
@@ -3843,12 +3876,24 @@ function renderCamionesEnviados() {
   list.innerHTML = html;
 }
 
-function cerrarCamion(camId) {
+// [FIXED: Bug 4] cerrarCamion ahora persiste el cierre en SharePoint.
+// Antes solo actualizaba la variable en memoria: al recargar, el camión volvía a aparecer.
+async function cerrarCamion(camId) {
   if (!confirm('¿Cerrar este viaje? Ya no aparecerá en las opciones de asignación.')) return;
+  var cam = camiones.find(function(c){ return c.id === camId; });
+  // Actualizar en memoria primero para respuesta inmediata en la UI
   camiones = camiones.map(function(c){ return c.id===camId ? Object.assign({},c,{cerrado:true}) : c; });
   renderCamiones();
   renderItemsLogistica();
   showToast("Viaje cerrado ✓","ok");
+  // Persistir en SharePoint para que sobreviva a recargas de página
+  if (cam && cam.spItemId) {
+    try {
+      await spPatch(CONFIG.lists.camiones, cam.spItemId, { Estado: "enviado" });
+    } catch(e) {
+      showToast("⚠ Cierre guardado en pantalla pero no en SharePoint: " + e.message, "error");
+    }
+  }
 }
 
 var detalleCamId = null;
@@ -3929,7 +3974,9 @@ function filaMini(label, val) {
   return '<div style="font-size:11px;color:#374151;"><span style="font-weight:600;color:#6B7280;">'+label+': </span>'+val+'</div>';
 }
 
-async function descargarDetalleCamion() {
+// [FIXED: Bug 2] La función ahora recibe `event` como parámetro explícito.
+// Antes usaba el global `window.event`, que no existe en Firefox moderno.
+async function descargarDetalleCamion(event) {
   var el = document.getElementById("detalle-cam-card");
   var btn = event.target;
   var orig = btn.textContent;
@@ -4133,24 +4180,8 @@ function limpiarSelRemito() {
   // desmarcar todos los checkboxes
   document.querySelectorAll(".chk-remito").forEach(function(c){ c.checked = false; });
 }
-async function aplicarRemitoLote() {
-  var remito = document.getElementById("inp-remito-lote").value.trim();
-  if (!remito) { showToast("Ingresá el número de remito","error"); return; }
-  var ids = Object.keys(selRemitoItems);
-  if (!ids.length) return;
-  var btn = document.querySelector("#bar-remito .btn-brand");
-  btn.disabled = true; btn.textContent = "Guardando...";
-  try {
-    for (var i = 0; i < ids.length; i++) {
-      await spPatch(CONFIG.lists.pedidos, ids[i], { NroRemito: remito, Estado: "Cerrado" });
-    }
-    limpiarSelRemito();
-    document.getElementById("inp-remito-lote").value = "";
-    showToast("Remito aplicado a "+ids.length+" ítem"+(ids.length===1?"":"s")+" ✓","ok");
-    cargarMisPedidos();
-  } catch(e) { showToast("Error: "+e.message,"error"); }
-  btn.disabled = false; btn.textContent = "✓ Aplicar remito";
-}
+// [FIXED: Bug 1] Se eliminó la primera definición incompleta de aplicarRemitoLote
+// (no incluía mostrarComprobante). La definición completa y correcta está más abajo.
 
 var remitoSpId = null;
 function abrirModalRemito(spId) {
