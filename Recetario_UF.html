@@ -398,6 +398,10 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
             <label>Unidad</label>
             <div class="field-value" id="lblUnidad" style="min-width:80px;">-</div>
           </div>
+          <div class="field" style="min-width:160px;">
+            <label>Marca comercial</label>
+            <input type="text" id="inputMarca" placeholder="Ej: Roundup Full II" style="width:100%;">
+          </div>
           <div class="field">
             <label>Categoría</label>
             <div class="field-value" id="lblCategoria" style="min-width:110px;">-</div>
@@ -1029,6 +1033,7 @@ function onProductoChange() {
 function agregarProducto() {
   var nombreSel = document.getElementById("selProducto").value;
   var dosis     = parseFloat(document.getElementById("inputDosis").value);
+  var marca     = document.getElementById("inputMarca").value.trim();
   if (!nombreSel) { showToast("Seleccioná un producto", "error"); return; }
   if (!dosis || dosis <= 0) { showToast("Ingresá una dosis válida", "error"); return; }
 
@@ -1042,11 +1047,13 @@ function agregarProducto() {
     dosis:     dosis,
     unidad:    prod.unidad    || document.getElementById("lblUnidad").textContent,
     categoria: prod.categoria || "",
-    tipo:      prod.tipo      || ""
+    tipo:      prod.tipo      || "",
+    marca:     marca
   });
 
   document.getElementById("selProducto").value = "";
   document.getElementById("inputDosis").value  = "";
+  document.getElementById("inputMarca").value  = "";
   document.getElementById("lblUnidad").textContent    = "-";
   document.getElementById("lblCategoria").textContent = "-";
   renderProductos();
@@ -1069,7 +1076,7 @@ function renderProductos() {
   productosReceta.forEach(function(p, i) {
     var consumo = totalHa > 0 ? (p.dosis * totalHa).toLocaleString("es-AR", {maximumFractionDigits:1}) : "—";
     html += "<div class=\"producto-row\">" +
-            "<div class=\"p-nombre\">" + esc(p.nombre) + "</div>" +
+            "<div class=\"p-nombre\">" + esc(p.nombre) + (p.marca ? " <span style=\"color:var(--gray);font-weight:400;\">(" + esc(p.marca) + ")</span>" : "") + "</div>" +
             "<div class=\"p-dosis\">" + p.dosis + " " + esc(p.unidad) + "/ha" +
             (totalHa > 0 ? " &nbsp;→&nbsp; <span class=\"consumo-info\">" + consumo + " " + esc(p.unidad) + " total</span>" : "") +
             "</div>" +
@@ -1174,7 +1181,7 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
     var primeraFila = lotesDelCampo[0] || {};
     var items = productos.map(function(p) {
       var total = Math.round(p.dosis * ha * 100) / 100;
-      return { nombre: p.nombre, dosis: p.dosis, unidad: p.unidad, categoria: p.categoria, total: total };
+      return { nombre: p.nombre, dosis: p.dosis, unidad: p.unidad, categoria: p.categoria, marca: p.marca || "", total: total };
     });
     return { campo: campo, ha: ha, lotes: lotesDelCampo, localidad: primeraFila.localidad||"", partido: primeraFila.partido||"", items: items };
   });
@@ -1194,9 +1201,9 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
     if (b.localidad) html += "<span class='resumen-tag'>" + esc(b.localidad) + "</span>";
     html += "<div style='font-size:11px;color:var(--gray);margin:6px 0 10px;'>Lotes: " + esc(lotesNombres) + "</div>";
     html += "<div class='table-wrapper'><table class='data-table'>";
-    html += "<thead><tr><th>Producto</th><th>Categoría</th><th class='center'>Dosis</th><th class='center'>Total (" + b.ha.toFixed(1) + " ha)</th></tr></thead><tbody>";
+    html += "<thead><tr><th>Producto</th><th>Marca comercial</th><th>Categoría</th><th class='center'>Dosis</th><th class='center'>Total (" + b.ha.toFixed(1) + " ha)</th></tr></thead><tbody>";
     b.items.forEach(function(it) {
-      html += "<tr><td><strong>" + esc(it.nombre) + "</strong></td><td>" + esc(it.categoria||"-") + "</td>" +
+      html += "<tr><td><strong>" + esc(it.nombre) + "</strong></td><td>" + esc(it.marca||"-") + "</td><td>" + esc(it.categoria||"-") + "</td>" +
               "<td class='center'>" + it.dosis + " " + esc(it.unidad||"") + "/ha</td>" +
               "<td class='center'><strong>" + it.total + " " + esc(it.unidad||"") + "</strong></td></tr>";
     });
@@ -1236,6 +1243,7 @@ async function enviarAInsumos() {
         if (b.localidad) fields.Localidad = b.localidad;
         if (it.categoria) fields.GrupoInsumo = it.categoria;
         if (it.unidad) fields.Unidad = it.unidad;
+        if (it.marca) fields.MarcaComercial = it.marca;
         await spPostConRetry(CONFIG.insumosListId, fields);
       }
     }
@@ -1314,7 +1322,7 @@ function renderMisRecetasTabla() {
     var lotesArr = []; try { lotesArr = JSON.parse(f.Lotes||"[]"); } catch(e){}
     var lotesStr = lotesArr.map(function(l){ return l.lote||""; }).join(", ");
     var prodsHtml = prods.map(function(p){
-      return "<span class='prod-pill'>" + esc(p.nombre) + " " + p.dosis + " " + esc(p.unidad||"") + "/ha</span>";
+      return "<span class='prod-pill'>" + esc(p.nombre) + (p.marca ? " (" + esc(p.marca) + ")" : "") + " " + p.dosis + " " + esc(p.unidad||"") + "/ha</span>";
     }).join("");
     var fechaCreacion = f.FechaCreacion ? f.FechaCreacion.slice(0,10) : "";
     var fechaApl = f.FechaAplicacion ? f.FechaAplicacion.slice(0,10) : "-";
@@ -1358,7 +1366,7 @@ function descargarRecetaExcel(itemId) {
   var lotesStr = lotesArr.map(function(l){ return l.lote||""; }).join(", ");
   var header = ["N° Receta","Fecha Creación","Fecha Aplicación","Responsable","Campo","Lotes",
                 "Cultivo","Hectáreas","Localidad","Partido","Zona","Estadío","Diagnóstico",
-                "Contratista","Producto","Dosis","Unidad","Total","Observaciones"];
+                "Contratista","Producto","Marca Comercial","Dosis","Unidad","Total","Observaciones"];
   var base = [f.Title||"",
               f.FechaCreacion ? f.FechaCreacion.slice(0,10) : "",
               f.FechaAplicacion ? f.FechaAplicacion.slice(0,10) : "",
@@ -1367,16 +1375,16 @@ function descargarRecetaExcel(itemId) {
               f.Estadio||"", f.Diagnostico||"", f.Contratista||""];
   var rows = [header];
   if (prods.length === 0) {
-    rows.push(base.concat(["","","","",f.Observaciones||""]));
+    rows.push(base.concat(["","","","","",f.Observaciones||""]));
   } else {
     prods.forEach(function(p, pi){
-      rows.push(base.concat([p.nombre||"", p.dosis||"", p.unidad||"",
+      rows.push(base.concat([p.nombre||"", p.marca||"", p.dosis||"", p.unidad||"",
                              ((p.dosis||0)*ha).toFixed(2),
                              pi===0 ? f.Observaciones||"" : ""]));
     });
   }
   var ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [8,10,12,14,22,18,12,8,12,12,12,12,14,18,22,8,8,10,40].map(function(w){ return {wch:w}; });
+  ws["!cols"] = [8,10,12,14,22,18,12,8,12,12,12,12,14,18,22,18,8,8,10,40].map(function(w){ return {wch:w}; });
   var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Receta");
   XLSX.writeFile(wb, "Receta_" + (f.Title||itemId) + ".xlsx");
 }
@@ -1389,7 +1397,7 @@ function descargarRecetaVisual(itemId) {
   var lotesArr = []; try { lotesArr = JSON.parse(f.Lotes||"[]"); } catch(e){}
   var lotesStr = lotesArr.map(function(l){ return (l.lote||"") + " (" + (l.has||0) + " ha)"; }).join(", ");
   var prodsRows = prods.map(function(p){
-    return "<tr><td>" + esc(p.nombre) + "</td><td>" + p.dosis + " " + esc(p.unidad||"") + "/ha</td>" +
+    return "<tr><td>" + esc(p.nombre) + "</td><td>" + esc(p.marca||"-") + "</td><td>" + p.dosis + " " + esc(p.unidad||"") + "/ha</td>" +
            "<td>" + ((p.dosis||0)*((f.HectareasTotales||f.HectareasTotal||0)||0)).toFixed(2) + " " + esc(p.unidad||"") + "</td></tr>";
   }).join("");
   var html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'>" +
@@ -1421,7 +1429,7 @@ function descargarRecetaVisual(itemId) {
     "<div><div class='label'>Diagnóstico</div><div class='val'>" + esc(f.Diagnostico||"") + "</div></div>" +
     "<div><div class='label'>Contratista</div><div class='val'>" + esc(f.Contratista||"") + "</div></div>" +
     "</div>" +
-    "<table><thead><tr><th>Producto</th><th>Dosis</th><th>Total</th></tr></thead><tbody>" + prodsRows + "</tbody></table>" +
+    "<table><thead><tr><th>Producto</th><th>Marca Comercial</th><th>Dosis</th><th>Total</th></tr></thead><tbody>" + prodsRows + "</tbody></table>" +
     "<div class='obs'>" + esc(f.Observaciones||"") + "</div>" +
     "<p style='margin-top:20px;font-size:11px;color:#888'>Generado por ADBlick Granos – Recetario Agronómico</p>" +
     "<button onclick='window.print()' style='margin-top:10px;padding:8px 18px;background:#F5B800;border:none;border-radius:6px;font-weight:700;cursor:pointer'>Imprimir / Guardar PDF</button>" +
@@ -1433,7 +1441,7 @@ function descargarRecetaVisual(itemId) {
 function descargarHistorialMisRecetas() {
   showToast("Generando Excel...", "info");
   try {
-    var header = ["N° Receta","Fecha Creación","Fecha Aplicación","Responsable","Campo","Lotes","Cultivo","Hectáreas","Localidad","Partido","Zona","Estadío","Diagnóstico","Contratista","Producto","Dosis","Unidad","Total"];
+    var header = ["N° Receta","Fecha Creación","Fecha Aplicación","Responsable","Campo","Lotes","Cultivo","Hectáreas","Localidad","Partido","Zona","Estadío","Diagnóstico","Contratista","Producto","Marca Comercial","Dosis","Unidad","Total"];
     var rows = [header];
     _misRecetasItems.forEach(function(item) {
       var f = item.fields || {};
@@ -1443,8 +1451,8 @@ function descargarHistorialMisRecetas() {
       var base = [f.Title||"",f.FechaCreacion?f.FechaCreacion.slice(0,10):"",f.FechaAplicacion?f.FechaAplicacion.slice(0,10):"",
                   f.Responsable||"",f.Campo||"",lotesStr,f.Cultivo||"",(f.HectareasTotales||f.HectareasTotal||0)||0,
                   f.Localidad||"",f.Partido||"",f.Zona||"",f.Estadio||"",f.Diagnostico||"",f.Contratista||""];
-      if (prods.length === 0) { rows.push(base.concat(["","","",""])); }
-      else { prods.forEach(function(p){ rows.push(base.concat([p.nombre||"",p.dosis||"",p.unidad||"",((p.dosis||0)*((f.HectareasTotales||f.HectareasTotal||0)||0)).toFixed(2)])); }); }
+      if (prods.length === 0) { rows.push(base.concat(["","","","",""])); }
+      else { prods.forEach(function(p){ rows.push(base.concat([p.nombre||"",p.marca||"",p.dosis||"",p.unidad||"",((p.dosis||0)*((f.HectareasTotales||f.HectareasTotal||0)||0)).toFixed(2)])); }); }
     });
     var ws = XLSX.utils.aoa_to_sheet(rows);
     var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Mis Recetas");
@@ -1508,7 +1516,7 @@ function filtrarHistorial() {
     var prods = []; try { prods = JSON.parse(f.Productos||"[]"); } catch(e){}
     var lotesArr = []; try { lotesArr = JSON.parse(f.Lotes||"[]"); } catch(e){}
     var lotesStr = lotesArr.map(function(l){ return l.lote || ""; }).join(", ");
-    var prodsStr = prods.map(function(p){ return p.nombre + " " + p.dosis + " " + p.unidad + "/ha"; }).join(" | ");
+    var prodsStr = prods.map(function(p){ return p.nombre + (p.marca ? " (" + p.marca + ")" : "") + " " + p.dosis + " " + p.unidad + "/ha"; }).join(" | ");
 
     tb += "<tr>" +
           "<td><strong>" + esc(f.Title||"") + "</strong></td>" +
@@ -1536,7 +1544,7 @@ async function descargarHistorial() {
     if (historialItems.length === 0) await cargarHistorial();
     var header = ["N° Receta","Fecha Creación","Fecha Aplicación","Usuario","Responsable",
                   "Campo","Lotes","Cultivo","Hectáreas","Localidad","Partido","Zona",
-                  "Estadío","Diagnóstico","Contratista","Producto","Dosis","Unidad","Consumo Total","Observaciones"];
+                  "Estadío","Diagnóstico","Contratista","Producto","Marca Comercial","Dosis","Unidad","Consumo Total","Observaciones"];
     var rows = [header];
     historialItems.forEach(function(item) {
       var f = item.fields || {};
@@ -1548,11 +1556,11 @@ async function descargarHistorial() {
                   (f.HectareasTotales||f.HectareasTotal||0)||0,f.Localidad||"",f.Partido||"",f.Zona||"",
                   f.Estadio||"",f.Diagnostico||"",f.Contratista||""];
       if (prods.length === 0) {
-        rows.push(base.concat(["","","","",f.Observaciones||""]));
+        rows.push(base.concat(["","","","","",f.Observaciones||""]));
       } else {
         prods.forEach(function(p, pi) {
           var consumo = ((f.HectareasTotales||f.HectareasTotal||0)||0) * (p.dosis||0);
-          rows.push(base.concat([p.nombre||"",p.dosis||"",p.unidad||"",
+          rows.push(base.concat([p.nombre||"",p.marca||"",p.dosis||"",p.unidad||"",
                                  consumo||"",pi===0?f.Observaciones||"":""]));
         });
       }
