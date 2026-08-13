@@ -275,7 +275,12 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 
 <div class="header">
   <div class="header-title">ADBlick Granos – Recetario Agronómico</div>
-  <div class="header-user" id="headerUser"></div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button id="btnMdaConfig" onclick="abrirModalMDAConfig()" class="btn btn-secondary" style="font-size:11px;padding:4px 10px;background:#fff3cd;color:#856404;border:1px solid #ffeeba;">
+      🔴 MDA: Configurar cuenta
+    </button>
+    <div class="header-user" id="headerUser"></div>
+  </div>
 </div>
 
 <div class="loading-screen" id="loadingScreen">
@@ -377,34 +382,55 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
             <label>Fecha de Aplicación</label>
             <input type="date" id="inputFecha" style="min-width:160px;">
           </div>
+          <div class="field">
+            <label>Forma de Aplicación (MDA)</label>
+            <select id="selFormaAplicacion" style="min-width:200px;">
+              <option value="">-- Seleccionar --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Propiedad (MDA)</label>
+            <select id="selPropiedadAplicacion" style="min-width:180px;">
+              <option value="">-- Seleccionar --</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <!-- PASO 3: Productos -->
+      <!-- PASO 3: Productos (Stock ADBlick + Catálogo MDA) -->
       <div class="card">
-        <span class="step-label">Paso 3 — Productos</span>
+        <span class="step-label">Paso 3 — Productos (Stock ADBlick + Catálogo MDA)</span>
+        <div class="info-box" id="mdaProductosStatus">Cargando catálogo oficial MDA (10.494 productos)...</div>
         <div class="form-row" style="margin-bottom:12px;">
           <div class="field" style="flex:1;min-width:220px;">
-            <label>Producto</label>
-            <select id="selProducto" onchange="onProductoChange()" style="width:100%;">
-              <option value="">-- Seleccionar producto --</option>
+            <label>Insumo ADBlick (Stock Interno)</label>
+            <select id="selProductoAdblick" onchange="onProductoAdblickChange()" style="width:100%;">
+              <option value="">-- Seleccionar insumo interno --</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1;min-width:240px;position:relative;">
+            <label>Producto Oficial MDA (SENASA)</label>
+            <input type="text" id="inputBuscarProducto" placeholder="Buscar equivalencia en MDA..." autocomplete="off" style="width:100%;" oninput="buscarProductoMDA(this.value)" onfocus="buscarProductoMDA(this.value)">
+            <input type="hidden" id="inputProductoMdaId">
+            <div id="dropdownProductos" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:#fff;border:1.5px solid var(--purple);border-radius:0 0 8px 8px;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+          </div>
+          <div class="field">
+            <label>Diagnóstico (MDA)</label>
+            <select id="selDxProducto" style="min-width:160px;">
+              <option value="">-- Seleccionar --</option>
             </select>
           </div>
           <div class="field">
             <label>Dosis</label>
-            <input type="number" id="inputDosis" min="0" step="0.01" style="width:100px;">
+            <input type="number" id="inputDosis" min="0" step="0.01" style="width:90px;">
           </div>
           <div class="field">
             <label>Unidad</label>
             <div class="field-value" id="lblUnidad" style="min-width:80px;">-</div>
           </div>
-          <div class="field" style="min-width:160px;">
-            <label>Marca comercial</label>
-            <input type="text" id="inputMarca" placeholder="Ej: Roundup Full II" style="width:100%;">
-          </div>
           <div class="field">
             <label>Categoría</label>
-            <div class="field-value" id="lblCategoria" style="min-width:110px;">-</div>
+            <div class="field-value" id="lblCategoria" style="min-width:100px;">-</div>
           </div>
           <div style="display:flex;align-items:flex-end;">
             <button class="btn btn-green" onclick="agregarProducto()">+ Agregar</button>
@@ -618,7 +644,26 @@ var ESTADIOS = [
   "Insecticida","Insecticida 2","Desecante"
 ];
 
-var DIAGNOSTICOS = ["Malezas","Insectos","Ácaros","Bacteriosis","Fungosis","Deficiencia Nutricional"];
+var DIAGNOSTICOS_MDA = [
+  {id:"1",nombre:"Ácaros"},{id:"2",nombre:"Bacteriosis"},{id:"3",nombre:"Curasemillas"},
+  {id:"4",nombre:"Deficiencia nutricional"},{id:"5",nombre:"Desinfección"},{id:"6",nombre:"Fungosis"},
+  {id:"7",nombre:"Inoculación"},{id:"8",nombre:"Insectos"},{id:"9",nombre:"Malezas"},
+  {id:"10",nombre:"Moluscos"},{id:"11",nombre:"Nematodos"},{id:"12",nombre:"Roedores"},
+  {id:"13",nombre:"Isopodos"},{id:"14",nombre:"Otros"}
+];
+var DIAGNOSTICOS = DIAGNOSTICOS_MDA.map(function(d){ return d.nombre; });
+
+var FORMAS_APLICACION_MDA = [
+  {id:"12",nombre:"AGRICOLA TERRESTRE"},{id:"13",nombre:"AGRICOLA AEREA"},{id:"145",nombre:"CONTROLADORA DE AVES PLAGA"}
+];
+var PROPIEDAD_APLICACION_MDA = [
+  {id:"PROPIETARIO",nombre:"PROPIETARIO"},{id:"ARRENDATARIO",nombre:"ARRENDATARIO"},
+  {id:"MEDIERO",nombre:"MEDIERO"},{id:"OCUPANTE",nombre:"OCUPANTE"}
+];
+
+// URL del JSON con los 10.494 productos oficiales del MDA
+var MDA_PRODUCTOS_URL = "https://raw.githubusercontent.com/jochidemi/adblick-logistica/main/mda_datos_maestros.json";
+var MDA_PRODUCTOS = []; // Se carga async al inicio
 
 var OBS_DEFAULT = "Se recomienda aplicar con las siguientes condiciones: humedad relativa mayor al 50 %; temperatura no mayor a 25 °C; velocidad del viento entre 5 y 15 km/h; aplicar siempre con la dirección del viento contraria a zonas sensibles (viviendas, explotaciones productivas, hospitales, escuelas, etc.), cursos de agua y cultivos sensibles. Evitar la aplicación cuando se prevean precipitaciones dentro de las 4 horas posteriores al tratamiento. Leer completamente la etiqueta del producto antes de su uso y respetar las dosis, momentos y condiciones indicadas en la presente receta, la cual es válida únicamente para el lote y cultivo especificados. Utilizar los equipos de protección personal (EPP) indicados en la etiqueta: mameluco, guantes, antiparras y mascarilla con filtro apropiado. No reutilizar los envases vacíos; realizar el triple lavado y disponerlos conforme a la normativa vigente. En caso de derrame accidental o malestar del operario, consultar la ficha de seguridad del producto (SDS) y comunicarse con el centro toxicológico más cercano. Esta receta no puede ser modificada sin autorización del profesional firmante.";
 
@@ -694,6 +739,8 @@ function showApp() {
   initStaticSelects();
   document.getElementById("txtObservaciones").value = OBS_DEFAULT;
   loadMasterData();
+  loadMDAProductos();
+  checkMdaStatusHeader();
   checkAdmin();
 }
 
@@ -727,6 +774,23 @@ async function checkAdmin() {
 function initStaticSelects() {
   fillSelect("selEstadio", ESTADIOS);
   fillSelect("selDx", DIAGNOSTICOS);
+  // MDA selects
+  var selForma = document.getElementById("selFormaAplicacion");
+  FORMAS_APLICACION_MDA.forEach(function(f) {
+    var opt = document.createElement("option"); opt.value = f.id; opt.textContent = f.nombre; selForma.appendChild(opt);
+  });
+  var selProp = document.getElementById("selPropiedadAplicacion");
+  PROPIEDAD_APLICACION_MDA.forEach(function(p) {
+    var opt = document.createElement("option"); opt.value = p.id; opt.textContent = p.nombre; selProp.appendChild(opt);
+  });
+  // Diagnosticos por producto (misma lista MDA)
+  var selDxProd = document.getElementById("selDxProducto");
+  DIAGNOSTICOS_MDA.forEach(function(d) {
+    var opt = document.createElement("option"); opt.value = d.id; opt.textContent = d.nombre; selDxProd.appendChild(opt);
+  });
+  // Default: Agricola Terrestre, Arrendatario
+  selForma.value = "12";
+  selProp.value = "ARRENDATARIO";
 }
 
 function fillSelect(id, arr) {
@@ -749,6 +813,73 @@ async function loadMasterData() {
     showToast("Error al cargar datos maestros: " + e.message, "error");
   }
 }
+
+async function loadMDAProductos() {
+  var statusDiv = document.getElementById("mdaProductosStatus");
+  try {
+    var resp = await fetch(MDA_PRODUCTOS_URL);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    var data = await resp.json();
+    MDA_PRODUCTOS = data.productos || [];
+    statusDiv.innerHTML = "✅ Catálogo MDA cargado: <strong>" + MDA_PRODUCTOS.length + "</strong> productos oficiales disponibles.";
+    statusDiv.style.background = "#e6f4ed";
+    statusDiv.style.borderColor = "#6dba9b";
+  } catch(e) {
+    statusDiv.innerHTML = "⚠️ No se pudo cargar el catálogo MDA. Los productos se cargarán desde SharePoint.";
+    statusDiv.style.background = "#fff3cd";
+    statusDiv.style.borderColor = "#ffc107";
+  }
+}
+
+var _buscarTimeout = null;
+function buscarProductoMDA(query) {
+  var dropdown = document.getElementById("dropdownProductos");
+  if (!query || query.length < 2 || MDA_PRODUCTOS.length === 0) {
+    dropdown.style.display = "none";
+    return;
+  }
+  clearTimeout(_buscarTimeout);
+  _buscarTimeout = setTimeout(function() {
+    var q = query.toLowerCase();
+    var results = MDA_PRODUCTOS.filter(function(p) {
+      return p.nombre.toLowerCase().indexOf(q) !== -1 ||
+             p.registro_senasa.indexOf(q) !== -1 ||
+             p.texto_completo.toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 30);
+    if (results.length === 0) {
+      dropdown.innerHTML = "<div style='padding:10px;color:var(--gray);font-size:12px;'>Sin resultados para \"" + query + "\"</div>";
+      dropdown.style.display = "block";
+      return;
+    }
+    var html = "";
+    results.forEach(function(p) {
+      html += "<div style='padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:12px;' " +
+              "onmouseover='this.style.background=\"#e6f4ed\"' onmouseout='this.style.background=\"#fff\"' " +
+              "onclick='seleccionarProductoMDA(\"" + p.id_mda + "\")'>" +
+              "<strong>" + p.nombre + "</strong>" +
+              "<span style='color:var(--gray);margin-left:8px;font-size:11px;'>SENASA: " + p.registro_senasa + "</span>" +
+              "</div>";
+    });
+    dropdown.innerHTML = html;
+    dropdown.style.display = "block";
+  }, 150);
+}
+
+function seleccionarProductoMDA(idMda) {
+  var prod = MDA_PRODUCTOS.find(function(p) { return p.id_mda === idMda; });
+  if (!prod) return;
+  document.getElementById("inputBuscarProducto").value = prod.nombre;
+  document.getElementById("inputProductoMdaId").value = prod.id_mda;
+  document.getElementById("dropdownProductos").style.display = "none";
+}
+
+// Close dropdown when clicking outside
+document.addEventListener("click", function(e) {
+  if (!e.target.closest("#inputBuscarProducto") && !e.target.closest("#dropdownProductos")) {
+    var dd = document.getElementById("dropdownProductos");
+    if (dd) dd.style.display = "none";
+  }
+});
 
 // Búsqueda de campo case-insensitive — cubre variaciones de nombre interno en SharePoint
 function spField(f, name) {
@@ -806,8 +937,9 @@ async function loadProductos() {
     };
   }).filter(function(p) { return p.nombre; });
 
-  var sel = document.getElementById("selProducto");
-  sel.innerHTML = "<option value=\"\">-- Seleccionar producto --</option>";
+  var sel = document.getElementById("selProductoAdblick");
+  if (!sel) return;
+  sel.innerHTML = "<option value=\"\">-- Seleccionar insumo interno --</option>";
   // Agrupar por categoría
   var byCategoria = {};
   PRODUCTOS_ARR.forEach(function(p) {
@@ -1023,39 +1155,72 @@ function renderSeleccion() {
 // ════════════════════════════════════════════════════════════
 //  FORMULARIO — PRODUCTOS
 // ════════════════════════════════════════════════════════════
-function onProductoChange() {
-  var sel = document.getElementById("selProducto");
+function onProductoAdblickChange() {
+  var sel = document.getElementById("selProductoAdblick");
   var opt = sel.options[sel.selectedIndex];
-  document.getElementById("lblUnidad").textContent   = opt.dataset.unidad   || "-";
-  document.getElementById("lblCategoria").textContent = opt.dataset.categoria || "-";
+  if (!opt || !opt.value) {
+    document.getElementById("lblUnidad").textContent   = "-";
+    document.getElementById("lblCategoria").textContent = "-";
+    return;
+  }
+  var unidad = opt.dataset.unidad || "-";
+  var cat    = opt.dataset.categoria || "-";
+  document.getElementById("lblUnidad").textContent   = unidad;
+  document.getElementById("lblCategoria").textContent = cat;
+
+  // Intentar autocompletar la busqueda en MDA con el mismo nombre
+  var nombreInsumo = opt.value;
+  var inputMda = document.getElementById("inputBuscarProducto");
+  if (inputMda && !inputMda.value) {
+    inputMda.value = nombreInsumo;
+    buscarProductoMDA(nombreInsumo);
+  }
 }
 
 function agregarProducto() {
-  var nombreSel = document.getElementById("selProducto").value;
-  var dosis     = parseFloat(document.getElementById("inputDosis").value);
-  var marca     = document.getElementById("inputMarca").value.trim();
-  if (!nombreSel) { showToast("Seleccioná un producto", "error"); return; }
+  var prodAdblickSel = document.getElementById("selProductoAdblick");
+  var nombreAdblick  = prodAdblickSel ? prodAdblickSel.value : "";
+  var nombreMdaInput = document.getElementById("inputBuscarProducto").value.trim();
+  var mdaId          = document.getElementById("inputProductoMdaId").value;
+  var dosis          = parseFloat(document.getElementById("inputDosis").value);
+  var unidad         = document.getElementById("lblUnidad").textContent;
+  var categoria      = document.getElementById("lblCategoria").textContent;
+  var dxProdSel      = document.getElementById("selDxProducto");
+  var dxProdId       = dxProdSel ? dxProdSel.value : "";
+  var dxProdNombre   = (dxProdSel && dxProdSel.options[dxProdSel.selectedIndex]) ? dxProdSel.options[dxProdSel.selectedIndex].text : "";
+
+  if (!nombreAdblick && !nombreMdaInput) { showToast("Seleccioná un insumo de ADBlick o buscá un producto MDA", "error"); return; }
   if (!dosis || dosis <= 0) { showToast("Ingresá una dosis válida", "error"); return; }
 
-  var prod = PRODUCTOS_ARR.find(function(p){ return p.nombre === nombreSel; }) || {};
-  var yaExiste = productosReceta.some(function(p){ return p.nombre === nombreSel; });
+  var nombreFinal = nombreAdblick || nombreMdaInput;
+  var yaExiste = productosReceta.some(function(p){ return p.nombre === nombreFinal; });
   if (yaExiste) { showToast("Este producto ya está en la lista", "info"); return; }
 
+  // Buscar datos completos del producto MDA si fue seleccionado
+  var prodMDA = MDA_PRODUCTOS.find(function(p) { return p.id_mda === mdaId || p.nombre === nombreMdaInput; });
+
   productosReceta.push({
-    codigo:    prod.codigo    || "",
-    nombre:    prod.nombre    || nombreSel,
-    dosis:     dosis,
-    unidad:    prod.unidad    || document.getElementById("lblUnidad").textContent,
-    categoria: prod.categoria || "",
-    tipo:      prod.tipo      || "",
-    marca:     marca
+    nombre:          nombreFinal,
+    nombre_adblick:  nombreAdblick,
+    id_mda:          prodMDA ? prodMDA.id_mda : (mdaId || "5316"),
+    nombre_mda:      prodMDA ? prodMDA.nombre : (nombreMdaInput || nombreFinal),
+    registro_senasa: prodMDA ? prodMDA.registro_senasa : "",
+    dosis:           dosis,
+    unidad:          unidad !== "-" ? unidad : "litros/ha",
+    categoria:       categoria !== "-" ? categoria : "",
+    diagnostico_id:  dxProdId || "9",
+    diagnostico:     dxProdNombre || "Malezas",
+    marca:           nombreFinal
   });
 
-  document.getElementById("selProducto").value = "";
-  document.getElementById("inputDosis").value  = "";
-  document.getElementById("inputMarca").value  = "";
+  if (prodAdblickSel) prodAdblickSel.value = "";
+  document.getElementById("inputBuscarProducto").value = "";
+  document.getElementById("inputProductoMdaId").value  = "";
+  document.getElementById("inputDosis").value          = "";
   document.getElementById("lblUnidad").textContent    = "-";
   document.getElementById("lblCategoria").textContent = "-";
+  if (dxProdSel) dxProdSel.value = "";
+
   renderProductos();
   showToast("Producto agregado", "success");
 }
@@ -1075,12 +1240,13 @@ function renderProductos() {
   var html = "";
   productosReceta.forEach(function(p, i) {
     var consumo = totalHa > 0 ? (p.dosis * totalHa).toLocaleString("es-AR", {maximumFractionDigits:1}) : "—";
+    var senasaTag = p.registro_senasa ? " <span style='color:var(--gray);font-size:11px;font-weight:400;'>(SENASA: " + esc(p.registro_senasa) + ")</span>" : "";
     html += "<div class=\"producto-row\">" +
-            "<div class=\"p-nombre\">" + esc(p.nombre) + (p.marca ? " <span style=\"color:var(--gray);font-weight:400;\">(" + esc(p.marca) + ")</span>" : "") + "</div>" +
+            "<div class=\"p-nombre\">" + esc(p.nombre) + senasaTag + "</div>" +
             "<div class=\"p-dosis\">" + p.dosis + " " + esc(p.unidad) + "/ha" +
             (totalHa > 0 ? " &nbsp;→&nbsp; <span class=\"consumo-info\">" + consumo + " " + esc(p.unidad) + " total</span>" : "") +
             "</div>" +
-            "<span class=\"badge badge-green\">" + esc(p.categoria||p.tipo||"") + "</span>" +
+            "<span class=\"badge badge-green\">" + esc(p.diagnostico || "") + "</span>" +
             "<button class=\"btn btn-danger\" style=\"padding:3px 8px;font-size:11px;margin-left:auto;\" onclick=\"quitarProducto(" + i + ")\">✕</button>" +
             "</div>";
   });
@@ -1273,11 +1439,16 @@ function limpiarFormulario() {
   document.getElementById("selDx").value          = "";
   document.getElementById("selContratista").value = "";
   document.getElementById("inputFecha").value     = "";
+  document.getElementById("selFormaAplicacion").value = "12";
+  document.getElementById("selPropiedadAplicacion").value = "ARRENDATARIO";
   document.getElementById("txtObservaciones").value = OBS_DEFAULT;
-  document.getElementById("selProducto").value    = "";
-  document.getElementById("inputDosis").value     = "";
-  document.getElementById("lblUnidad").textContent    = "-";
-  document.getElementById("lblCategoria").textContent = "-";
+  if (document.getElementById("selProductoAdblick")) document.getElementById("selProductoAdblick").value = "";
+  document.getElementById("inputBuscarProducto").value = "";
+  document.getElementById("inputProductoMdaId").value  = "";
+  document.getElementById("inputDosis").value          = "";
+  if (document.getElementById("lblUnidad")) document.getElementById("lblUnidad").textContent    = "-";
+  if (document.getElementById("lblCategoria")) document.getElementById("lblCategoria").textContent    = "-";
+  if (document.getElementById("selDxProducto")) document.getElementById("selDxProducto").value       = "";
   renderSeleccion();
   renderProductos();
 }
@@ -1663,6 +1834,108 @@ window.addEventListener("load", function() {
   }
   initMsal();
 });
+
+// ════════════════════════════════════════════════════════════
+//  GESTIÓN DE CREDENCIALES MDA (LOCALSTORAGE)
+// ════════════════════════════════════════════════════════════
+function getCredencialesMDA() {
+  try {
+    var raw = localStorage.getItem("mda_user_credentials");
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { email: "", pass: "", cuit: "30710939345", usarDefault: true };
+}
+
+function checkMdaStatusHeader() {
+  var creds = getCredencialesMDA();
+  var btn = document.getElementById("btnMdaConfig");
+  if (!btn) return;
+  if (creds.usarDefault) {
+    btn.innerHTML = "🟡 MDA: Cuenta Genérica (Default)";
+    btn.style.background = "#fff3cd";
+    btn.style.color = "#856404";
+    btn.style.borderColor = "#ffeeba";
+  } else if (creds.email && creds.pass) {
+    btn.innerHTML = "🟢 MDA: " + esc(creds.email);
+    btn.style.background = "#e6f4ed";
+    btn.style.color = "#007743";
+    btn.style.borderColor = "#6dba9b";
+  } else {
+    btn.innerHTML = "🔴 MDA: Configurar cuenta";
+    btn.style.background = "#fdecea";
+    btn.style.color = "#c0392b";
+    btn.style.borderColor = "#f5c6cb";
+  }
+}
+
+function abrirModalMDAConfig() {
+  var creds = getCredencialesMDA();
+  document.getElementById("mdaUserEmail").value = creds.email || "";
+  document.getElementById("mdaUserPass").value  = creds.pass  || "";
+  document.getElementById("mdaUserCuit").value  = creds.cuit  || "30710939345";
+  document.getElementById("mdaUsarDefault").checked = !!creds.usarDefault;
+  toggleMdaDefault(!!creds.usarDefault);
+  document.getElementById("modalMdaConfig").classList.add("show");
+}
+
+function cerrarModalMdaConfig() {
+  document.getElementById("modalMdaConfig").classList.remove("show");
+}
+
+function toggleMdaDefault(usarDefault) {
+  document.getElementById("mdaUserEmail").disabled = usarDefault;
+  document.getElementById("mdaUserPass").disabled  = usarDefault;
+}
+
+function guardarCredencialesMDA() {
+  var usarDefault = document.getElementById("mdaUsarDefault").checked;
+  var email = document.getElementById("mdaUserEmail").value.trim();
+  var pass  = document.getElementById("mdaUserPass").value;
+  var cuit  = document.getElementById("mdaUserCuit").value.trim() || "30710939345";
+
+  if (!usarDefault && (!email || !pass)) {
+    showToast("Ingresá tu email y contraseña del MDA, o marcá 'Usar cuenta por defecto'", "error");
+    return;
+  }
+
+  var obj = { email: email, pass: pass, cuit: cuit, usarDefault: usarDefault };
+  localStorage.setItem("mda_user_credentials", JSON.stringify(obj));
+  cerrarModalMdaConfig();
+  checkMdaStatusHeader();
+  showToast("Credenciales MDA guardadas", "success");
+}
 </script>
+
+<!-- MODAL CONFIGURACIÓN CREDENCIALES MDA -->
+<div class="modal-overlay" id="modalMdaConfig">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-title">🔐 Configuración de Cuenta MDA</div>
+    <div class="modal-sub">Ingresá tus credenciales personales del MDA. Se guardarán únicamente en tu navegador.</div>
+    <div class="form-row" style="flex-direction:column;gap:12px;margin-bottom:16px;">
+      <div class="field" style="width:100%;">
+        <label>Email de acceso MDA</label>
+        <input type="email" id="mdaUserEmail" placeholder="tu.usuario@ejemplo.com" style="width:100%;">
+      </div>
+      <div class="field" style="width:100%;">
+        <label>Contraseña MDA</label>
+        <input type="password" id="mdaUserPass" placeholder="••••••••" style="width:100%;">
+      </div>
+      <div class="field" style="width:100%;">
+        <label>CUIT del Productor</label>
+        <input type="text" id="mdaUserCuit" value="30710939345" placeholder="30710939345" style="width:100%;">
+      </div>
+      <div style="margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dark);cursor:pointer;">
+          <input type="checkbox" id="mdaUsarDefault" onchange="toggleMdaDefault(this.checked)">
+          <span>No tengo cuenta propia (Usar cuenta por defecto / Jefe Zonal)</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions" style="justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="cerrarModalMdaConfig()">Cancelar</button>
+      <button class="btn btn-green" onclick="guardarCredencialesMDA()">Guardar Credenciales</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
