@@ -847,37 +847,61 @@ async function loadMDAProductos() {
 }
 
 var _buscarTimeout = null;
-function buscarProductoMDA(query) {
+function normalizarTexto(t) {
+  return (t || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[,.\/\-_]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function buscarProductoMDA(query, immediate) {
   var dropdown = document.getElementById("dropdownProductos");
   if (!query || query.length < 2 || MDA_PRODUCTOS.length === 0) {
-    dropdown.style.display = "none";
+    if (dropdown) dropdown.style.display = "none";
     return;
   }
   clearTimeout(_buscarTimeout);
-  _buscarTimeout = setTimeout(function() {
-    var q = query.toLowerCase();
+
+  var ejecutarBusqueda = function() {
+    var qNorm = normalizarTexto(query);
+    var terms = qNorm.split(" ").filter(function(t){ return t.length >= 2; });
+
     var results = MDA_PRODUCTOS.filter(function(p) {
-      return p.nombre.toLowerCase().indexOf(q) !== -1 ||
-             p.registro_senasa.indexOf(q) !== -1 ||
-             p.texto_completo.toLowerCase().indexOf(q) !== -1;
-    }).slice(0, 30);
+      var pText = p._norm || (p._norm = normalizarTexto(p.nombre + " " + (p.registro_senasa || "") + " " + (p.texto_completo || "")));
+      if (pText.indexOf(qNorm) !== -1) return true;
+      return terms.length > 0 && terms.every(function(t){ return pText.indexOf(t) !== -1; });
+    }).slice(0, 35);
+
     if (results.length === 0) {
-      dropdown.innerHTML = "<div style='padding:10px;color:var(--gray);font-size:12px;'>Sin resultados para \"" + query + "\"</div>";
+      dropdown.innerHTML = "<div style='padding:10px;color:var(--gray);font-size:12px;'>Sin equivalencia exacta en MDA para \"" + esc(query) + "\". Podés escribir el nombre o N° SENASA arriba.</div>";
       dropdown.style.display = "block";
       return;
     }
+
+    // Si hay un match exacto, pre-asignar el ID de MDA
+    var exactMatch = results.find(function(p){
+      return normalizarTexto(p.nombre) === qNorm || p.registro_senasa === query.trim();
+    });
+    if (exactMatch) {
+      document.getElementById("inputProductoMdaId").value = exactMatch.id_mda;
+    }
+
     var html = "";
     results.forEach(function(p) {
-      html += "<div style='padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:12px;' " +
-              "onmouseover='this.style.background=\"#e6f4ed\"' onmouseout='this.style.background=\"#fff\"' " +
+      var isExact = exactMatch && exactMatch.id_mda === p.id_mda;
+      html += "<div style='padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:12px;" + (isExact ? "background:#e6f4ed;font-weight:700;" : "") + "' " +
+              "onmouseover='this.style.background=\"#d5ecd9\"' onmouseout='this.style.background=\"" + (isExact ? "#e6f4ed" : "#fff") + "\"' " +
               "onclick='seleccionarProductoMDA(\"" + p.id_mda + "\")'>" +
-              "<strong>" + p.nombre + "</strong>" +
-              "<span style='color:var(--gray);margin-left:8px;font-size:11px;'>SENASA: " + p.registro_senasa + "</span>" +
+              "<div><strong>" + esc(p.nombre) + "</strong> " + (isExact ? "<span style='font-size:10px;background:#007743;color:#fff;border-radius:3px;padding:1px 4px;'>Coincidencia exacta</span>" : "") + "</div>" +
+              "<div style='color:var(--gray);font-size:11px;'>SENASA: " + esc(p.registro_senasa || "s/d") + (p.principio_activo ? " · " + esc(p.principio_activo) : "") + "</div>" +
               "</div>";
     });
     dropdown.innerHTML = html;
     dropdown.style.display = "block";
-  }, 150);
+  };
+
+  if (immediate) {
+    ejecutarBusqueda();
+  } else {
+    _buscarTimeout = setTimeout(ejecutarBusqueda, 150);
+  }
 }
 
 function seleccionarProductoMDA(idMda) {
@@ -1244,6 +1268,10 @@ function onProductoAdblickChange() {
   if (!opt || !opt.value) {
     document.getElementById("lblUnidad").textContent   = "-";
     document.getElementById("lblCategoria").textContent = "-";
+    document.getElementById("inputBuscarProducto").value = "";
+    document.getElementById("inputProductoMdaId").value = "";
+    var dd = document.getElementById("dropdownProductos");
+    if (dd) dd.style.display = "none";
     return;
   }
   var unidad = opt.dataset.unidad || "-";
@@ -1251,12 +1279,14 @@ function onProductoAdblickChange() {
   document.getElementById("lblUnidad").textContent   = unidad;
   document.getElementById("lblCategoria").textContent = cat;
 
-  // Intentar autocompletar la busqueda en MDA con el mismo nombre
+  // Actualizar SIEMPRE el campo de búsqueda MDA con el nuevo insumo seleccionado
   var nombreInsumo = opt.value;
   var inputMda = document.getElementById("inputBuscarProducto");
-  if (inputMda && !inputMda.value) {
+  var mdaIdInput = document.getElementById("inputProductoMdaId");
+  if (inputMda) {
     inputMda.value = nombreInsumo;
-    buscarProductoMDA(nombreInsumo);
+    if (mdaIdInput) mdaIdInput.value = "";
+    buscarProductoMDA(nombreInsumo, true);
   }
 }
 
