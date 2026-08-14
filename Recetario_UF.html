@@ -803,6 +803,30 @@ function fillSelect(id, arr) {
 // ════════════════════════════════════════════════════════════
 //  CARGA DE DATOS MAESTROS DESDE SHAREPOINT
 // ════════════════════════════════════════════════════════════
+
+var OPERADORES_MAP = {}; // email_adblick_lower -> { mail_mda, clave_mda, nombre }
+
+async function loadOperadores() {
+  try {
+    var items = await fetchAllFromList(CONFIG.operadoresListId);
+    items.forEach(function(item) {
+      var f = item.fields || {};
+      var emailAdblick = (f.email || f.Title || f.EMail || "").toLowerCase().trim();
+      var mailMda = (f.Mail_MDA || f.mail_mda || f.Email_MDA || f.MailMDA || "").trim();
+      var claveMda = (f.Clave_MDA || f.clave_mda || f.ClaveMDA || f.Password_MDA || "").trim();
+      if (emailAdblick) {
+        OPERADORES_MAP[emailAdblick] = {
+          mail_mda: mailMda,
+          clave_mda: claveMda
+        };
+      }
+    });
+    console.log("[loadOperadores] " + Object.keys(OPERADORES_MAP).length + " operadores cargados desde PadronOperadores.");
+  } catch(e) {
+    console.warn("[loadOperadores] Error leyendo PadronOperadores:", e);
+  }
+}
+
 async function loadMasterData() {
   updateStatusDatos("Cargando campos y lotes...");
   try {
@@ -1505,6 +1529,15 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
 function dispararEmisionMDA() {
   if (!_resumenData) return;
   var b0 = (_resumenData.bloques && _resumenData.bloques[0]) || {};
+  
+  var currentEmail = "";
+  try {
+    var acc = (typeof msalInstance !== "undefined" && msalInstance.getAllAccounts && msalInstance.getAllAccounts()[0]);
+    if (acc) currentEmail = (acc.username || "").toLowerCase().trim();
+  } catch(e) {}
+
+  var opCred = OPERADORES_MAP[currentEmail] || {};
+
   var payload = {
     nro_receta: _resumenData.nroReceta,
     campo: b0.campo || "",
@@ -1514,7 +1547,10 @@ function dispararEmisionMDA() {
     propiedad_aplicacion: (document.getElementById("selPropiedadAplicacion") && document.getElementById("selPropiedadAplicacion").value) || "ARRENDATARIO",
     estadio: (document.getElementById("selEstadio") && document.getElementById("selEstadio").value) || "",
     diagnostico: (document.getElementById("selDx") && document.getElementById("selDx").value) || "",
-    observaciones: (document.getElementById("txtObservaciones") && document.getElementById("txtObservaciones").value) || ""
+    observaciones: (document.getElementById("txtObservaciones") && document.getElementById("txtObservaciones").value) || "",
+    usuario_adblick: currentEmail,
+    mda_email: opCred.mail_mda || "",
+    mda_clave: opCred.clave_mda || ""
   };
   encolarRecetaMDA(payload);
 }
