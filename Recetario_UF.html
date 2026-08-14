@@ -811,9 +811,25 @@ async function loadOperadores() {
     var items = await fetchAllFromList(CONFIG.operadoresListId);
     items.forEach(function(item) {
       var f = item.fields || {};
-      var emailAdblick = (f.email || f.Title || f.EMail || "").toLowerCase().trim();
-      var mailMda = (f.Mail_MDA || f.mail_mda || f.Email_MDA || f.MailMDA || "").trim();
-      var claveMda = (f.Clave_MDA || f.clave_mda || f.ClaveMDA || f.Password_MDA || "").trim();
+      
+      // Extraer email de ADBlick
+      var emailAdblick = (f.email || f.Title || f.EMail || f.Mail || f.Usuario || "").toLowerCase().trim();
+      
+      // Buscar campo de Mail MDA de forma insensible a mayúsculas/guiones
+      var mailMda = "";
+      var claveMda = "";
+      
+      Object.keys(f).forEach(function(k) {
+        var kLower = k.toLowerCase();
+        if (kLower.includes("mail") && kLower.includes("mda")) mailMda = String(f[k] || "").trim();
+        if (kLower.includes("email") && kLower.includes("mda")) mailMda = String(f[k] || "").trim();
+        if (kLower.includes("clave") && kLower.includes("mda")) claveMda = String(f[k] || "").trim();
+        if (kLower.includes("pass") && kLower.includes("mda")) claveMda = String(f[k] || "").trim();
+      });
+      
+      if (!mailMda && f.Mail_MDA) mailMda = String(f.Mail_MDA).trim();
+      if (!claveMda && f.Clave_MDA) claveMda = String(f.Clave_MDA).trim();
+
       if (emailAdblick) {
         OPERADORES_MAP[emailAdblick] = {
           mail_mda: mailMda,
@@ -821,7 +837,7 @@ async function loadOperadores() {
         };
       }
     });
-    console.log("[loadOperadores] " + Object.keys(OPERADORES_MAP).length + " operadores cargados desde PadronOperadores.");
+    console.log("[loadOperadores] Operadores mapeados:", OPERADORES_MAP);
   } catch(e) {
     console.warn("[loadOperadores] Error leyendo PadronOperadores:", e);
   }
@@ -830,7 +846,7 @@ async function loadOperadores() {
 async function loadMasterData() {
   updateStatusDatos("Cargando campos y lotes...");
   try {
-    await Promise.all([loadCampos(), loadProductos(), loadContratistas()]);
+    await Promise.all([loadCampos(), loadProductos(), loadContratistas(), loadOperadores()]);
     updateStatusDatos("ok");
   } catch(e) {
     updateStatusDatos("error:" + e.message);
