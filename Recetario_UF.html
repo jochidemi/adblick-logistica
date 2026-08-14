@@ -1504,7 +1504,6 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
 // ════════════════════════════════════════════════════════════
 function dispararEmisionMDA() {
   if (!_resumenData) return;
-
   var b0 = (_resumenData.bloques && _resumenData.bloques[0]) || {};
   var payload = {
     nro_receta: _resumenData.nroReceta,
@@ -1517,26 +1516,76 @@ function dispararEmisionMDA() {
     diagnostico: (document.getElementById("selDx") && document.getElementById("selDx").value) || "",
     observaciones: (document.getElementById("txtObservaciones") && document.getElementById("txtObservaciones").value) || ""
   };
-
-  try {
-    fetch("http://localhost:8000/emitir", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (res && res.exito && res.nro_mda) {
-        showToast("✅ Receta oficial emitida en MDA Nº " + res.nro_mda, "success");
-      }
-    })
-    .catch(function(e) {
-      // Servicio local no activo en esta PC: silencioso
-    });
-  } catch(err) {
-    // Silencioso
-  }
+  encolarRecetaMDA(payload);
 }
+
+
+// ════════════════════════════════════════════════════════════
+//  COLA Y SINCRONIZADOR AUTOMÁTICO CON SERVICIO LOCAL MDA
+// ════════════════════════════════════════════════════════════
+var _isSyncingMDA = false;
+
+function encolarRecetaMDA(payload) {
+  try {
+    var cola = JSON.parse(localStorage.getItem("recetas_cola_mda") || "[]");
+    // Evitar duplicados por nro_receta
+    var existe = cola.some(function(r) { return r.nro_receta === payload.nro_receta; });
+    if (!existe) {
+      cola.push(payload);
+      localStorage.setItem("recetas_cola_mda", JSON.stringify(cola));
+    }
+  } catch(e) {}
+  sincronizarColaPendientesMDA();
+}
+
+async function sincronizarColaPendientesMDA() {
+  if (_isSyncingMDA) return;
+  var cola = [];
+  try {
+    cola = JSON.parse(localStorage.getItem("recetas_cola_mda") || "[]");
+  } catch(e) { return; }
+
+  if (cola.length === 0) return;
+
+  // 1. Probar si el servicio local (CARGAR_RECETAS.bat) esta corriendo
+  try {
+    var check = await fetch("http://localhost:8000/", { method: "GET" });
+    if (!check.ok) return;
+  } catch(e) {
+    // Servidor offline, queda en cola para cuando se abra el .bat
+    return;
+  }
+
+  _isSyncingMDA = true;
+  console.log("[MDA Sync] Procesando " + cola.length + " receta(s) acumulada(s)...");
+
+  while (cola.length > 0) {
+    var item = cola[0];
+    try {
+      var resp = await fetch("http://localhost:8000/emitir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(item)
+      });
+      var res = await resp.json();
+      if (res && res.exito) {
+        showToast("✅ Receta " + item.nro_receta + " emitida en MDA: Nº " + (res.nro_mda || "OK"), "success");
+        cola.shift(); // Quitar la procesada
+        localStorage.setItem("recetas_cola_mda", JSON.stringify(cola));
+      } else {
+        break; // Reintentar luego
+      }
+    } catch(err) {
+      console.warn("[MDA Sync] Error al conectar con el servidor local:", err);
+      break;
+    }
+  }
+  _isSyncingMDA = false;
+}
+
+// Ejecutar sincronizador cada 6 segundos en segundo plano
+setInterval(sincronizarColaPendientesMDA, 6000);
+
 
 async function enviarAInsumos() {
   if (!_resumenData) return;
