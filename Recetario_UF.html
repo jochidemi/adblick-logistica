@@ -1493,6 +1493,7 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
   btnEnv.textContent = "Enviar pedido a App Insumos";
 
   document.getElementById("modalResumen").classList.add("show");
+  dispararEmisionMDA();
   
 }
 
@@ -1501,12 +1502,8 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
 // ════════════════════════════════════════════════════════════
 //  EMISIÓN AUTOMÁTICA EN MDA (PUENTE DIRECTO LOCAL)
 // ════════════════════════════════════════════════════════════
-async function dispararEmisionMDA() {
-  var btn = document.getElementById("btnEmitirMda");
-  if (!btn || !_resumenData) return;
-
-  btn.disabled = true;
-  btn.textContent = "⚡ Emitiendo en MDA...";
+function dispararEmisionMDA() {
+  if (!_resumenData) return;
 
   var b0 = (_resumenData.bloques && _resumenData.bloques[0]) || {};
   var payload = {
@@ -1522,26 +1519,22 @@ async function dispararEmisionMDA() {
   };
 
   try {
-    var resp = await fetch("http://localhost:8000/emitir", {
+    fetch("http://localhost:8000/emitir", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res && res.exito && res.nro_mda) {
+        showToast("✅ Receta oficial emitida en MDA Nº " + res.nro_mda, "success");
+      }
+    })
+    .catch(function(e) {
+      // Servicio local no activo en esta PC: silencioso
     });
-    var res = await resp.json();
-    if (res.exito && res.nro_mda) {
-      btn.textContent = "✅ Emitida en MDA Nº " + res.nro_mda;
-      btn.style.background = "#28a745";
-      showToast("✅ Receta oficial emitida en MDA Nº " + res.nro_mda, "success");
-      return;
-    } else {
-      btn.textContent = "⚡ Emitida en MDA ✓";
-      showToast("Receta procesada en MDA ✓", "success");
-      return;
-    }
-  } catch (err) {
-    console.log("Puente local MDA no activo:", err);
-    btn.disabled = false;
-    btn.textContent = "⚡ Emitir en MDA (Doble clic en CARGAR_RECETAS.bat)";
+  } catch(err) {
+    // Silencioso
   }
 }
 
