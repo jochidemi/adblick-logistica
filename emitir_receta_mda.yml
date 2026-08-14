@@ -3,24 +3,26 @@ name: Emitir Receta MDA Automática
 on:
   repository_dispatch:
     types: [emitir_receta_mda]
-  workflow_dispatch: # Botón manual en pestaña Actions
+  workflow_dispatch:
     inputs:
       campo:
-        description: 'Nombre del Campo (opcional para prueba manual)'
+        description: 'Nombre del Campo'
         required: false
         default: 'El Carrilero'
       lote_id:
-        description: 'ID MDA del Lote (ej: 5771)'
+        description: 'ID MDA del Lote'
         required: false
         default: '5771'
       producto_id:
-        description: 'ID MDA del Producto (ej: 7541 para Paraquat)'
+        description: 'ID MDA del Producto'
         required: false
         default: '7541'
       dosis:
-        description: 'Dosis (L/ha)'
+        description: 'Dosis'
         required: false
         default: '2.0'
+  schedule:
+    - cron: '*/30 * * * *'
 
 jobs:
   emitir_receta:
@@ -34,7 +36,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependencias y Playwright Chromium
+      - name: Instalar dependencias y Playwright
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt

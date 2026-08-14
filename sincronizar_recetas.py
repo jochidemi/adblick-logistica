@@ -29,9 +29,9 @@ sys.stdout.reconfigure(line_buffering=True)
 load_dotenv()
 
 BASE_URL = "https://mi.mda.gba.gob.ar"
-MDA_EMAIL = os.getenv("MDA_EMAIL", "mariano1703@hotmail.com")
-MDA_CLAVE = os.getenv("MDA_CLAVE", "Mi34369873#")
-MDA_CUIT_PRODUCTOR = os.getenv("MDA_CUIT_PRODUCTOR", "30710939345")
+MDA_EMAIL = os.getenv("MDA_EMAIL", "mariano1703@hotmail.com").strip()
+MDA_CLAVE = os.getenv("MDA_CLAVE", "Mi34369873#").strip()
+MDA_CUIT_PRODUCTOR = os.getenv("MDA_CUIT_PRODUCTOR", "30710939345").strip()
 
 
 async def emitir_receta_playwright(page, receta_data: dict) -> dict:
@@ -55,30 +55,39 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
         id_mda_lote = receta_data.get("lote_id") or "5771"
         lote_nombre = "Lote s/d"
 
-    logger.info(f"Procesando Receta {nro_interna} — Campo: {campo} | Lote: {lote_nombre} (ID MDA: {id_mda_lote})")
+    logger.info(f"==================================================")
+    logger.info(f"Emitiendo Receta {nro_interna}: {campo} - {lote_nombre} (ID MDA: {id_mda_lote})")
+    logger.info(f"==================================================")
 
     try:
         # 1. Navegar a recetaAplicacion/new
+        logger.info("[Paso 1] Navegando a recetaAplicacion/new...")
         await page.goto(f"{BASE_URL}/sigirao/recetaAplicacion/new", wait_until="networkidle", timeout=35000)
+        logger.info(f"URL actual: {page.url}")
 
-        # CUIT Productor
+        # CUIT Productor si aplica
         if await page.locator("#cuit").count() > 0:
-            logger.info(f"Ingresando CUIT productor: {cuit_prod}")
+            logger.info(f"Ingresando CUIT del productor: {cuit_prod}")
             await page.fill("#cuit", cuit_prod)
             await page.click("#botonEnviar")
             await page.wait_for_load_state("networkidle")
+            await asyncio.sleep(1)
 
-        # Botón Receta de Aplicación
+        # Botón Receta de Aplicación si aparece
         btn_tipo = page.locator("form[action*='recetaAplicacion/new'] button, form[action*='recetaAplicacion/new'] input[type='submit']")
         if await btn_tipo.count() > 0:
+            logger.info("Haciendo clic en Receta de Aplicación...")
             await btn_tipo.first.click()
             await page.wait_for_load_state("networkidle")
+            await asyncio.sleep(1)
 
         # 2. Paso 0: Selección de Lote
+        logger.info("[Paso 2] Seleccionando Lote oficial en MDA...")
         lote_sel = page.locator("select[name='receta_aplicacion[lotePrecargado]']")
-        await lote_sel.wait_for(state="visible", timeout=15000)
+        await lote_sel.wait_for(state="visible", timeout=20000)
 
         if id_mda_lote:
+            logger.info(f"Seleccionando opción de lote ID: {id_mda_lote}")
             await lote_sel.select_option(value=str(id_mda_lote))
         else:
             await lote_sel.select_option(index=1)
@@ -91,11 +100,12 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
         await page.locator("select[name='receta_aplicacion[propiedadAplicacion]']").select_option(value=str(propiedad))
 
         # Paso 1: Siguiente
+        logger.info("[Paso 3] Avanzando a Cultivo y Tratamiento...")
         await page.click("a[href='#next']")
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(2)
 
-        # 3. Paso 1: Cultivo
-        await page.wait_for_selector("#agregarCultivo", state="visible", timeout=15000)
+        # 3. Cultivo
+        await page.wait_for_selector("#agregarCultivo", state="visible", timeout=20000)
         await page.click("#agregarCultivo")
         await asyncio.sleep(1)
 
@@ -112,6 +122,7 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
         if not productos:
             productos = [{"id_mda": receta_data.get("producto_id", "7541"), "dosis": receta_data.get("dosis", "2.0"), "diagnostico_id": "9"}]
 
+        logger.info(f"[Paso 4] Cargando {len(productos)} producto(s)...")
         for pi, prod in enumerate(productos):
             if pi > 0:
                 btn_prod = page.locator("#agregarProductoAgroquimicoTratamiento, #agregarSustancia, a.botonAgregarRowProductoEnTratamiento")
@@ -124,7 +135,9 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
             if id_prod_mda:
                 try:
                     await prod_sel.select_option(value=id_prod_mda)
-                except:
+                    logger.info(f"Producto {pi+1}: asignado ID MDA {id_prod_mda}")
+                except Exception as ex_p:
+                    logger.warning(f"No se pudo seleccionar ID {id_prod_mda}, usando default: {ex_p}")
                     await prod_sel.select_option(index=1)
             else:
                 await prod_sel.select_option(index=1)
@@ -151,7 +164,7 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
         await page.select_option("#receta_aplicacion_unidadTiempoReingresoLote", value="horas")
 
         # 5. Guardar Borrador Oficial en MDA
-        logger.info("Guardando borrador oficial en MDA SIGIRAO...")
+        logger.info("[Paso 5] Guardando borrador oficial en MDA...")
         await page.click("#guardarBorrador")
         await page.wait_for_load_state("networkidle")
         await asyncio.sleep(4)
@@ -166,11 +179,17 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
                 nro_mda = m.group(1)
                 break
 
-        logger.info(f"✅ RECETA EMITIDA EN MDA: N° Oficial {nro_mda or 'CONFIRMADA'}")
+        logger.info(f"✅ RECETA EMITIDA EXITOSAMENTE EN MDA: N° {nro_mda or 'CONFIRMADA'}")
         return {"exito": True, "nro_mda": nro_mda, "error": None}
 
     except Exception as e:
         logger.error(f"❌ ERROR al emitir receta {nro_interna}: {e}")
+        try:
+            os.makedirs("scratch", exist_ok=True)
+            await page.screenshot(path="scratch/error_emision.png")
+            logger.info("Captura de pantalla de error guardada en scratch/error_emision.png")
+        except:
+            pass
         return {"exito": False, "nro_mda": None, "error": str(e)}
 
 
@@ -198,12 +217,12 @@ async def main():
             logger.info(f"Ejecución manual desde GitHub Actions con parámetros: {inputs}")
             recetas_a_procesar.append({
                 "nro_receta": "MANUAL-ACTIONS",
-                "campo": inputs.get("campo", "El Carrilero"),
-                "lotes": [{"lote": "Ec1", "id_mda": inputs.get("lote_id", "5771")}],
+                "campo": inputs.get("campo") or "El Carrilero",
+                "lotes": [{"lote": "Ec1", "id_mda": inputs.get("lote_id") or "5771"}],
                 "productos": [{
-                    "id_mda": inputs.get("producto_id", "7541"),
+                    "id_mda": inputs.get("producto_id") or "7541",
                     "nombre": "Producto",
-                    "dosis": inputs.get("dosis", "2.0"),
+                    "dosis": inputs.get("dosis") or "2.0",
                     "diagnostico_id": "9"
                 }],
                 "forma_aplicacion": "12",
@@ -222,7 +241,7 @@ async def main():
             "propiedad_aplicacion": "ARRENDATARIO"
         })
 
-    logger.info(f"Recetas a emitir: {len(recetas_a_procesar)}")
+    logger.info(f"Total de recetas a procesar: {len(recetas_a_procesar)}")
 
     # Iniciar Playwright y sesión en MDA
     async with async_playwright() as p:
@@ -231,13 +250,21 @@ async def main():
         page = await context.new_page()
 
         # Login en MDA
-        logger.info(f"Autenticando en MDA SIGIRAO ({MDA_EMAIL})...")
+        logger.info(f"Autenticando en MDA SIGIRAO con usuario: {MDA_EMAIL}...")
         await page.goto(f"{BASE_URL}/login", wait_until="networkidle", timeout=35000)
         await page.fill("#inputEmail", MDA_EMAIL)
         await page.fill("#inputPassword", MDA_CLAVE)
         await page.click("button[type='submit']")
         await page.wait_for_load_state("networkidle")
-        logger.info("Login exitoso en MDA.")
+        await asyncio.sleep(2)
+
+        logger.info(f"URL posterior a login: {page.url}")
+        if "login" in page.url:
+            alerts = await page.locator(".alert, .alert-danger, div[class*='alert']").all_inner_texts()
+            logger.error(f"❌ Error de autenticación en MDA: {alerts}")
+            sys.exit(1)
+
+        logger.info("✓ Login exitoso en MDA SIGIRAO.")
 
         # Emitir cada receta
         for receta in recetas_a_procesar:
