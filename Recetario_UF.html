@@ -265,8 +265,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div class="modal-title" id="modalTitulo">Receta generada</div>
     <div class="modal-sub" id="modalSub"></div>
     <div id="modalCuerpo"></div>
-    <div class="modal-actions">
-      <button class="btn btn-primary" id="btnEmitirMda" onclick="dispararEmisionMDA()">⚡ Emitir en MDA Oficial</button>
+        <div class="modal-actions">
       <button class="btn btn-green" id="btnEnviarInsumos" onclick="enviarAInsumos()">Enviar pedido a App Insumos</button>
       <a class="btn btn-edit" href="https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html" target="_blank">Ir a App Insumos →</a>
       <button class="btn btn-secondary" onclick="cerrarResumenYLimpiar()">Nueva receta</button>
@@ -277,9 +276,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 <div class="header">
   <div class="header-title">ADBlick Granos – Recetario Agronómico</div>
   <div style="display:flex;align-items:center;gap:12px;">
-    <button id="btnMdaConfig" onclick="abrirModalMDAConfig()" class="btn btn-secondary" style="font-size:11px;padding:4px 10px;background:#fff3cd;color:#856404;border:1px solid #ffeeba;">
-      🔴 MDA: Configurar cuenta
-    </button>
+    
     <div class="header-user" id="headerUser"></div>
   </div>
 </div>
@@ -1496,7 +1493,7 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
   btnEnv.textContent = "Enviar pedido a App Insumos";
 
   document.getElementById("modalResumen").classList.add("show");
-  setTimeout(function() { dispararEmisionMDA(); }, 500);
+  
 }
 
 
