@@ -1576,6 +1576,21 @@ function dispararEmisionMDA() {
 }
 
 
+
+// Limpieza preventiva de recetas huérfanas/antiguas trabadas en la cola local
+(function() {
+  try {
+    var c = JSON.parse(localStorage.getItem("recetas_cola_mda") || "[]");
+    // Eliminar R-0013 o recetas sin credenciales
+    var limpia = c.filter(function(r) { return r.nro_receta !== "R-0013" && r.mda_email; });
+    if (limpia.length !== c.length) {
+      localStorage.setItem("recetas_cola_mda", JSON.stringify(limpia));
+    }
+  } catch(e) {
+    localStorage.removeItem("recetas_cola_mda");
+  }
+})();
+
 // ════════════════════════════════════════════════════════════
 //  COLA Y SINCRONIZADOR AUTOMÁTICO CON SERVICIO LOCAL MDA
 // ════════════════════════════════════════════════════════════
