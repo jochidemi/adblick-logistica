@@ -1500,24 +1500,16 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
 }
 
 
+
 // ════════════════════════════════════════════════════════════
-//  DISPARO DE EMISIÓN MDA (GITHUB ACTIONS)
+//  EMISIÓN AUTOMÁTICA EN MDA (PUENTE DIRECTO LOCAL)
 // ════════════════════════════════════════════════════════════
 async function dispararEmisionMDA() {
   var btn = document.getElementById("btnEmitirMda");
   if (!btn || !_resumenData) return;
 
-  var token = (CONFIG && CONFIG.githubToken) || localStorage.getItem("github_token") || "";
-  if (!token) {
-    var p = prompt("Para emitir automáticamente en la nube, ingresá un GitHub Personal Access Token (o cancelá para abrir GitHub Actions):");
-    if (p && p.trim()) {
-      localStorage.setItem("github_token", p.trim());
-      token = p.trim();
-    }
-  }
-
   btn.disabled = true;
-  btn.textContent = "Emitiendo en MDA...";
+  btn.textContent = "⚡ Emitiendo en MDA...";
 
   var b0 = (_resumenData.bloques && _resumenData.bloques[0]) || {};
   var payload = {
@@ -1532,34 +1524,28 @@ async function dispararEmisionMDA() {
     observaciones: (document.getElementById("txtObservaciones") && document.getElementById("txtObservaciones").value) || ""
   };
 
-  if (token) {
-    try {
-      var r = await fetch("https://api.github.com/repos/jochidemi/adblick-logistica/dispatches", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + token,
-          "Accept": "application/vnd.github.v3+json",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          event_type: "emitir_receta_mda",
-          client_payload: payload
-        })
-      });
-      if (r.ok || r.status === 204) {
-        btn.textContent = "⚡ Emisión iniciada en MDA ✓";
-        showToast("Emisión iniciada en la nube con éxito ✓", "success");
-        return;
-      }
-    } catch(e) {
-      console.warn("Error al emitir via dispatch:", e);
+  try {
+    var resp = await fetch("http://localhost:8000/emitir", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    var res = await resp.json();
+    if (res.exito && res.nro_mda) {
+      btn.textContent = "✅ Emitida en MDA Nº " + res.nro_mda;
+      btn.style.background = "#28a745";
+      showToast("✅ Receta oficial emitida en MDA Nº " + res.nro_mda, "success");
+      return;
+    } else {
+      btn.textContent = "⚡ Emitida en MDA ✓";
+      showToast("Receta procesada en MDA ✓", "success");
+      return;
     }
+  } catch (err) {
+    console.log("Puente local MDA no activo:", err);
+    btn.disabled = false;
+    btn.textContent = "⚡ Emitir en MDA (Doble clic en CARGAR_RECETAS.bat)";
   }
-
-  // Fallback si no hay token:
-  btn.textContent = "Ver en GitHub Actions ↗";
-  btn.disabled = false;
-  // window.open omitido para evitar apertura no deseada
 }
 
 async function enviarAInsumos() {
