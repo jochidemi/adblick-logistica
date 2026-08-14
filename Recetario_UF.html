@@ -812,30 +812,34 @@ async function loadOperadores() {
     items.forEach(function(item) {
       var f = item.fields || {};
       
-      // Extraer email de ADBlick
-      var emailAdblick = (f.email || f.Title || f.EMail || f.Mail || f.Usuario || "").toLowerCase().trim();
-      
-      // Buscar campo de Mail MDA de forma insensible a mayúsculas/guiones
+      // Buscar campo de Mail MDA y Clave MDA
       var mailMda = "";
       var claveMda = "";
+      var emailsAdblick = [];
       
       Object.keys(f).forEach(function(k) {
         var kLower = k.toLowerCase();
-        if (kLower.includes("mail") && kLower.includes("mda")) mailMda = String(f[k] || "").trim();
-        if (kLower.includes("email") && kLower.includes("mda")) mailMda = String(f[k] || "").trim();
-        if (kLower.includes("clave") && kLower.includes("mda")) claveMda = String(f[k] || "").trim();
-        if (kLower.includes("pass") && kLower.includes("mda")) claveMda = String(f[k] || "").trim();
+        var val = String(f[k] || "").trim();
+        
+        if ((kLower.includes("mail") || kLower.includes("email") || kLower.includes("usuario") || kLower === "title") && !kLower.includes("mda")) {
+          if (val) emailsAdblick.push(val.toLowerCase());
+        }
+        
+        if (kLower.includes("mda")) {
+          if (kLower.includes("mail") || kLower.includes("email") || kLower.includes("usuario")) mailMda = val;
+          if (kLower.includes("clave") || kLower.includes("pass")) claveMda = val;
+        }
       });
       
       if (!mailMda && f.Mail_MDA) mailMda = String(f.Mail_MDA).trim();
       if (!claveMda && f.Clave_MDA) claveMda = String(f.Clave_MDA).trim();
 
-      if (emailAdblick) {
-        OPERADORES_MAP[emailAdblick] = {
-          mail_mda: mailMda,
-          clave_mda: claveMda
-        };
-      }
+      emailsAdblick.forEach(function(em) {
+        OPERADORES_MAP[em] = { mail_mda: mailMda, clave_mda: claveMda };
+        if (em.includes("@")) {
+          OPERADORES_MAP[em.split("@")[0]] = { mail_mda: mailMda, clave_mda: claveMda };
+        }
+      });
     });
     console.log("[loadOperadores] Operadores mapeados:", OPERADORES_MAP);
   } catch(e) {
@@ -1599,20 +1603,35 @@ async function sincronizarColaPendientesMDA() {
 
   if (cola.length === 0) return;
 
-  // 1. Probar si el servicio local (CARGAR_RECETAS.bat) esta corriendo
+  // Probar si el servicio local (CARGAR_RECETAS.bat) esta corriendo
   try {
     var check = await fetch("http://localhost:8000/", { method: "GET" });
     if (!check.ok) return;
   } catch(e) {
-    // Servidor offline, queda en cola para cuando se abra el .bat
     return;
   }
 
   _isSyncingMDA = true;
-  console.log("[MDA Sync] Procesando " + cola.length + " receta(s) acumulada(s)...");
+
+  var currentEmail = "";
+  try {
+    var acc = (typeof msalInstance !== "undefined" && msalInstance.getAllAccounts && msalInstance.getAllAccounts()[0]);
+    if (acc) currentEmail = (acc.username || "").toLowerCase().trim();
+  } catch(e) {}
+  var opCred = OPERADORES_MAP[currentEmail] || (currentEmail ? OPERADORES_MAP[currentEmail.split("@")[0]] : {}) || {};
 
   while (cola.length > 0) {
     var item = cola[0];
+    
+    // Si el item en cola no tenia credenciales, completarlas ahora con las del usuario logueado
+    if (!item.mda_email && opCred.mail_mda) {
+      item.mda_email = opCred.mail_mda;
+      item.mda_clave = opCred.clave_mda;
+    }
+    if (!item.usuario_adblick && currentEmail) {
+      item.usuario_adblick = currentEmail;
+    }
+
     try {
       var resp = await fetch("http://localhost:8000/emitir", {
         method: "POST",
@@ -1622,15 +1641,17 @@ async function sincronizarColaPendientesMDA() {
       var res = await resp.json();
       if (res && res.exito) {
         showToast("✅ Receta " + item.nro_receta + " emitida en MDA: Nº " + (res.nro_mda || "OK"), "success");
-        cola.shift(); // Quitar la procesada
-        localStorage.setItem("recetas_cola_mda", JSON.stringify(cola));
-      } else {
-        break; // Reintentar luego
+      } else if (res && res.error) {
+        showToast("⚠️ " + res.error, "warning");
       }
     } catch(err) {
       console.warn("[MDA Sync] Error al conectar con el servidor local:", err);
       break;
     }
+    
+    // Quitar el item procesado para no quedar en bucle infinito
+    cola.shift();
+    localStorage.setItem("recetas_cola_mda", JSON.stringify(cola));
   }
   _isSyncingMDA = false;
 }
