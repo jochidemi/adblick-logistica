@@ -3,26 +3,9 @@ name: Emitir Receta MDA Automática
 on:
   repository_dispatch:
     types: [emitir_receta_mda]
-  workflow_dispatch:
-    inputs:
-      campo:
-        description: 'Nombre del Campo'
-        required: false
-        default: 'El Carrilero'
-      lote_id:
-        description: 'ID MDA del Lote'
-        required: false
-        default: '5771'
-      producto_id:
-        description: 'ID MDA del Producto'
-        required: false
-        default: '7541'
-      dosis:
-        description: 'Dosis'
-        required: false
-        default: '2.0'
+  workflow_dispatch: # Botón limpio sin casillas confusas
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '0 21 * * *' # Todos los días a las 18:00 hs (Arg)
 
 jobs:
   emitir_receta:
