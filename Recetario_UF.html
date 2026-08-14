@@ -624,7 +624,8 @@ var CONFIG = {
   // ── Lista de pedidos de la App Insumos (para integración directa)
   insumosListId:    "9cc7994c-eab4-4a35-bfc5-fed35f37e22c",
 
-  redirectUri:      "https://jochidemi.github.io/adblick-logistica/Recetario_UF.html"
+  redirectUri:      "https://jochidemi.github.io/adblick-logistica/Recetario_UF.html",
+  githubToken:      "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"
 };
 
 // ── DATOS ESTÁTICOS (no necesitan lista SP) ──────────────────
@@ -1496,6 +1497,7 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
   btnEnv.textContent = "Enviar pedido a App Insumos";
 
   document.getElementById("modalResumen").classList.add("show");
+  setTimeout(function() { dispararEmisionMDA(); }, 500);
 }
 
 
@@ -1506,7 +1508,7 @@ async function dispararEmisionMDA() {
   var btn = document.getElementById("btnEmitirMda");
   if (!btn || !_resumenData) return;
 
-  var token = localStorage.getItem("github_token");
+  var token = (CONFIG && CONFIG.githubToken) || localStorage.getItem("github_token") || "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";
   if (!token) {
     var p = prompt("Para emitir automáticamente en la nube, ingresá un GitHub Personal Access Token (o cancelá para abrir GitHub Actions):");
     if (p && p.trim()) {
