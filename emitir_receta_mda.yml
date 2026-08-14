@@ -3,19 +3,34 @@ name: Emitir Receta MDA Automática
 on:
   repository_dispatch:
     types: [emitir_receta_mda]
-  workflow_dispatch: # Botón para ejecutar manualmente desde GitHub Actions
-  schedule:
-    - cron: '*/30 * * * *' # Ejecuta automáticamente cada 30 min para verificar recetas pendientes
+  workflow_dispatch: # Botón manual en pestaña Actions
+    inputs:
+      campo:
+        description: 'Nombre del Campo (opcional para prueba manual)'
+        required: false
+        default: 'El Carrilero'
+      lote_id:
+        description: 'ID MDA del Lote (ej: 5771)'
+        required: false
+        default: '5771'
+      producto_id:
+        description: 'ID MDA del Producto (ej: 7541 para Paraquat)'
+        required: false
+        default: '7541'
+      dosis:
+        description: 'Dosis (L/ha)'
+        required: false
+        default: '2.0'
 
 jobs:
   emitir_receta:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configurar Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 

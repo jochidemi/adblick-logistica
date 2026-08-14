@@ -266,6 +266,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
     <div class="modal-sub" id="modalSub"></div>
     <div id="modalCuerpo"></div>
     <div class="modal-actions">
+      <button class="btn btn-primary" id="btnEmitirMda" onclick="dispararEmisionMDA()">⚡ Emitir en MDA Oficial</button>
       <button class="btn btn-green" id="btnEnviarInsumos" onclick="enviarAInsumos()">Enviar pedido a App Insumos</button>
       <a class="btn btn-edit" href="https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html" target="_blank">Ir a App Insumos →</a>
       <button class="btn btn-secondary" onclick="cerrarResumenYLimpiar()">Nueva receta</button>
@@ -1495,6 +1496,69 @@ function mostrarResumen(nroReceta, camposUnicos, lotes, productos) {
   btnEnv.textContent = "Enviar pedido a App Insumos";
 
   document.getElementById("modalResumen").classList.add("show");
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  DISPARO DE EMISIÓN MDA (GITHUB ACTIONS)
+// ════════════════════════════════════════════════════════════
+async function dispararEmisionMDA() {
+  var btn = document.getElementById("btnEmitirMda");
+  if (!btn || !_resumenData) return;
+
+  var token = localStorage.getItem("github_token");
+  if (!token) {
+    var p = prompt("Para emitir automáticamente en la nube, ingresá un GitHub Personal Access Token (o cancelá para abrir GitHub Actions):");
+    if (p && p.trim()) {
+      localStorage.setItem("github_token", p.trim());
+      token = p.trim();
+    }
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Emitiendo en MDA...";
+
+  var b0 = (_resumenData.bloques && _resumenData.bloques[0]) || {};
+  var payload = {
+    nro_receta: _resumenData.nroReceta,
+    campo: b0.campo || "",
+    lotes: b0.lotes || [],
+    productos: productosReceta || [],
+    forma_aplicacion: (document.getElementById("selFormaAplicacion") && document.getElementById("selFormaAplicacion").value) || "12",
+    propiedad_aplicacion: (document.getElementById("selPropiedadAplicacion") && document.getElementById("selPropiedadAplicacion").value) || "ARRENDATARIO",
+    estadio: (document.getElementById("selEstadio") && document.getElementById("selEstadio").value) || "",
+    diagnostico: (document.getElementById("selDx") && document.getElementById("selDx").value) || "",
+    observaciones: (document.getElementById("txtObservaciones") && document.getElementById("txtObservaciones").value) || ""
+  };
+
+  if (token) {
+    try {
+      var r = await fetch("https://api.github.com/repos/jochidemi/adblick-logistica/dispatches", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token,
+          "Accept": "application/vnd.github.v3+json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          event_type: "emitir_receta_mda",
+          client_payload: payload
+        })
+      });
+      if (r.ok || r.status === 204) {
+        btn.textContent = "⚡ Emisión iniciada en MDA ✓";
+        showToast("Emisión iniciada en la nube con éxito ✓", "success");
+        return;
+      }
+    } catch(e) {
+      console.warn("Error al emitir via dispatch:", e);
+    }
+  }
+
+  // Fallback si no hay token:
+  btn.textContent = "Ver en GitHub Actions ↗";
+  btn.disabled = false;
+  window.open("https://github.com/jochidemi/adblick-logistica/actions", "_blank");
 }
 
 async function enviarAInsumos() {

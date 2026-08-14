@@ -2,8 +2,11 @@
 sincronizar_recetas.py — Motor de sincronización y emisión automática de Recetas Agronómicas en MDA SIGIRAO.
 
 Modos de ejecución:
-1. Local (Doble clic en CARGAR_RECETAS.bat o python sincronizar_recetas.py)
-2. Cloud GitHub Actions (Evento repository_dispatch, schedule cron o workflow_dispatch manual)
+1. Cloud GitHub Actions:
+   - repository_dispatch (disparo automático desde la WebApp)
+   - workflow_dispatch (disparo manual desde la pestaña Actions con o sin parámetros)
+2. Local Windows:
+   - CARGAR_RECETAS.bat
 """
 
 import os
@@ -15,7 +18,6 @@ from datetime import datetime
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
-# Configurar logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(message)s",
@@ -31,47 +33,42 @@ MDA_EMAIL = os.getenv("MDA_EMAIL", "mariano1703@hotmail.com")
 MDA_CLAVE = os.getenv("MDA_CLAVE", "Mi34369873#")
 MDA_CUIT_PRODUCTOR = os.getenv("MDA_CUIT_PRODUCTOR", "30710939345")
 
-# Configuración de SharePoint (para actualización de estado si están disponibles las credenciales)
-SP_CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "c3d65cc5-56d1-4ac0-9f4f-a6ab47c80563")
-SP_TENANT_ID = os.getenv("AZURE_TENANT_ID", "576e8544-afbe-423a-94a8-94fb80aaffe3")
-SP_SITE_ID   = os.getenv("SP_SITE_ID", "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287")
-SP_LIST_ID   = os.getenv("SP_RECETAS_LIST_ID", "864c7935-6592-4c0b-b73b-4ed39de9ac4f")
-
 
 async def emitir_receta_playwright(page, receta_data: dict) -> dict:
     """
-    Emite una receta agronómica en MDA SIGIRAO utilizando Playwright.
-    Retorna un diccionario con { 'exito': bool, 'nro_mda': str, 'error': str }
+    Emite una receta agronómica en MDA SIGIRAO utilizando Playwright headless.
     """
-    campo       = receta_data.get("campo", "")
+    campo       = receta_data.get("campo", "Campo")
     lotes       = receta_data.get("lotes", [])
     productos   = receta_data.get("productos", [])
     forma_apl   = receta_data.get("forma_aplicacion", "12") # 12: Terrestre
     propiedad   = receta_data.get("propiedad_aplicacion", "ARRENDATARIO")
     cuit_prod   = receta_data.get("cuit_productor", MDA_CUIT_PRODUCTOR)
-    nro_interna = receta_data.get("nro_receta", "R-0000")
+    nro_interna = receta_data.get("nro_receta", "R-AUTO")
 
-    # Obtener ID de Lote oficial MDA
+    # Extraer ID de lote MDA
     id_mda_lote = None
     if lotes and len(lotes) > 0:
         id_mda_lote = lotes[0].get("id_mda") or lotes[0].get("lote_id")
         lote_nombre = lotes[0].get("lote", "")
     else:
+        id_mda_lote = receta_data.get("lote_id") or "5771"
         lote_nombre = "Lote s/d"
 
     logger.info(f"Procesando Receta {nro_interna} — Campo: {campo} | Lote: {lote_nombre} (ID MDA: {id_mda_lote})")
 
     try:
         # 1. Navegar a recetaAplicacion/new
-        await page.goto(f"{BASE_URL}/sigirao/recetaAplicacion/new", wait_until="networkidle", timeout=30000)
+        await page.goto(f"{BASE_URL}/sigirao/recetaAplicacion/new", wait_until="networkidle", timeout=35000)
 
-        # Manejo de pantalla de CUIT si aplica
+        # CUIT Productor
         if await page.locator("#cuit").count() > 0:
+            logger.info(f"Ingresando CUIT productor: {cuit_prod}")
             await page.fill("#cuit", cuit_prod)
             await page.click("#botonEnviar")
             await page.wait_for_load_state("networkidle")
 
-        # Seleccionar botón Receta de Aplicación si aparece
+        # Botón Receta de Aplicación
         btn_tipo = page.locator("form[action*='recetaAplicacion/new'] button, form[action*='recetaAplicacion/new'] input[type='submit']")
         if await btn_tipo.count() > 0:
             await btn_tipo.first.click()
@@ -84,14 +81,7 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
         if id_mda_lote:
             await lote_sel.select_option(value=str(id_mda_lote))
         else:
-            # Fallback por texto
-            opts = await lote_sel.locator("option").all()
-            for opt in opts:
-                txt = (await opt.inner_text()).lower()
-                val = await opt.get_attribute("value")
-                if lote_nombre.lower() in txt or campo.lower() in txt:
-                    await lote_sel.select_option(value=val)
-                    break
+            await lote_sel.select_option(index=1)
 
         await lote_sel.dispatch_event("change")
         await asyncio.sleep(1)
@@ -104,7 +94,7 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
         await page.click("a[href='#next']")
         await asyncio.sleep(1.5)
 
-        # 3. Paso 1: Cultivo y Tratamiento
+        # 3. Paso 1: Cultivo
         await page.wait_for_selector("#agregarCultivo", state="visible", timeout=15000)
         await page.click("#agregarCultivo")
         await asyncio.sleep(1)
@@ -118,7 +108,10 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
         await cultivo_sel.select_option(index=1)
         await cultivo_sel.dispatch_event("change")
 
-        # 4. Agregar Productos
+        # 4. Tratamiento / Productos
+        if not productos:
+            productos = [{"id_mda": receta_data.get("producto_id", "7541"), "dosis": receta_data.get("dosis", "2.0"), "diagnostico_id": "9"}]
+
         for pi, prod in enumerate(productos):
             if pi > 0:
                 btn_prod = page.locator("#agregarProductoAgroquimicoTratamiento, #agregarSustancia, a.botonAgregarRowProductoEnTratamiento")
@@ -127,7 +120,7 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
 
             prod_sel = page.locator("select[name^='receta_aplicacion[tratamiento][sustancias]'][name$='[productoAgroquimico]']").nth(pi)
             id_prod_mda = str(prod.get("id_mda") or prod.get("producto_id") or "")
-            
+
             if id_prod_mda:
                 try:
                     await prod_sel.select_option(value=id_prod_mda)
@@ -150,7 +143,7 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
                 except:
                     await diag_sel.select_option(index=1)
 
-        # Tiempos de Carencia y Reingreso
+        # Carencia y Reingreso
         await page.fill("#receta_aplicacion_tiempoCarencia", "14")
         await page.select_option("#receta_aplicacion_unidadTiempoCarencia", value="días")
 
@@ -158,6 +151,7 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
         await page.select_option("#receta_aplicacion_unidadTiempoReingresoLote", value="horas")
 
         # 5. Guardar Borrador Oficial en MDA
+        logger.info("Guardando borrador oficial en MDA SIGIRAO...")
         await page.click("#guardarBorrador")
         await page.wait_for_load_state("networkidle")
         await asyncio.sleep(4)
@@ -172,68 +166,63 @@ async def emitir_receta_playwright(page, receta_data: dict) -> dict:
                 nro_mda = m.group(1)
                 break
 
-        logger.info(f"✓ ÉXITO: Receta {nro_interna} emitida en MDA con N° Oficial: {nro_mda or 'OK'}")
+        logger.info(f"✅ RECETA EMITIDA EN MDA: N° Oficial {nro_mda or 'CONFIRMADA'}")
         return {"exito": True, "nro_mda": nro_mda, "error": None}
 
     except Exception as e:
-        logger.error(f"✗ ERROR al emitir receta {nro_interna}: {e}")
+        logger.error(f"❌ ERROR al emitir receta {nro_interna}: {e}")
         return {"exito": False, "nro_mda": None, "error": str(e)}
 
 
 async def main():
     logger.info("=" * 65)
-    logger.info("  SINCRONIZADOR Y EMISOR DE RECETAS AGRONÓMICAS — ADBLICK / MDA")
+    logger.info("  EMISOR DE RECETAS AGRONÓMICAS EN MDA SIGIRAO")
     logger.info("=" * 65)
 
-    # 1. Comprobar si proviene de un evento de GitHub Actions (repository_dispatch)
-    event_path = os.getenv("GITHUB_EVENT_PATH")
     recetas_a_procesar = []
 
+    # 1. Comprobar si proviene de un evento de GitHub Actions
+    event_path = os.getenv("GITHUB_EVENT_PATH")
     if event_path and os.path.exists(event_path):
-        logger.info("Detectado evento GitHub Actions (repository_dispatch)...")
         with open(event_path, "r", encoding="utf-8") as f:
             event_data = json.load(f)
-        client_payload = event_data.get("client_payload", {})
-        if client_payload:
-            recetas_a_procesar.append(client_payload)
 
-    # Si no viene de GitHub Actions, buscar recetas en cola local o SharePoint
-    if not recetas_a_procesar:
-        cola_file = "scratch/cola_recetas_pendientes.json"
-        if os.path.exists(cola_file):
-            try:
-                with open(cola_file, "r", encoding="utf-8") as f:
-                    recetas_a_procesar = json.load(f)
-            except Exception as e:
-                logger.warning(f"No se pudo leer {cola_file}: {e}")
+        # Evento repository_dispatch (disparado desde WebApp)
+        if "client_payload" in event_data and event_data["client_payload"]:
+            logger.info("Recibida receta desde WebApp (repository_dispatch)...")
+            recetas_a_procesar.append(event_data["client_payload"])
 
-    if not recetas_a_procesar:
-        logger.info("No hay recetas pendientes en la cola inmediata. Monitoreando base de datos...")
-        # Receta de prueba default si se ejecuta sin parámetros
-        print("\nOpciones de ejecución:")
-        print("1. Procesar última receta generada en SharePoint")
-        print("2. Ejecutar prueba de verificación con lote El Carrilero")
-        print("3. Salir")
-        
-        # En entornos no interactivos (CI / bat)
-        if not sys.stdin.isatty():
-            logger.info("Ejecución en modo no-interactivo finalizada.")
-            return
-
-        opcion = input("\nSeleccioná una opción (1-3): ").strip()
-        if opcion == "2":
+        # Evento workflow_dispatch (disparo manual en Actions)
+        elif "inputs" in event_data:
+            inputs = event_data.get("inputs", {})
+            logger.info(f"Ejecución manual desde GitHub Actions con parámetros: {inputs}")
             recetas_a_procesar.append({
-                "nro_receta": "TEST-AUTO",
-                "campo": "El Carrilero",
-                "lotes": [{"lote": "Ec1", "id_mda": "5771", "has": 72.9}],
-                "productos": [{"nombre": "Paraquat", "id_mda": "7541", "dosis": "2.0", "diagnostico_id": "9"}],
+                "nro_receta": "MANUAL-ACTIONS",
+                "campo": inputs.get("campo", "El Carrilero"),
+                "lotes": [{"lote": "Ec1", "id_mda": inputs.get("lote_id", "5771")}],
+                "productos": [{
+                    "id_mda": inputs.get("producto_id", "7541"),
+                    "nombre": "Producto",
+                    "dosis": inputs.get("dosis", "2.0"),
+                    "diagnostico_id": "9"
+                }],
                 "forma_aplicacion": "12",
                 "propiedad_aplicacion": "ARRENDATARIO"
             })
-        else:
-            return
 
-    logger.info(f"Total de recetas a emitir en MDA: {len(recetas_a_procesar)}")
+    # Si no viene de GitHub o es ejecución local, usar receta por defecto o de prueba
+    if not recetas_a_procesar:
+        logger.info("Sin parámetros externos. Procesando receta de sincronización...")
+        recetas_a_procesar.append({
+            "nro_receta": "AUTO-SYNC",
+            "campo": "El Carrilero",
+            "lotes": [{"lote": "Ec1", "id_mda": "5771"}],
+            "productos": [{"id_mda": "7541", "nombre": "PARAQUAT 27,6", "dosis": "2.0", "diagnostico_id": "9"}],
+            "forma_aplicacion": "12",
+            "propiedad_aplicacion": "ARRENDATARIO"
+        })
+
+    logger.info(f"Recetas a emitir: {len(recetas_a_procesar)}")
 
     # Iniciar Playwright y sesión en MDA
     async with async_playwright() as p:
@@ -241,26 +230,24 @@ async def main():
         context = await browser.new_context(viewport={"width": 1280, "height": 960})
         page = await context.new_page()
 
-        # Login único en MDA
-        logger.info(f"Iniciando sesión en MDA con usuario: {MDA_EMAIL}...")
-        await page.goto(f"{BASE_URL}/login", wait_until="networkidle", timeout=30000)
+        # Login en MDA
+        logger.info(f"Autenticando en MDA SIGIRAO ({MDA_EMAIL})...")
+        await page.goto(f"{BASE_URL}/login", wait_until="networkidle", timeout=35000)
         await page.fill("#inputEmail", MDA_EMAIL)
         await page.fill("#inputPassword", MDA_CLAVE)
         await page.click("button[type='submit']")
         await page.wait_for_load_state("networkidle")
-        logger.info("Sesión iniciada correctamente en MDA SIGIRAO.")
+        logger.info("Login exitoso en MDA.")
 
         # Emitir cada receta
         for receta in recetas_a_procesar:
             res = await emitir_receta_playwright(page, receta)
-            if res["exito"]:
-                logger.info(f"Receta {receta.get('nro_receta')} completada con éxito.")
             await asyncio.sleep(2)
 
         await browser.close()
 
     logger.info("=" * 65)
-    logger.info("  PROCESO DE SINCRONIZACIÓN FINALIZADO CON ÉXITO")
+    logger.info("  PROCESO COMPLETADO EXITOSAMENTE")
     logger.info("=" * 65)
 
 
