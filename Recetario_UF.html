@@ -1006,19 +1006,25 @@ function onZonaFiltroChange() {
 }
 
 async function loadCampos() {
-  var mdaData = MDA_LOTES_OFICIALES;
-  var urls = ["./mda_lotes_oficiales.json", "mda_lotes_oficiales.json", MDA_LOTES_URL];
-  for (var u = 0; u < urls.length; u++) {
-    try {
-      var r = await fetch(urls[u]);
-      if (r.ok) {
-        var fetched = await r.json();
-        if (fetched && Object.keys(fetched).length > 0) {
-          mdaData = fetched;
-          break;
+  var mdaData = (typeof MDA_LOTES_OFICIALES !== "undefined" && MDA_LOTES_OFICIALES && Object.keys(MDA_LOTES_OFICIALES).length > 0)
+    ? MDA_LOTES_OFICIALES
+    : {};
+
+  // Solo si no hay datos embebidos, intentar fetch remoto
+  if (!mdaData || Object.keys(mdaData).length === 0) {
+    var urls = ["./mda_lotes_oficiales.json", "mda_lotes_oficiales.json"];
+    for (var u = 0; u < urls.length; u++) {
+      try {
+        var r = await fetch(urls[u] + "?v=" + Date.now());
+        if (r.ok) {
+          var fetched = await r.json();
+          if (fetched && Object.keys(fetched).length > 0) {
+            mdaData = fetched;
+            break;
+          }
         }
-      }
-    } catch(e) {}
+      } catch(e) {}
+    }
   }
 
   CAMPOS_MAP = {};
