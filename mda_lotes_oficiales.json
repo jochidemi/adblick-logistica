@@ -218,22 +218,20 @@
       "encontrado_en_mda": true
     },
     {
-      "lote": "EA8",
-      "descripcion_mda": "El Amanecer-Flia Laxague Ea8",
-      "has": 41.26,
+      "lote": "EA6 7",
+      "descripcion_mda": "El Amanecer-Flia Laxague Ea6 7",
+      "has": 72.57,
       "partido": "GRAL. BELGRANO",
       "localidad": "GENERAL BELGRANO",
       "zona": "Cuenca Media",
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": true
-    }
-  ],
-  "EL AMANECER-FLIA LAXAGUE_EA6": [
+    },
     {
-      "lote": "7",
-      "descripcion_mda": "El Amanecer-Flia Laxague Ea6 7",
-      "has": 72.57,
+      "lote": "EA8",
+      "descripcion_mda": "El Amanecer-Flia Laxague Ea8",
+      "has": 41.26,
       "partido": "GRAL. BELGRANO",
       "localidad": "GENERAL BELGRANO",
       "zona": "Cuenca Media",
@@ -537,6 +535,17 @@
       "encontrado_en_mda": true
     },
     {
+      "lote": "ER2 5",
+      "descripcion_mda": "El Relincho-Maria Esther Ehul Er2 5",
+      "has": 5.61,
+      "partido": "CASTELLI",
+      "localidad": "CASTELLI",
+      "zona": "Cuenca Baja",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true
+    },
+    {
       "lote": "ER3",
       "descripcion_mda": "El Relincho-Maria Esther Ehul Er3",
       "has": 14.84,
@@ -568,24 +577,9 @@
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": true
-    }
-  ],
-  "EL RELINCHO-MARIA ESTHER EHUL_ER2": [
+    },
     {
-      "lote": "5",
-      "descripcion_mda": "El Relincho-Maria Esther Ehul Er2 5",
-      "has": 5.61,
-      "partido": "CASTELLI",
-      "localidad": "CASTELLI",
-      "zona": "Cuenca Baja",
-      "cuit": "30710939345",
-      "cultivo": "",
-      "encontrado_en_mda": true
-    }
-  ],
-  "EL RELINCHO-MARIA ESTHER EHUL_ER7": [
-    {
-      "lote": "8",
+      "lote": "ER7 8",
       "descripcion_mda": "El Relincho-Maria Esther Ehul Er7 8",
       "has": 50.5,
       "partido": "CASTELLI",
@@ -767,11 +761,9 @@
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": true
-    }
-  ],
-  "El Madrigal_EM4": [
+    },
     {
-      "lote": "7",
+      "lote": "EM4 7",
       "descripcion_mda": "El Madrigal Em4",
       "has": 38.34,
       "partido": "GRAL. PAZ",
@@ -2212,6 +2204,28 @@
       "encontrado_en_mda": true
     },
     {
+      "lote": "LR23 A",
+      "descripcion_mda": "LA RIVIERA-ESTANCIA LA RIVIERA S A_LR23_A",
+      "has": 53.55,
+      "partido": "LOBERIA",
+      "localidad": "LOBERIA",
+      "zona": "MyS Serrano",
+      "cuit": "30711969523",
+      "cultivo": "",
+      "encontrado_en_mda": true
+    },
+    {
+      "lote": "LR23 B",
+      "descripcion_mda": "LA RIVIERA-ESTANCIA LA RIVIERA S A_LR23_B",
+      "has": 59.56,
+      "partido": "LOBERIA",
+      "localidad": "LOBERIA",
+      "zona": "MyS Serrano",
+      "cuit": "30711969523",
+      "cultivo": "",
+      "encontrado_en_mda": true
+    },
+    {
       "lote": "LR26",
       "descripcion_mda": "LA RIVIERA-ESTANCIA LA RIVIERA S A_LR26",
       "has": 45.84,
@@ -2237,30 +2251,6 @@
       "lote": "LR4",
       "descripcion_mda": "LA RIVIERA-ESTANCIA LA RIVIERA S A_LR4",
       "has": 5.34,
-      "partido": "LOBERIA",
-      "localidad": "LOBERIA",
-      "zona": "MyS Serrano",
-      "cuit": "30711969523",
-      "cultivo": "",
-      "encontrado_en_mda": true
-    }
-  ],
-  "LA RIVIERA-ESTANCIA LA RIVIERA S A_LR23": [
-    {
-      "lote": "A",
-      "descripcion_mda": "LA RIVIERA-ESTANCIA LA RIVIERA S A_LR23_A",
-      "has": 53.55,
-      "partido": "LOBERIA",
-      "localidad": "LOBERIA",
-      "zona": "MyS Serrano",
-      "cuit": "30711969523",
-      "cultivo": "",
-      "encontrado_en_mda": true
-    },
-    {
-      "lote": "B",
-      "descripcion_mda": "LA RIVIERA-ESTANCIA LA RIVIERA S A_LR23_B",
-      "has": 59.56,
       "partido": "LOBERIA",
       "localidad": "LOBERIA",
       "zona": "MyS Serrano",
@@ -2806,6 +2796,17 @@
       "encontrado_en_mda": true
     },
     {
+      "lote": "LP4 4A",
+      "descripcion_mda": "LOS PALA-LOSPALA S.A._LP4_4A",
+      "has": 49.71,
+      "partido": "BOLIVAR",
+      "localidad": "BOLIVAR",
+      "zona": "Del Valle",
+      "cuit": "30711969523",
+      "cultivo": "",
+      "encontrado_en_mda": true
+    },
+    {
       "lote": "LP5",
       "descripcion_mda": "LOS PALA-LOSPALA S.A._LP5",
       "has": 47.15,
@@ -2831,19 +2832,6 @@
       "lote": "LP7",
       "descripcion_mda": "LOS PALA-LOSPALA S.A._LP7",
       "has": 41.35,
-      "partido": "BOLIVAR",
-      "localidad": "BOLIVAR",
-      "zona": "Del Valle",
-      "cuit": "30711969523",
-      "cultivo": "",
-      "encontrado_en_mda": true
-    }
-  ],
-  "LOS PALA-LOSPALA S.A._LP4": [
-    {
-      "lote": "4A",
-      "descripcion_mda": "LOS PALA-LOSPALA S.A._LP4_4A",
-      "has": 49.71,
       "partido": "BOLIVAR",
       "localidad": "BOLIVAR",
       "zona": "Del Valle",
@@ -3056,6 +3044,17 @@
       "encontrado_en_mda": false
     },
     {
+      "lote": "LP5 6",
+      "descripcion_mda": "LOS PINOS-AGRICOLA GANADERA LOS PINOS S.C.A_LP5_6",
+      "has": 86.5,
+      "partido": "SAN MIGUEL DEL MONTE",
+      "localidad": "SAN MIGUEL DEL MONTE",
+      "zona": "Del Valle",
+      "cuit": "30711969523",
+      "cultivo": "",
+      "encontrado_en_mda": true
+    },
+    {
       "lote": "LP7",
       "descripcion_mda": "LOS PINOS-AGRICOLA GANADERA LOS PINOS S.C.A_LP7",
       "has": 76.43,
@@ -3076,19 +3075,6 @@
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": false
-    }
-  ],
-  "LOS PINOS-AGRICOLA GANADERA LOS PINOS S.C.A_LP5": [
-    {
-      "lote": "6",
-      "descripcion_mda": "LOS PINOS-AGRICOLA GANADERA LOS PINOS S.C.A_LP5_6",
-      "has": 86.5,
-      "partido": "SAN MIGUEL DEL MONTE",
-      "localidad": "SAN MIGUEL DEL MONTE",
-      "zona": "Del Valle",
-      "cuit": "30711969523",
-      "cultivo": "",
-      "encontrado_en_mda": true
     }
   ],
   "LOS RECUERDOS - ESTANCIA LA OLIVIA S A": [
@@ -4017,6 +4003,17 @@
       "encontrado_en_mda": true
     },
     {
+      "lote": "SGH6A trigo",
+      "descripcion_mda": "San Genaro Hugo-Condominio Rossi Hugo Ezio Y Otros Sgh6A",
+      "has": 22.3,
+      "partido": "SAN MIGUEL DEL MONTE",
+      "localidad": "SAN MIGUEL DEL MONTE",
+      "zona": "Cuenca Media",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true
+    },
+    {
       "lote": "SGH6B",
       "descripcion_mda": "San Genaro Hugo-Condominio Rossi Hugo Ezio Y Otros Sgh6B",
       "has": 35.15,
@@ -4048,24 +4045,9 @@
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": true
-    }
-  ],
-  "SAN GENARO HUGO-CONDOMINIO ROSSI HUGO EZIO Y OTROS_SGH6A": [
+    },
     {
-      "lote": "trigo",
-      "descripcion_mda": "San Genaro Hugo-Condominio Rossi Hugo Ezio Y Otros Sgh6A",
-      "has": 22.3,
-      "partido": "SAN MIGUEL DEL MONTE",
-      "localidad": "SAN MIGUEL DEL MONTE",
-      "zona": "Cuenca Media",
-      "cuit": "30710939345",
-      "cultivo": "",
-      "encontrado_en_mda": true
-    }
-  ],
-  "SAN GENARO HUGO-CONDOMINIO ROSSI HUGO EZIO Y OTROS_SGH8": [
-    {
-      "lote": "9",
+      "lote": "SGH8 9",
       "descripcion_mda": "San Genaro Hugo-Condominio Rossi Hugo Ezio Y Otros Sgh8 9",
       "has": 34.62,
       "partido": "SAN MIGUEL DEL MONTE",
@@ -4076,7 +4058,7 @@
       "encontrado_en_mda": true
     },
     {
-      "lote": "9B",
+      "lote": "SGH8 9B",
       "descripcion_mda": "San Genaro Hugo-Condominio Rossi Hugo Ezio Y Otros Sgh8 9",
       "has": 25.25,
       "partido": "SAN MIGUEL DEL MONTE",
@@ -4085,11 +4067,9 @@
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": true
-    }
-  ],
-  "SAN GENARO HUGO-CONDOMINIO ROSSI HUGO EZIO Y OTROS_SGH8_9": [
+    },
     {
-      "lote": "trigo",
+      "lote": "SGH8_9 trigo",
       "descripcion_mda": "San Genaro Hugo-Condominio Rossi Hugo Ezio Y Otros Sgh8 9",
       "has": 82.0,
       "partido": "SAN MIGUEL DEL MONTE",
@@ -4224,6 +4204,17 @@
     }
   ],
   "SAN JOSE DEL TROCADERO-JUAN JOSE AGUILAR": [
+    {
+      "lote": "3caride",
+      "descripcion_mda": "San Jose Del Trocadero-Juan Jose Aguilar Sjt 1",
+      "has": 192.28,
+      "partido": "LOBOS",
+      "localidad": "LOBOS",
+      "zona": "Cuenca Media",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true
+    },
     {
       "lote": "SJT 1",
       "descripcion_mda": "San Jose Del Trocadero-Juan Jose Aguilar Sjt 1",
@@ -4401,19 +4392,6 @@
       "encontrado_en_mda": true
     }
   ],
-  "SAN JOSE DEL TROCADERO-JUAN JOSE AGUILAR_SJT1_2": [
-    {
-      "lote": "3caride",
-      "descripcion_mda": "San Jose Del Trocadero-Juan Jose Aguilar Sjt 1",
-      "has": 192.28,
-      "partido": "LOBOS",
-      "localidad": "LOBOS",
-      "zona": "Cuenca Media",
-      "cuit": "30710939345",
-      "cultivo": "",
-      "encontrado_en_mda": true
-    }
-  ],
   "SAN JOSE-GARCIA, JORGE": [
     {
       "lote": "SJacceso",
@@ -4425,11 +4403,9 @@
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": true
-    }
-  ],
-  "SAN JOSE-GARCIA, JORGE_SJcasco": [
+    },
     {
-      "lote": "1",
+      "lote": "SJcasco 1",
       "descripcion_mda": "San Jose-Garcia, Jorge Sjcasco 1",
       "has": 34.51,
       "partido": "GRAL. PAZ",
@@ -4440,7 +4416,7 @@
       "encontrado_en_mda": true
     },
     {
-      "lote": "2",
+      "lote": "SJcasco 2",
       "descripcion_mda": "San Jose-Garcia, Jorge Sjcasco 2",
       "has": 43.42,
       "partido": "GRAL. PAZ",
@@ -4449,11 +4425,9 @@
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": true
-    }
-  ],
-  "SAN JOSE-GARCIA, JORGE_SJnegrete": [
+    },
     {
-      "lote": "1",
+      "lote": "SJnegrete 1",
       "descripcion_mda": "San Jose-Garcia, Jorge Sjnegrete 1",
       "has": 19.23,
       "partido": "GRAL. PAZ",
@@ -4464,7 +4438,7 @@
       "encontrado_en_mda": true
     },
     {
-      "lote": "2",
+      "lote": "SJnegrete 2",
       "descripcion_mda": "San Jose-Garcia, Jorge Sjnegrete 2",
       "has": 18.44,
       "partido": "GRAL. PAZ",
@@ -4475,7 +4449,7 @@
       "encontrado_en_mda": true
     },
     {
-      "lote": "3",
+      "lote": "SJnegrete 3",
       "descripcion_mda": "San Jose-Garcia, Jorge Sjnegrete 3",
       "has": 17.24,
       "partido": "GRAL. PAZ",
@@ -4484,11 +4458,9 @@
       "cuit": "30710939345",
       "cultivo": "",
       "encontrado_en_mda": true
-    }
-  ],
-  "SAN JOSE-GARCIA, JORGE_Sjcasco": [
+    },
     {
-      "lote": "3",
+      "lote": "Sjcasco 3",
       "descripcion_mda": "San Jose-Garcia, Jorge Sjcasco 3",
       "has": 30.58,
       "partido": "GRAL. PAZ",
