@@ -1616,6 +1616,7 @@ function dispararEmisionMDA() {
   var payload = {
     nro_receta: _resumenData.nroReceta,
     campo: b0.campo || "",
+    cultivo: (primerLoteObj.cultivo || (document.getElementById("lblCultivo") ? document.getElementById("lblCultivo").textContent : "") || "").replace(/^-$/, "").trim(),
     lotes: b0.lotes || [],
     cuit: loteCuit,
     zona: loteZona,
