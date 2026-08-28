@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADBlick Granos — Gestión de Cupos</title>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --brand:#FFD600;--brand-dark:#C9A800;--brand-light:#FFFDE7;
+  --dark:#18181B;--text:#111827;--sub:#6B7280;--light:#9CA3AF;
+  --border:#E5E7EB;--bg:#F9FAFB;--white:#FFFFFF;
+  --green:#16A34A;--green-light:#DCFCE7;
+  --red:#DC2626;--red-light:#FEE2E2;
+  --blue:#2563EB;--blue-light:#DBEAFE;
+  --orange:#EA580C;--orange-light:#FFEDD5;
+  --purple:#7C3AED;--purple-light:#EDE9FE;
+  --gray:#6B7280;--gray-light:#F3F4F6;
+}
+body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+a{color:var(--blue);}
+button{font-family:inherit;}
+
+/* ── LOADING ── */
+#loadingScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:16px;background:var(--dark);}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,214,0,0.2);border-top-color:var(--brand);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;}
+#appContent{display:none;}
+
+/* ── HEADER ── */
+.header{background:var(--dark);min-height:54px;position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:8px 24px;box-shadow:0 1px 12px rgba(0,0,0,0.3);flex-wrap:wrap;gap:10px;}
+.header-brand{display:flex;align-items:center;gap:10px;}
+.header-brand .dot{width:9px;height:9px;border-radius:50%;background:var(--brand);}
+.header-brand h1{color:#fff;font-size:15px;font-weight:800;letter-spacing:-.01em;}
+.header-brand .sub{color:rgba(255,255,255,.45);font-size:11px;font-weight:600;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.header-user{color:#fff;font-size:12.5px;font-weight:600;}
+.role-chip{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:3px 9px;border-radius:99px;background:rgba(255,214,0,.15);color:var(--brand);}
+
+/* ── NAV TABS ── */
+.tabbar{display:flex;gap:2px;background:var(--white);border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto;}
+.nav-btn{appearance:none;border:none;background:transparent;color:var(--sub);font-size:13px;font-weight:700;padding:13px 16px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+.nav-btn:hover{color:var(--text);}
+.nav-btn.active{color:var(--text);border-bottom-color:var(--brand);}
+.main{max-width:1320px;margin:0 auto;padding:20px;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* ── CARDS / TABLE ── */
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;}
+.card-pad{padding:18px 20px;}
+.section-title{font-size:14.5px;font-weight:800;margin-bottom:2px;display:flex;align-items:center;gap:8px;}
+.section-sub{font-size:12px;color:var(--sub);margin-bottom:14px;}
+.count-chip{font-size:11px;font-weight:700;color:var(--sub);background:var(--gray-light);padding:1px 8px;border-radius:99px;}
+
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);font-weight:800;padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tbody tr:hover{background:var(--gray-light);}
+tr.sobrecupeo{background:var(--red-light);}
+td.mono,.mono{font-family:'Consolas','SF Mono',monospace;}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap;}
+.pill.ok{background:var(--green-light);color:var(--green);}
+.pill.warn{background:var(--orange-light);color:var(--orange);}
+.pill.info{background:var(--blue-light);color:var(--blue);}
+.pill.danger{background:var(--red-light);color:var(--red);}
+.pill.purple{background:var(--purple-light);color:var(--purple);}
+.pill.neutral{background:var(--gray-light);color:var(--gray);text-decoration:line-through;}
+.pill.pending{background:var(--gray-light);color:var(--sub);}
+.dot-i{width:6px;height:6px;border-radius:99px;background:currentColor;}
+
+.btn{appearance:none;border:1px solid var(--border);background:var(--white);color:var(--text);border-radius:7px;padding:6px 11px;font-size:11.5px;font-weight:700;cursor:pointer;}
+.btn:hover{background:var(--gray-light);}
+.btn.primary{background:var(--dark);border-color:var(--dark);color:#fff;}
+.btn.primary:hover{background:#000;}
+.btn.danger{color:var(--red);}
+.btn.danger:hover{background:var(--red-light);}
+.btn.xs{padding:4px 8px;font-size:10.5px;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.action-group{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;}
+
+.mini-select,.mini-input{border:1px solid var(--border);background:var(--white);color:var(--text);border-radius:6px;padding:5px 7px;font-size:11.5px;font-family:inherit;max-width:150px;}
+.mini-input.ctg{max-width:110px;font-family:'Consolas',monospace;}
+
+.vence-badge{font-size:10.5px;font-family:'Consolas',monospace;}
+.vence-badge.urgent{color:var(--red);font-weight:700;}
+.vence-badge.soon{color:var(--orange);font-weight:700;}
+.vence-badge.later{color:var(--sub);}
+.vence-manual-wrap{display:flex;flex-direction:column;gap:3px;align-items:flex-start;}
+.vence-manual-wrap .flag{color:var(--red);font-size:10.5px;font-weight:700;}
+
+/* ── HOJA 3 layout ── */
+.v3-layout{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;}
+@media (max-width:860px){.v3-layout{grid-template-columns:1fr;}}
+.rail{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;position:sticky;top:70px;}
+.rail h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--sub);font-weight:800;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11.5px;color:var(--sub);font-weight:700;}
+.field select{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit;}
+.modelo-list{display:flex;flex-direction:column;gap:6px;}
+.modelo-item{border:1px solid var(--border);border-radius:8px;padding:9px 10px;cursor:pointer;background:var(--bg);}
+.modelo-item:hover{border-color:var(--brand-dark);}
+.modelo-item.selected{border-color:var(--brand-dark);background:var(--brand-light);}
+.modelo-item .mtitle{font-size:12.5px;font-weight:800;}
+.modelo-item .msub{font-size:11px;color:var(--sub);margin-top:2px;}
+.modelo-item .mcount{font-family:'Consolas',monospace;font-size:10.5px;color:var(--sub);margin-top:4px;}
+
+.cp-card summary{cursor:pointer;padding:15px 20px;font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:space-between;list-style:none;}
+.cp-card summary::-webkit-details-marker{display:none;}
+.cp-card .cp-heading .t2{font-size:11.5px;color:var(--sub);font-weight:500;}
+.cp-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 18px;padding:0 20px 16px;border-top:1px solid var(--border);padding-top:12px;}
+.cp-fields dt{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);}
+.cp-fields dd{font-size:12.5px;margin-top:2px;font-weight:700;}
+
+.banner-filter{display:flex;align-items:center;gap:10px;background:var(--brand-light);color:var(--brand-dark);border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:700;margin-bottom:14px;}
+.banner-filter button{margin-left:auto;appearance:none;border:1px solid var(--brand-dark);background:transparent;color:var(--brand-dark);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:800;cursor:pointer;}
+
+.stat-inline{display:flex;flex-direction:column;}
+.stat-inline .n{font-family:'Consolas',monospace;font-size:15px;font-weight:800;}
+.stat-inline .l{font-size:10.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;}
+.cupos-toolbar{display:flex;align-items:center;gap:18px;padding:14px 20px;flex-wrap:wrap;}
+
+.num-input{width:60px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:6px;padding:5px 7px;font-size:12px;font-family:'Consolas',monospace;text-align:center;}
+.linklike{appearance:none;border:none;background:none;color:var(--blue);font-weight:800;font-size:11.5px;cursor:pointer;padding:0;text-decoration:underline;}
+
+.source-note{font-size:11.5px;color:var(--sub);background:var(--gray-light);border-radius:8px;padding:9px 13px;margin-bottom:16px;border-left:3px solid var(--blue);}
+.source-note code{font-family:'Consolas',monospace;font-size:10.5px;background:var(--white);padding:1px 5px;border-radius:4px;}
+
+.empty-state{padding:28px;border:1px dashed var(--border);border-radius:12px;background:var(--white);color:var(--sub);}
+.empty-state h2{color:var(--text);font-size:16px;margin:6px 0 8px;}
+.empty-state ol,.empty-state ul{margin:6px 0 0;padding-left:18px;font-size:13px;}
+.empty-state li{margin:5px 0;}
+.empty-state li b{color:var(--text);}
+
+.bar-compare{display:flex;flex-direction:column;gap:4px;min-width:190px;}
+.bar-track{position:relative;height:8px;background:var(--gray-light);border-radius:99px;overflow:hidden;}
+.bar-fill{position:absolute;left:0;top:0;height:100%;border-radius:99px;}
+
+.note{font-size:11.5px;color:var(--sub);background:var(--gray-light);border-radius:8px;padding:8px 12px;margin-top:10px;border-left:3px solid var(--brand-dark);}
+.note b{color:var(--text);}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff;padding:11px 20px;border-radius:8px;font-size:12.5px;font-weight:700;opacity:0;pointer-events:none;transition:.2s;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.3);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.err{background:var(--red);}
+.toast.ok{background:var(--green);}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Iniciando sesión Microsoft…</div>
+</div>
+
+<div id="appContent">
+  <header class="header">
+    <div class="header-brand">
+      <span class="dot"></span>
+      <div>
+        <h1>Gestión de Cupos</h1>
+        <div class="sub">ADBlick Granos · Agricultura Digital</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="role-chip" id="role-chip"></span>
+      <span class="header-user" id="headerUser"></span>
+    </div>
+  </header>
+
+  <nav class="tabbar" id="header-nav">
+    <button class="nav-btn active" data-tab="t1">Estado de Entregas y Saldos</button>
+    <button class="nav-btn" data-tab="t2">Carga de Modelos y Cupos</button>
+    <button class="nav-btn" data-tab="t3">Gestión de Cupos</button>
+    <button class="nav-btn" data-tab="t4">Reportes</button>
+  </nav>
+
+  <div class="main">
+
+    <!-- HOJA 1 -->
+    <section class="tab-content active" id="tab-t1">
+      <p class="source-note">Lee la lista <code>SaldosContratos</code> (snapshot diario de <code>/Reportes/FijacionesContratos</code> + <code>/Reportes/CuboContratosVenta</code>) cruzada con <code>Cupos</code> y <code>PadronPesoCamionPorEspecie</code>.</p>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Comprador</th><th>Contrato</th><th>Cultivo</th><th>Corredor</th>
+              <th>Tn convenidas</th><th>Saldo a entregar (tn)</th><th>Camiones potenciales</th>
+              <th>Cupos cargados</th><th>Estado</th><th>Proyección semanal (cupos)</th><th></th>
+            </tr></thead>
+            <tbody id="t1-body"><tr><td colspan="11" style="padding:20px;color:var(--sub);">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="note" id="t1-empty-note" style="display:none;"><b>Sin datos todavía</b> — la lista <code>SaldosContratos</code> está vacía. Falta que se configure la sincronización diaria contra la API de Álvaro.</p>
+      <p class="note"><b>Proyección semanal:</b> manual, objetivo de cupos por semana según lo asignado, lo que pide el campo y el clima. <b>Sobrecupeo:</b> cupos cargados (Disponible+Pisado+Usado) por encima de los camiones potenciales del saldo pendiente.</p>
+    </section>
+
+    <!-- HOJA 2 -->
+    <section class="tab-content" id="tab-t2">
+      <div class="empty-state">
+        <span class="pill pending"><span class="dot-i"></span>Fuera de alcance de esta versión</span>
+        <h2>Carga de Modelos de Carta de Porte y Cupos</h2>
+        <p>Tres acciones posibles al cargar (pendiente de definir con Bautista: unificar en una entrada con detección automática de duplicados, o mantener dos vías separadas con alerta):</p>
+        <ol>
+          <li><b>Cargar modelo + cupos (nuevo)</b> — vía lector de imagen o carga manual del modelo.</li>
+          <li><b>Cargar cupos a un modelo existente</b> — el sistema reconoce el modelo y solo agrega los cupos nuevos.</li>
+          <li><b>Seleccionar un modelo, replicar y editar</b> — caso de retiro desde planta (ej. AgroGold).</li>
+        </ol>
+        <p>Mientras tanto, los modelos y cupos se cargan directo en las listas <code>ModelosCP</code> y <code>Cupos</code> de SharePoint.</p>
+      </div>
+    </section>
+
+    <!-- HOJA 3 -->
+    <section class="tab-content" id="tab-t3">
+      <div class="v3-layout">
+        <aside class="rail">
+          <h3>Ubicar destino</h3>
+          <div class="field"><label>Cultivo</label><select id="f-cultivo"></select></div>
+          <div class="field"><label>Comprador</label><select id="f-comprador"></select></div>
+          <div class="field"><label>Zona / Macrozona</label><select id="f-zona"></select></div>
+          <div class="field"><label>Destino (modelo de CP)</label><div class="modelo-list" id="modelo-list"></div></div>
+        </aside>
+        <div id="main-col"><div class="empty-state">Cargando cupos…</div></div>
+      </div>
+    </section>
+
+    <!-- HOJA 4 -->
+    <section class="tab-content" id="tab-t4">
+      <div class="card card-pad">
+        <p class="section-title">🚚 Cupos pedidos por campo vs. cupos asignados<span class="count-chip" id="rep-count">0</span></p>
+        <p class="section-sub">Pedido de camiones (<code style="font-family:'Consolas',monospace;">Lista_PedidoCamiones</code>) vs. cupos con "Otorgado a" = ese campo. Detecta desvíos groseros entre lo pedido y lo realmente asignado.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Campo</th><th>Última semana pedida</th><th>Comparativo</th><th>Pedidos</th><th>Asignados</th><th></th></tr></thead>
+            <tbody id="t4-body"><tr><td colspan="6" style="padding:20px;color:var(--sub);">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="note">El seguimiento de contratos y sobrecupeo vive en la <b>Hoja 1</b>; los vencimientos por cupo se ven en línea en la <b>Hoja 3</b>.</p>
+    </section>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+var CONFIG = {
+  clientId:   "c3d65cc5-56d1-4ac0-9f4f-a6ab47c80563",
+  tenantId:   "576e8544-afbe-423a-94a8-94fb80aaffe3",
+  siteId:     "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
+  lists: {
+    cupos:             "b1705ca2-0b09-4e82-a9e4-750b396b26dc",
+    modelosCP:         "359ed7a0-a0ce-4816-8c40-4e81fbd3a22d",
+    padronAux:         "bbc8741b-9358-4c1d-9bd6-e625ce04405a",
+    saldosContratos:   "f07aba2c-bca6-475c-99c4-e780ed679bbf",
+    padronHorarios:    "9b8ced53-660e-4b0b-94a0-d30ce9c6e8e4",
+    padronPeso:        "93f6d6e1-e2e5-4cbc-9ef4-062019cca6e0",
+    padronCampos:      "49f77686-4740-4fc5-9bcd-b53bf0fe3492",
+    padronPuntosStock: "b5cc6040-caf7-4d8e-ae06-eadc35664732",
+    pedidoCamiones:    "9b5b1eb0-784c-4d77-8745-4315b1d993f2",
+  },
+  redirectUri: "https://jochidemi.github.io/adblick-logistica/cupos.html",
+};
+
+var msalInstance = null, currentAccount = null, graphToken = null;
+var currentUser = "", currentUserEmail = "", currentUserRol = "Operador";
+
+// ═══════════════════════════════════════════════════════════════
+// MSAL / AUTH  (mismo patrón que pedidos-insumos.html)
+// ═══════════════════════════════════════════════════════════════
+async function initMsal() {
+  msalInstance = new msal.PublicClientApplication({
+    auth: { clientId: CONFIG.clientId, authority: "https://login.microsoftonline.com/" + CONFIG.tenantId, redirectUri: CONFIG.redirectUri },
+    cache: { cacheLocation: "sessionStorage" }
+  });
+  await msalInstance.initialize();
+  var response = await msalInstance.handleRedirectPromise();
+  if (response) { currentAccount = response.account; graphToken = response.accessToken; await onLoggedIn(); return; }
+  var accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) { currentAccount = accounts[0]; await acquireToken(); await onLoggedIn(); return; }
+  try {
+    await msalInstance.ssoSilent({ scopes: ["Sites.ReadWrite.All","User.Read"] });
+    var accs = msalInstance.getAllAccounts();
+    if (accs.length > 0) { currentAccount = accs[0]; await acquireToken(); await onLoggedIn(); return; }
+  } catch(e) {}
+  await msalInstance.loginRedirect({ scopes: ["Sites.ReadWrite.All","User.Read"] });
+}
+
+async function acquireToken() {
+  try {
+    var r = await msalInstance.acquireTokenSilent({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+    graphToken = r.accessToken;
+  } catch(e) {
+    try {
+      var r2 = await msalInstance.acquireTokenPopup({ account: currentAccount, scopes: ["Sites.ReadWrite.All","User.Read"] });
+      graphToken = r2.accessToken;
+    } catch(e2) {
+      throw new Error("No se pudo renovar el token. Recargá la página. (" + e2.message + ")");
+    }
+  }
+}
+
+async function onLoggedIn() {
+  currentUser = currentAccount.name || currentAccount.username || "Usuario";
+  currentUserEmail = currentAccount.username || "";
+  document.getElementById("headerUser").textContent = currentUser;
+  document.getElementById("loadingScreen").style.display = "none";
+  document.getElementById("appContent").style.display = "block";
+
+  document.querySelectorAll(".nav-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".nav-btn").forEach(function(b){b.classList.remove("active");});
+      document.querySelectorAll(".tab-content").forEach(function(p){p.classList.remove("active");});
+      btn.classList.add("active");
+      document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+      if(btn.dataset.tab==="t1") renderHoja1();
+      if(btn.dataset.tab==="t4") loadAndRenderHoja4();
+    });
+  });
+
+  setLoadingTextFallback("Cargando padrones…");
+  await loadAllMasterData();
+  resolveRole();
+  refreshRoleChip();
+  applyAutoVencido();
+  await renderHoja1();
+  initHoja3();
+}
+
+function setLoadingTextFallback(t){ var el=document.getElementById("loadingText"); if(el) el.textContent = t; }
+
+// ═══════════════════════════════════════════════════════════════
+// GRAPH API HELPERS  (mismo patrón que pedidos-insumos.html)
+// ═══════════════════════════════════════════════════════════════
+function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
+async function spGet(listId, params) {
+  params = params || "";
+  var items = [], url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items?$expand=fields&$top=500" + params;
+  var retried401 = false;
+  while (url) {
+    var r = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
+    if (r.status === 429) { await sleep(parseInt(r.headers.get("Retry-After")||"5")*1000); continue; }
+    if (r.status === 401 && !retried401) { retried401 = true; try { await acquireToken(); } catch(e) {} continue; }
+    if (!r.ok) throw new Error("SP GET " + r.status + " (" + listId + ")");
+    var d = await r.json();
+    items = items.concat(d.value || []);
+    url = d["@odata.nextLink"] || null;
+    if (url) { retried401 = false; await sleep(150); }
+  }
+  return items;
+}
+async function spPost(listId, fields) {
+  var r = await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + listId + "/items",
+    { method:"POST", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify({ fields: fields }) });
+  if (!r.ok) throw new Error("SP POST " + r.status + " (" + listId + ")");
+  return r.json();
+}
+async function spPatch(listId, itemId, fields) {
+  for (var attempt = 0; attempt < 2; attempt++) {
+    var r = await fetch("https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/lists/"+listId+"/items/"+itemId+"/fields",
+      { method:"PATCH", headers:{ Authorization:"Bearer "+graphToken, "Content-Type":"application/json" }, body:JSON.stringify(fields) });
+    if (r.ok) return true;
+    if (r.status === 401 && attempt === 0) { try { await acquireToken(); } catch(e) {} } else { throw new Error("SP PATCH " + r.status + " (" + listId + ")"); }
+  }
+  throw new Error("SP PATCH failed after retry");
+}
+
+function showToast(msg, type) {
+  var t=document.getElementById("toast");
+  t.textContent=msg; t.className="toast show"+(type?" "+type:"");
+  clearTimeout(t._timer); t._timer=setTimeout(function(){t.className="toast";},3500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MASTER DATA
+// ═══════════════════════════════════════════════════════════════
+var padronCampos = [], padronPuntosStock = [], padronHorarios = [], padronPeso = {};
+var MODELOS = [], CUPOS = [];
+
+function debugFields(label, items){
+  if(items && items.length) console.log("[CUPOS DEBUG] "+label+" — campos reales del primer item:", items[0].fields);
+  else console.log("[CUPOS DEBUG] "+label+" — la lista esta vacia o no se pudo leer.");
+}
+
+async function loadAllMasterData() {
+  setLoadingTextFallback("Cargando campos…");
+  var camposItems = await spGet(CONFIG.lists.padronCampos).catch(function(){ return []; });
+  debugFields("padronCampos", camposItems);
+  padronCampos = camposItems.map(function(i){ return i.fields.Nombre || i.fields.Title; }).filter(Boolean);
+  await sleep(150);
+
+  setLoadingTextFallback("Cargando plantas y acopios…");
+  var ptosItems = await spGet(CONFIG.lists.padronPuntosStock).catch(function(){ return []; });
+  debugFields("padronPuntosStock", ptosItems);
+  padronPuntosStock = ptosItems.map(function(i){ return { nombre: i.fields.Etiqueta || i.fields.Title, tipo: i.fields.Tipo || i.fields.TipoPuntoStock }; });
+  await sleep(150);
+
+  setLoadingTextFallback("Cargando horarios de puertos…");
+  var horItems = await spGet(CONFIG.lists.padronHorarios).catch(function(){ return []; });
+  debugFields("padronHorarios", horItems);
+  padronHorarios = horItems.map(function(i){ var f=i.fields; return {
+    zona: f.Zonamacrozona || f.Zona, destino: f.DestinoEmpresa || f.Destino, nroPlanta: String(f.NrodePlanta||f.NroPlanta||""),
+    aperturaOffset: numOrNull(f.AperturaOffsetdias), aperturaHora: f.AperturaHora||"",
+    cierreOffset: numOrNull(f.CierreOffsetdias), cierreHora: f.CierreHora||"",
+    estructurada: f.Vigenciaestructurada || f.VigenciaEstructurada || "No",
+  };});
+  await sleep(150);
+
+  setLoadingTextFallback("Cargando peso por especie…");
+  var pesoItems = await spGet(CONFIG.lists.padronPeso).catch(function(){ return []; });
+  debugFields("padronPeso", pesoItems);
+  padronPeso = {};
+  pesoItems.forEach(function(i){ var f=i.fields; padronPeso[f.Cultivo||f.Title] = Number(f.Pesopromediohistoricopor_x0020_camion_x0020_t || f.PesoTn || f.Pesot || 0); });
+  await sleep(150);
+
+  setLoadingTextFallback("Cargando modelos de carta de porte…");
+  var modItems = await spGet(CONFIG.lists.modelosCP).catch(function(){ return []; });
+  debugFields("modelosCP", modItems);
+  MODELOS = modItems.map(function(i){ var f=i.fields; return {
+    id: f.Title, spId: i.id, cultivo: f.Cultivo, comprador: f.Comprador, zona: f.Zona, destino: f.Destino, emisor: f.Emisor,
+    campos: {
+      "Remitente Comercial Productor": f.RemitenteComercialProductor||"—",
+      "Rte. Comercial Venta Primaria": f.RteComercialVentaPrimaria||"—",
+      "Rte. Comercial Venta Secundaria": f.RteComercialVentaSecundaria||"—",
+      "Corredor Venta Primaria": f.CorredorVentaPrimaria||"—",
+      "Representante Entregador": f.RepresentanteEntregador||"—",
+      "Representante Recibidor": f.RepresentanteRecibidor||"—",
+      "Destinatario": f.Destinatario||"—",
+      "Código de Planta Destino": f.CodigoPlantaDestino||"—",
+    },
+  };});
+  await sleep(150);
+
+  setLoadingTextFallback("Cargando cupos…");
+  var cupoItems = await spGet(CONFIG.lists.cupos).catch(function(){ return []; });
+  debugFields("cupos", cupoItems);
+  CUPOS = cupoItems.map(function(i){ var f=i.fields; return {
+    spId: i.id, codigo: f.Title, modeloId: f.ModeloCP, contratoId: f.ContratoId, cultivo: f.Cultivo, comprador: f.Comprador,
+    fecha: f.Fecha ? new Date(f.Fecha) : null, otorgadoA: f.OtorgadoA||"", estado: f.Estado||"Disponible",
+    ctg: f.CTG||"", auxiliar: f.Auxiliar||"", vencimientoManual: f.VencimientoManual ? new Date(f.VencimientoManual) : null,
+  };});
+}
+
+function numOrNull(v){ return (v===undefined||v===null||v==="") ? null : Number(v); }
+
+function resolveRole() {
+  // Se resuelve al cargar padronAux directamente en el login (ver refreshRoleChip abajo, carga async aparte)
+}
+var padronAuxCache = null;
+async function refreshRoleChip() {
+  try {
+    if (!padronAuxCache) padronAuxCache = await spGet(CONFIG.lists.padronAux).catch(function(){ return []; });
+    debugFields("padronAux", padronAuxCache);
+    var entry = padronAuxCache.find(function(i){ return (i.fields.Email||"").toLowerCase() === currentUserEmail.toLowerCase(); });
+    currentUserRol = (entry && entry.fields.Rol) ? entry.fields.Rol : "Operador";
+  } catch(e) { currentUserRol = "Operador"; }
+  var chip = document.getElementById("role-chip");
+  chip.textContent = currentUserRol;
+}
+function esSupervisor(){ return currentUserRol === "Supervisor"; }
+
+function getCamposYDestinosOptions() {
+  var destGranos = padronPuntosStock.filter(function(p){ return p.tipo === "Destino granos"; }).map(function(p){ return p.nombre; });
+  return { campos: padronCampos, destinos: destGranos };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VENCIMIENTO
+// ═══════════════════════════════════════════════════════════════
+function getModelo(id){ return MODELOS.find(function(m){ return m.id===id; }); }
+function getHorario(modelo){ if(!modelo) return null; return padronHorarios.find(function(p){ return p.zona===modelo.zona && p.destino===modelo.destino; }); }
+
+function computeVencimiento(cupo){
+  var modelo = getModelo(cupo.modeloId);
+  var horario = getHorario(modelo);
+  if(!horario || horario.estructurada!=="Si" || !cupo.fecha){
+    return {manual:true, date: cupo.vencimientoManual || null};
+  }
+  var base = new Date(cupo.fecha);
+  base.setDate(base.getDate() + horario.cierreOffset);
+  var parts = (horario.cierreHora||"00:00").split(":");
+  base.setHours(parseInt(parts[0])||0, parseInt(parts[1])||0, 0, 0);
+  return {manual:false, date: base};
+}
+
+function venceLabel(cupo){
+  if(!["Disponible","Pisado"].includes(cupo.estado)) return null;
+  var now = new Date();
+  var v = computeVencimiento(cupo);
+  if(v.manual){
+    if(!v.date) return {text:"requiere vencimiento manual", cls:"urgent", needsManual:true};
+    var hrs = (v.date-now)/3600000;
+    return {text:"vence "+fmtDate(v.date)+" (manual)", cls: hrs<0?"urgent":(hrs<=72?"soon":"later")};
+  }
+  var hrs2 = (v.date-now)/3600000;
+  if(hrs2<0) return {text:"vencido", cls:"urgent"};
+  if(hrs2<=24) return {text:"vence en "+Math.round(hrs2)+" hs", cls:"urgent"};
+  if(hrs2<=72) return {text:"vence en "+Math.round(hrs2/24)+" d", cls:"soon"};
+  return {text:"vence "+fmtDate(v.date), cls:"later"};
+}
+
+function fmtDate(dt){ return dt.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric"}); }
+
+async function applyAutoVencido(){
+  var now = new Date();
+  for (var i=0;i<CUPOS.length;i++){
+    var c = CUPOS[i];
+    if(["Disponible","Pisado"].includes(c.estado)){
+      var v = computeVencimiento(c);
+      if(!v.manual && v.date && v.date < now){
+        c.estado = "Vencido"; c.auxiliar = "";
+        try { await spPatch(CONFIG.lists.cupos, c.spId, {Estado:"Vencido", Auxiliar:""}); } catch(e){}
+      }
+    }
+  }
+}
+
+function pill(estado){
+  var map = {Disponible:"ok",Pisado:"warn",Usado:"info",Vencido:"danger",Devuelto:"purple",Cancelado:"neutral"};
+  return '<span class="pill '+map[estado]+'"><span class="dot-i"></span>'+estado+'</span>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOJA 1
+// ═══════════════════════════════════════════════════════════════
+var saldosCache = null;
+function cargadosContrato(contratoId){
+  return CUPOS.filter(function(c){ return c.contratoId===contratoId && ["Disponible","Pisado","Usado"].includes(c.estado); }).length;
+}
+function camionesPotenciales(saldo){
+  var peso = padronPeso[saldo.cultivo] || 25;
+  return Math.ceil((saldo.saldoEntregarKg/1000) / peso);
+}
+async function renderHoja1(){
+  var body = document.getElementById("t1-body");
+  try{
+    if(!saldosCache) saldosCache = await spGet(CONFIG.lists.saldosContratos).catch(function(){ return []; });
+    debugFields("saldosContratos", saldosCache);
+  } catch(e){ saldosCache = []; }
+  document.getElementById("t1-empty-note").style.display = saldosCache.length ? "none" : "block";
+  if(!saldosCache.length){ body.innerHTML = '<tr><td colspan="11" style="padding:20px;color:var(--sub);">Sin datos en SaldosContratos todavía.</td></tr>'; return; }
+
+  body.innerHTML = saldosCache.map(function(item){
+    var f = item.fields;
+    var saldo = { contratoId:f.Title, comprador:f.Comprador, cultivo:f.Cultivo, corredor:f.Corredor,
+      tnConvenidas:f.TnConvenidas, saldoEntregarKg:f.SaldoEntregarKg, proyeccionSemanal:f.ProyeccionSemanal||0, spId:item.id };
+    var cargados = cargadosContrato(saldo.contratoId);
+    var potenciales = camionesPotenciales(saldo);
+    var sobre = cargados > potenciales;
+    return '<tr class="'+(sobre?'sobrecupeo':'')+'">'+
+      '<td>'+saldo.comprador+'</td>'+
+      '<td class="mono">'+saldo.contratoId+'</td>'+
+      '<td>'+saldo.cultivo+'</td>'+
+      '<td>'+saldo.corredor+'</td>'+
+      '<td class="mono">'+saldo.tnConvenidas+'</td>'+
+      '<td class="mono">'+Math.round(saldo.saldoEntregarKg/1000)+'</td>'+
+      '<td class="mono">'+potenciales+'</td>'+
+      '<td class="mono">'+cargados+'</td>'+
+      '<td>'+(sobre? '<span class="pill danger"><span class="dot-i"></span>Sobrecupeo</span>' : '<span class="pill ok"><span class="dot-i"></span>OK</span>')+'</td>'+
+      '<td><input type="number" class="num-input" min="0" value="'+saldo.proyeccionSemanal+'" onchange="setProyeccion(\''+saldo.spId+'\', this.value)"></td>'+
+      '<td><button class="linklike" onclick="verCuposDeContrato(\''+saldo.contratoId+'\',\''+saldo.comprador+'\')">Ver cupos →</button></td>'+
+    '</tr>';
+  }).join("");
+}
+async function setProyeccion(spId, val){
+  try { await spPatch(CONFIG.lists.saldosContratos, spId, {ProyeccionSemanal: Number(val)}); showToast("Proyección actualizada","ok"); }
+  catch(e){ showToast("Error al guardar: "+e.message,"err"); }
+}
+var contratoFiltro = null;
+function verCuposDeContrato(contratoId, comprador){
+  contratoFiltro = contratoId;
+  document.querySelectorAll(".nav-btn").forEach(function(b){b.classList.remove("active");});
+  document.querySelectorAll(".tab-content").forEach(function(p){p.classList.remove("active");});
+  document.querySelector('.nav-btn[data-tab="t3"]').classList.add("active");
+  document.getElementById("tab-t3").classList.add("active");
+  var modelo = MODELOS.find(function(m){ return m.comprador===comprador; });
+  if(!modelo) return;
+  fCultivo.value = modelo.cultivo; refreshCompradores();
+  fComprador.value = modelo.comprador; refreshZonas();
+  fZona.value = modelo.zona;
+  selectedModeloId = modelo.id;
+  refreshModeloList(); renderMain();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOJA 3
+// ═══════════════════════════════════════════════════════════════
+var fCultivo, fComprador, fZona, modeloListEl, mainCol, selectedModeloId = null;
+
+function initHoja3(){
+  fCultivo = document.getElementById("f-cultivo");
+  fComprador = document.getElementById("f-comprador");
+  fZona = document.getElementById("f-zona");
+  modeloListEl = document.getElementById("modelo-list");
+  mainCol = document.getElementById("main-col");
+
+  populateSelect(fCultivo, uniq(MODELOS.map(function(m){return m.cultivo;})), "Todos");
+  fCultivo.addEventListener("change", function(){ refreshCompradores(); refreshZonas(); refreshModeloList(); });
+  fComprador.addEventListener("change", function(){ refreshZonas(); refreshModeloList(); });
+  fZona.addEventListener("change", refreshModeloList);
+
+  refreshCompradores(); refreshZonas(); refreshModeloList(); renderMain();
+}
+function uniq(arr){ return arr.filter(function(v,i,a){ return a.indexOf(v)===i; }); }
+function populateSelect(sel, values, placeholder){
+  sel.innerHTML = "";
+  var ph = document.createElement("option"); ph.value=""; ph.textContent = placeholder; sel.appendChild(ph);
+  values.forEach(function(v){ var o=document.createElement("option"); o.value=v; o.textContent=v; sel.appendChild(o); });
+}
+function refreshCompradores(){
+  var cult = fCultivo.value;
+  var pool = MODELOS.filter(function(m){ return !cult||m.cultivo===cult; });
+  populateSelect(fComprador, uniq(pool.map(function(m){return m.comprador;})), "Todos");
+}
+function refreshZonas(){
+  var cult = fCultivo.value, comp = fComprador.value;
+  var pool = MODELOS.filter(function(m){ return (!cult||m.cultivo===cult) && (!comp||m.comprador===comp); });
+  populateSelect(fZona, uniq(pool.map(function(m){return m.zona;})), "Todas");
+}
+function refreshModeloList(){
+  var cult = fCultivo.value, comp = fComprador.value, zona = fZona.value;
+  var pool = MODELOS.filter(function(m){ return (!cult||m.cultivo===cult) && (!comp||m.comprador===comp) && (!zona||m.zona===zona); });
+  modeloListEl.innerHTML = "";
+  pool.forEach(function(m){
+    var div = document.createElement("div");
+    div.className = "modelo-item" + (m.id===selectedModeloId ? " selected":"");
+    var cupos = CUPOS.filter(function(c){ return c.modeloId===m.id; });
+    var disp = cupos.filter(function(c){ return c.estado==="Disponible"; }).length;
+    div.innerHTML = '<div class="mtitle">'+m.cultivo+' · '+m.comprador+'</div><div class="msub">'+m.zona+' — '+m.destino+'</div><div class="mcount">'+disp+' disponibles / '+cupos.length+' cupos</div>';
+    div.addEventListener("click", function(){ selectedModeloId = m.id; contratoFiltro = null; refreshModeloList(); renderMain(); });
+    modeloListEl.appendChild(div);
+  });
+  if(!pool.length) modeloListEl.innerHTML = '<p style="font-size:12px;color:var(--sub);">No hay destinos para este filtro.</p>';
+  if(pool.length && !pool.find(function(m){return m.id===selectedModeloId;})){ selectedModeloId = pool[0].id; refreshModeloList(); return; }
+  renderMain();
+}
+
+async function setEstado(codigo, nuevo){
+  var c = CUPOS.find(function(x){return x.codigo===codigo;});
+  var prevEstado = c.estado, prevAux = c.auxiliar;
+  c.estado = nuevo; c.auxiliar = (nuevo==="Disponible") ? "" : currentUser;
+  renderMain();
+  try { await spPatch(CONFIG.lists.cupos, c.spId, {Estado:nuevo, Auxiliar:c.auxiliar}); showToast("Cupo "+codigo+" → "+nuevo,"ok"); }
+  catch(e){ c.estado=prevEstado; c.auxiliar=prevAux; renderMain(); showToast("Error al guardar: "+e.message,"err"); }
+}
+async function setContrato(codigo, contratoId){
+  var c = CUPOS.find(function(x){return x.codigo===codigo;});
+  var prev = c.contratoId; c.contratoId = contratoId;
+  try { await spPatch(CONFIG.lists.cupos, c.spId, {ContratoId:contratoId}); showToast("Contrato reasignado","ok"); }
+  catch(e){ c.contratoId=prev; renderMain(); showToast("Error al guardar: "+e.message,"err"); }
+}
+async function setOtorgado(codigo, val){
+  var c = CUPOS.find(function(x){return x.codigo===codigo;});
+  var prev = c.otorgadoA; c.otorgadoA = val;
+  try { await spPatch(CONFIG.lists.cupos, c.spId, {OtorgadoA:val}); showToast("Otorgado a actualizado","ok"); }
+  catch(e){ c.otorgadoA=prev; renderMain(); showToast("Error al guardar: "+e.message,"err"); }
+}
+async function setCtg(codigo, val){
+  var c = CUPOS.find(function(x){return x.codigo===codigo;});
+  c.ctg = val;
+  try { await spPatch(CONFIG.lists.cupos, c.spId, {CTG:val}); }
+  catch(e){ showToast("Error al guardar CTG: "+e.message,"err"); }
+}
+async function setVencManual(codigo, val){
+  var c = CUPOS.find(function(x){return x.codigo===codigo;});
+  c.vencimientoManual = val ? new Date(val+"T18:00:00") : null;
+  try { await spPatch(CONFIG.lists.cupos, c.spId, {VencimientoManual: val ? (val+"T18:00:00") : null}); renderMain(); showToast("Vencimiento manual guardado","ok"); }
+  catch(e){ showToast("Error al guardar: "+e.message,"err"); }
+}
+
+function renderMain(){
+  var m = getModelo(selectedModeloId);
+  if(!m){ mainCol.innerHTML = '<div class="empty-state">Elegí un destino a la izquierda.</div>'; return; }
+
+  var cupos = CUPOS.filter(function(c){ return c.modeloId===m.id; });
+  var filtroBanner = "";
+  if(contratoFiltro){
+    filtroBanner = '<div class="banner-filter"><span class="dot-i"></span>Mostrando solo cupos del contrato '+contratoFiltro+'<button onclick="contratoFiltro=null;renderMain();">Quitar filtro</button></div>';
+    cupos = cupos.filter(function(c){ return c.contratoId===contratoFiltro; });
+  }
+
+  var counts = {Disponible:0,Pisado:0,Usado:0,Vencido:0,Devuelto:0,Cancelado:0};
+  CUPOS.filter(function(c){return c.modeloId===m.id;}).forEach(function(c){ counts[c.estado] = (counts[c.estado]||0)+1; });
+
+  var fieldsHtml = Object.keys(m.campos).map(function(k){ return '<dt>'+k+'</dt><dd>'+m.campos[k]+'</dd>'; }).join("");
+  var opts = getCamposYDestinosOptions();
+
+  var rows = cupos.map(function(c){
+    var v = venceLabel(c);
+    var vencHtml = "—";
+    if(v){
+      if(v.needsManual || (v.text && v.text.indexOf("(manual)")>=0)){
+        vencHtml = '<div class="vence-manual-wrap">'+
+          (v.needsManual ? '<span class="flag">⚠ requiere carga manual</span>' : '<span class="vence-badge '+v.cls+'">'+v.text+'</span>')+
+          '<input type="date" class="mini-input" onchange="setVencManual(\''+c.codigo+'\', this.value)"></div>';
+      } else {
+        vencHtml = '<span class="vence-badge '+v.cls+'">'+v.text+'</span>';
+      }
+    }
+
+    var contratosComprador = (saldosCache||[]).filter(function(s){ return s.fields.Comprador===m.comprador; }).map(function(s){ return s.fields.Title; });
+    if(contratosComprador.indexOf(c.contratoId)===-1 && c.contratoId) contratosComprador.unshift(c.contratoId);
+    var terminal = ["Devuelto","Cancelado"].includes(c.estado);
+    var contratoSelect = '<select class="mini-select" '+(terminal?"disabled":"")+' onchange="setContrato(\''+c.codigo+'\', this.value)">'+
+      contratosComprador.map(function(ct){ return '<option value="'+ct+'" '+(ct===c.contratoId?"selected":"")+'>'+ct+'</option>'; }).join("")+'</select>';
+
+    var otorgadoSelect = '<select class="mini-select" '+(terminal?"disabled":"")+' onchange="setOtorgado(\''+c.codigo+'\', this.value)">'+
+      '<optgroup label="Campos">'+opts.campos.map(function(cm){ return '<option value="'+cm+'" '+(cm===c.otorgadoA?"selected":"")+'>'+cm+'</option>'; }).join("")+'</optgroup>'+
+      '<optgroup label="Plantas / Acopios">'+opts.destinos.map(function(dg){ return '<option value="'+dg+'" '+(dg===c.otorgadoA?"selected":"")+'>'+dg+'</option>'; }).join("")+'</optgroup></select>';
+
+    var ctgInput = '<input type="text" class="mini-input ctg" value="'+(c.ctg||"")+'" placeholder="CTG" onchange="setCtg(\''+c.codigo+'\', this.value)">';
+
+    var actions = [];
+    if(c.estado==="Disponible"){
+      actions.push('<button class="btn primary xs" onclick="setEstado(\''+c.codigo+'\',\'Pisado\')">Pisar</button>');
+      actions.push('<button class="btn danger xs" '+(esSupervisor()?"":"disabled title='Solo Braian (supervisor)'")+' onclick="setEstado(\''+c.codigo+'\',\'Cancelado\')">Cancelar</button>');
+    } else if(c.estado==="Pisado"){
+      actions.push('<button class="btn primary xs" onclick="setEstado(\''+c.codigo+'\',\'Usado\')">Usar</button>');
+      actions.push('<button class="btn xs" onclick="setEstado(\''+c.codigo+'\',\'Disponible\')">Liberar</button>');
+      actions.push('<button class="btn xs" '+(esSupervisor()?"":"disabled title='Solo Braian (supervisor)'")+' onclick="setEstado(\''+c.codigo+'\',\'Devuelto\')">Devolver</button>');
+      actions.push('<button class="btn danger xs" '+(esSupervisor()?"":"disabled title='Solo Braian (supervisor)'")+' onclick="setEstado(\''+c.codigo+'\',\'Cancelado\')">Cancelar</button>');
+    } else { actions.push('<span style="color:var(--sub);font-size:11px;">—</span>'); }
+
+    return '<tr>'+
+      '<td class="mono">'+(c.fecha?fmtDate(c.fecha):"—")+'</td>'+
+      '<td class="mono">'+c.codigo+'</td>'+
+      '<td>'+contratoSelect+'</td>'+
+      '<td>'+otorgadoSelect+'</td>'+
+      '<td>'+pill(c.estado)+'</td>'+
+      '<td>'+ctgInput+'</td>'+
+      '<td>'+(c.auxiliar||"—")+'</td>'+
+      '<td>'+vencHtml+'</td>'+
+      '<td style="text-align:right;"><div class="action-group">'+actions.join("")+'</div></td>'+
+    '</tr>';
+  }).join("");
+
+  mainCol.innerHTML =
+    filtroBanner +
+    '<details class="card cp-card" open style="margin-bottom:14px;">'+
+      '<summary><span class="cp-heading"><div style="font-size:14px;">'+m.cultivo+' · '+m.comprador+' — '+m.zona+'</div><div class="t2">'+m.destino+' · Emisor: '+m.emisor+'</div></span></summary>'+
+      '<dl class="cp-fields">'+fieldsHtml+'</dl>'+
+    '</details>'+
+    '<div class="card">'+
+      '<div class="cupos-toolbar">'+
+        '<div class="stat-inline"><span class="n">'+cupos.length+'</span><span class="l">Mostrados</span></div>'+
+        '<div class="stat-inline"><span class="n">'+(counts.Disponible||0)+'</span><span class="l">Disponibles</span></div>'+
+        '<div class="stat-inline"><span class="n">'+(counts.Pisado||0)+'</span><span class="l">Pisados</span></div>'+
+        '<div class="stat-inline"><span class="n">'+(counts.Usado||0)+'</span><span class="l">Usados</span></div>'+
+      '</div>'+
+      '<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cupo</th><th>Contrato</th><th>Otorgado a</th><th>Estado</th><th>CTG</th><th>Auxiliar</th><th>Vencimiento</th><th></th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table></div>'+
+    '</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOJA 4
+// ═══════════════════════════════════════════════════════════════
+var pedidoCamionesCache = null;
+function asignadosCampo(campo){
+  return CUPOS.filter(function(c){ return c.otorgadoA===campo && !["Cancelado","Devuelto"].includes(c.estado); }).length;
+}
+async function loadAndRenderHoja4(){
+  var body = document.getElementById("t4-body");
+  try {
+    if(!pedidoCamionesCache) pedidoCamionesCache = await spGet(CONFIG.lists.pedidoCamiones).catch(function(){ return []; });
+    debugFields("pedidoCamiones", pedidoCamionesCache);
+  } catch(e){ pedidoCamionesCache = []; }
+
+  // Tomar, por campo, el pedido mas reciente (por FechaPedido) y sumar Camiones0..6
+  var porCampo = {};
+  pedidoCamionesCache.forEach(function(item){
+    var f = item.fields;
+    var campo = f.Campo; if(!campo) return;
+    var fecha = f.FechaPedido || "";
+    if(!porCampo[campo] || fecha > porCampo[campo]._fecha){
+      var total = 0;
+      for(var i=0;i<=6;i++){ total += Number(f["Camiones"+i]||0); }
+      porCampo[campo] = { campo: campo, cultivo: f.Cultivo||"", pedidos: total, _fecha: fecha, semana: fecha };
+    }
+  });
+  var rows = Object.values(porCampo);
+  document.getElementById("rep-count").textContent = rows.length;
+
+  if(!rows.length){ body.innerHTML = '<tr><td colspan="6" style="padding:20px;color:var(--sub);">Sin pedidos en Lista_PedidoCamiones todavía.</td></tr>'; return; }
+
+  body.innerHTML = rows.map(function(p){
+    var asignado = asignadosCampo(p.campo);
+    var ratio = p.pedidos ? asignado/p.pedidos : 1;
+    var alerta = ratio < 0.5;
+    var maxV = Math.max(p.pedidos, asignado, 1);
+    return '<tr>'+
+      '<td>'+p.campo+'</td>'+
+      '<td class="mono">'+(p.semana||"—")+'</td>'+
+      '<td><div class="bar-compare">'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+(p.pedidos/maxV*100)+'%;background:var(--gray-light);border:1px solid var(--border);"></div></div>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+(asignado/maxV*100)+'%;background:'+(alerta?'var(--red)':'var(--blue)')+';"></div></div>'+
+      '</div></td>'+
+      '<td class="mono">'+p.pedidos+'</td>'+
+      '<td class="mono">'+asignado+'</td>'+
+      '<td>'+(alerta? '<span class="pill danger"><span class="dot-i"></span>Revisar</span>' : '<span class="pill ok"><span class="dot-i"></span>OK</span>')+'</td>'+
+    '</tr>';
+  }).join("");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener("load", function(){
+  if (typeof msal==="undefined"){
+    document.getElementById("loadingScreen").innerHTML='<p style="color:red;padding:20px;">Error: No se pudo cargar Microsoft Auth.</p>';
+    return;
+  }
+  initMsal().catch(function(e){
+    document.getElementById("loadingScreen").innerHTML='<p style="color:#fff;padding:20px;text-align:center;">Error al iniciar sesión: '+e.message+'<br><br><a href="javascript:location.reload()" style="color:var(--brand);">Reintentar</a></p>';
+  });
+});
+</script>
+</body>
+</html>
