@@ -119,6 +119,25 @@ td.mono,.mono{font-family:'Consolas','SF Mono',monospace;}
 .field{display:flex;flex-direction:column;gap:5px;}
 .field label{font-size:11.5px;color:var(--sub);font-weight:700;}
 .field select{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit;}
+
+.filterbar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+.filterbar .field{min-width:160px;}
+th.sortable{cursor:pointer;user-select:none;}
+th.sortable:hover{color:var(--text);}
+th.sortable .arrow{margin-left:3px;opacity:.5;}
+th.sortable.active .arrow{opacity:1;color:var(--brand-dark);}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;}
+.kpi-tile{border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center;background:var(--bg);}
+.kpi-tile .kv{font-size:20px;font-weight:800;color:var(--text);}
+.kpi-tile .kl{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-top:2px;}
+
+.bl-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;}
+.bl-title{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);margin-bottom:8px;}
+.bl-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px;}
+.bl-label{flex:0 0 110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bl-row .bar-track{flex:1;}
+.bl-value{flex:0 0 32px;text-align:right;font-family:'Consolas',monospace;font-weight:700;}
 .modelo-list{display:flex;flex-direction:column;gap:6px;}
 .modelo-item{border:1px solid var(--border);border-radius:8px;padding:9px 10px;cursor:pointer;background:var(--bg);}
 .modelo-item:hover{border-color:var(--brand-dark);}
@@ -207,14 +226,40 @@ td.mono,.mono{font-family:'Consolas','SF Mono',monospace;}
 
     <!-- HOJA 1 -->
     <section class="tab-content active" id="tab-t1">
+      <div class="card card-pad" style="margin-bottom:16px;">
+        <p class="section-title">🚚 Camiones pedidos — próximos 7 días<span class="count-chip" id="t1-cam7-count">0</span></p>
+        <p class="section-sub">De <code style="font-family:'Consolas',monospace;">Lista_PedidoCamiones</code>, igual que en la app de Pedido de Camiones.</p>
+        <div id="t1-cam7-kpis" class="kpi-row"></div>
+        <div class="bl-cols">
+          <div>
+            <h4 class="bl-title">Por zona</h4>
+            <div id="t1-cam7-zona"></div>
+          </div>
+          <div>
+            <h4 class="bl-title">Por cultivo</h4>
+            <div id="t1-cam7-cultivo"></div>
+          </div>
+        </div>
+      </div>
+
       <p class="source-note">Calcula el saldo pendiente por contrato en el momento: <code>FijacionesContratoVenta</code> (peso convenido) menos la suma de ventas de <code>Cubo contratos venta</code> para ese mismo contrato, cruzado con <code>Cupos</code> y <code>PadronPesoCamionPorEspecie</code>. El resultado se guarda como caché en <code>SaldosContratos</code>.</p>
+
+      <div class="filterbar">
+        <div class="field"><label>Comprador</label><select id="t1-f-comprador" onchange="renderHoja1Table()"><option value="">Todos</option></select></div>
+        <div class="field"><label>Cultivo</label><select id="t1-f-cultivo" onchange="renderHoja1Table()"><option value="">Todos</option></select></div>
+        <div class="field"><label>Corredor</label><select id="t1-f-corredor" onchange="renderHoja1Table()"><option value="">Todos</option></select></div>
+        <button class="btn xs" style="margin-top:19px;" onclick="clearHoja1Filters()">Limpiar filtros</button>
+      </div>
+
       <div class="card">
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Comprador</th><th>Contrato</th><th>Cultivo</th><th>Corredor</th>
-              <th>Tn convenidas</th><th>Saldo a entregar (tn)</th><th>Camiones potenciales</th>
-              <th>Cupos cargados</th><th>Estado</th><th></th>
+              <th class="sortable" data-key="comprador">Comprador</th><th class="sortable" data-key="contratoId">Contrato</th>
+              <th class="sortable" data-key="cultivo">Cultivo</th><th class="sortable" data-key="corredor">Corredor</th>
+              <th class="sortable" data-key="tnConvenidas">Tn convenidas</th><th class="sortable" data-key="saldoEntregarKg">Saldo a entregar (tn)</th>
+              <th class="sortable" data-key="potenciales">Camiones potenciales</th>
+              <th class="sortable" data-key="cargados">Cupos cargados</th><th>Estado</th><th></th>
             </tr></thead>
             <tbody id="t1-body"><tr><td colspan="10" style="padding:20px;color:var(--sub);">Cargando…</td></tr></tbody>
           </table>
@@ -365,6 +410,7 @@ async function onLoggedIn() {
   resolveRole();
   refreshRoleChip();
   applyAutoVencido();
+  wireHoja1Headers();
   await renderHoja1();
   initHoja3();
   initDropzone();
@@ -638,28 +684,146 @@ async function renderHoja1(){
   catch(e){ body.innerHTML = '<tr><td colspan="10" style="padding:20px;color:var(--red);">Error calculando saldos: '+e.message+'</td></tr>'; return; }
 
   latestSaldos = saldos;
-  document.getElementById("t1-empty-note").style.display = saldos.length ? "none" : "block";
-  if(!saldos.length){ body.innerHTML = '<tr><td colspan="10" style="padding:20px;color:var(--sub);">Sin contratos con saldo pendiente.</td></tr>'; return; }
+  populateHoja1Filters(saldos);
+  renderHoja1Table();
+  persistSaldos(saldos);
+  renderCamionesProximos7();
+}
 
-  body.innerHTML = saldos.map(function(saldo){
+function populateHoja1Filters(saldos){
+  function fillSelect(id, values){
+    var sel = document.getElementById(id);
+    var current = sel.value;
+    sel.innerHTML = '<option value="">Todos</option>' + values.map(function(v){ return '<option value="'+v+'">'+v+'</option>'; }).join("");
+    if(values.includes(current)) sel.value = current;
+  }
+  fillSelect("t1-f-comprador", uniq(saldos.map(function(s){return s.comprador;})).filter(Boolean).sort());
+  fillSelect("t1-f-cultivo", uniq(saldos.map(function(s){return s.cultivo;})).filter(Boolean).sort());
+  fillSelect("t1-f-corredor", uniq(saldos.map(function(s){return s.corredor;})).filter(Boolean).sort());
+}
+function clearHoja1Filters(){
+  ["t1-f-comprador","t1-f-cultivo","t1-f-corredor"].forEach(function(id){ document.getElementById(id).value=""; });
+  renderHoja1Table();
+}
+
+var t1SortKey = null, t1SortDir = 1;
+function sortHoja1(key){
+  if(t1SortKey===key) t1SortDir = -t1SortDir; else { t1SortKey = key; t1SortDir = 1; }
+  renderHoja1Table();
+}
+function wireHoja1Headers(){
+  document.querySelectorAll("#tab-t1 th.sortable").forEach(function(th){
+    th.addEventListener("click", function(){ sortHoja1(th.dataset.key); });
+  });
+}
+
+function renderHoja1Table(){
+  var body = document.getElementById("t1-body");
+  var fComp = document.getElementById("t1-f-comprador").value;
+  var fCult = document.getElementById("t1-f-cultivo").value;
+  var fCorr = document.getElementById("t1-f-corredor").value;
+
+  var rows = latestSaldos.map(function(saldo){
     var cargados = cargadosContrato(saldo.contratoId);
     var potenciales = camionesPotenciales(saldo);
-    var sobre = cargados > potenciales;
-    return '<tr class="'+(sobre?'sobrecupeo':'')+'">'+
+    return Object.assign({}, saldo, { cargados:cargados, potenciales:potenciales, sobre: cargados>potenciales });
+  }).filter(function(s){
+    return (!fComp || s.comprador===fComp) && (!fCult || s.cultivo===fCult) && (!fCorr || s.corredor===fCorr);
+  });
+
+  if(t1SortKey){
+    rows.sort(function(a,b){
+      var av=a[t1SortKey], bv=b[t1SortKey];
+      if(typeof av==="string") return av.localeCompare(bv,"es")*t1SortDir;
+      return (av-bv)*t1SortDir;
+    });
+  }
+
+  document.querySelectorAll("#tab-t1 th.sortable").forEach(function(th){
+    th.classList.toggle("active", th.dataset.key===t1SortKey);
+    var arrow = th.querySelector(".arrow"); if(arrow) arrow.remove();
+    if(th.dataset.key===t1SortKey) th.insertAdjacentHTML("beforeend", '<span class="arrow">'+(t1SortDir===1?"▲":"▼")+'</span>');
+  });
+
+  document.getElementById("t1-empty-note").style.display = latestSaldos.length ? "none" : "block";
+  if(!rows.length){ body.innerHTML = '<tr><td colspan="10" style="padding:20px;color:var(--sub);">'+(latestSaldos.length?'Sin resultados con estos filtros.':'Sin contratos con saldo pendiente.')+'</td></tr>'; return; }
+
+  body.innerHTML = rows.map(function(saldo){
+    return '<tr class="'+(saldo.sobre?'sobrecupeo':'')+'">'+
       '<td data-label="Comprador">'+saldo.comprador+'</td>'+
       '<td data-label="Contrato" class="mono">'+saldo.contratoId+'</td>'+
       '<td data-label="Cultivo">'+saldo.cultivo+'</td>'+
       '<td data-label="Corredor">'+saldo.corredor+'</td>'+
       '<td data-label="Tn convenidas" class="mono">'+saldo.tnConvenidas+'</td>'+
       '<td data-label="Saldo a entregar (tn)" class="mono">'+Math.round(saldo.saldoEntregarKg/1000)+'</td>'+
-      '<td data-label="Camiones potenciales" class="mono">'+potenciales+'</td>'+
-      '<td data-label="Cupos cargados" class="mono">'+cargados+'</td>'+
-      '<td data-label="Estado">'+(sobre? '<span class="pill danger"><span class="dot-i"></span>Sobrecupeo</span>' : '<span class="pill ok"><span class="dot-i"></span>OK</span>')+'</td>'+
+      '<td data-label="Camiones potenciales" class="mono">'+saldo.potenciales+'</td>'+
+      '<td data-label="Cupos cargados" class="mono">'+saldo.cargados+'</td>'+
+      '<td data-label="Estado">'+(saldo.sobre? '<span class="pill danger"><span class="dot-i"></span>Sobrecupeo</span>' : '<span class="pill ok"><span class="dot-i"></span>OK</span>')+'</td>'+
       '<td data-label=""><button class="linklike" onclick="verCuposDeContrato(\''+saldo.contratoId+'\',\''+saldo.comprador+'\')">Ver cupos →</button></td>'+
     '</tr>';
   }).join("");
+}
 
-  persistSaldos(saldos);
+// ── Camiones pedidos, proximos 7 dias (misma logica que la app de Pedido de Camiones) ──
+function fmtDateKey(d){ return d.toISOString().split("T")[0]; }
+function agruparCultivo(nombre){
+  if(!nombre) return "Sin cultivo";
+  var n = nombre.toLowerCase().trim();
+  if(n.indexOf("no gmo")!==-1 || n.indexOf("nogmo")!==-1 || n.indexOf("no-gmo")!==-1) return "Soja No GMO";
+  if(n.indexOf("soja")!==-1) return "Soja";
+  return nombre.charAt(0).toUpperCase()+nombre.slice(1);
+}
+function renderBarList(map){
+  var entries = Object.keys(map).map(function(k){ return [k, map[k]]; });
+  entries.sort(function(a,b){ return b[1]-a[1]; });
+  if(!entries.length) return '<p style="color:var(--sub);font-size:12px;">Sin pedidos.</p>';
+  var max = entries[0][1] || 1;
+  return entries.map(function(e){
+    return '<div class="bl-row"><span class="bl-label">'+e[0]+'</span>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+(e[1]/max*100)+'%;background:var(--blue);"></div></div>'+
+      '<span class="bl-value">'+e[1]+'</span></div>';
+  }).join("");
+}
+function kpiTile(label, value){
+  return '<div class="kpi-tile"><div class="kv">'+value+'</div><div class="kl">'+label+'</div></div>';
+}
+var pedidoCamiones7Cache = null;
+async function renderCamionesProximos7(){
+  try{
+    if(!pedidoCamiones7Cache) pedidoCamiones7Cache = await spGet(CONFIG.lists.pedidoCamiones).catch(function(){ return []; });
+  } catch(e){ pedidoCamiones7Cache = []; }
+
+  var today = new Date(); today.setHours(0,0,0,0);
+  var dateKeys = [];
+  for(var i=0;i<7;i++){ var d=new Date(today); d.setDate(d.getDate()+i); dateKeys.push(fmtDateKey(d)); }
+
+  var camPorZona = {}, camPorCultivo = {}, camPorDia = dateKeys.map(function(){return 0;}), total = 0;
+  pedidoCamiones7Cache.forEach(function(item){
+    var f = item.fields;
+    for(var di=0; di<7; di++){
+      var fk = f["Fecha"+di];
+      var idx = dateKeys.indexOf(fk);
+      if(idx===-1) continue;
+      var cam = Number(f["Camiones"+di]||0);
+      if(!cam) continue;
+      total += cam; camPorDia[idx] += cam;
+      var z = f.Zona || "Sin zona";
+      camPorZona[z] = (camPorZona[z]||0) + cam;
+      var c = agruparCultivo(f.Cultivo);
+      camPorCultivo[c] = (camPorCultivo[c]||0) + cam;
+    }
+  });
+
+  var diasConPedidos = camPorDia.filter(function(n){return n>0;}).length;
+  var promedio = diasConPedidos>0 ? (total/diasConPedidos).toFixed(1) : "0";
+  var pico = Math.max.apply(null, camPorDia.concat([0]));
+
+  document.getElementById("t1-cam7-count").textContent = total;
+  document.getElementById("t1-cam7-kpis").innerHTML =
+    kpiTile("Total camiones", total) + kpiTile("Días con pedidos", diasConPedidos+"/7") +
+    kpiTile("Promedio diario", promedio) + kpiTile("Pico diario", pico);
+  document.getElementById("t1-cam7-zona").innerHTML = renderBarList(camPorZona);
+  document.getElementById("t1-cam7-cultivo").innerHTML = renderBarList(camPorCultivo);
 }
 var contratoFiltro = null;
 function verCuposDeContrato(contratoId, comprador){
