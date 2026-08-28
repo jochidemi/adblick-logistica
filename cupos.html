@@ -64,6 +64,23 @@ tbody tr:hover{background:var(--gray-light);}
 tr.sobrecupeo{background:var(--red-light);}
 td.mono,.mono{font-family:'Consolas','SF Mono',monospace;}
 
+/* ── Tablas responsive: en pantallas angostas se apilan como tarjetas, sin scroll horizontal ── */
+@media (max-width: 900px){
+  .table-wrap{overflow-x:visible;}
+  .table-wrap table, .table-wrap thead, .table-wrap tbody, .table-wrap th, .table-wrap td, .table-wrap tr{display:block;}
+  .table-wrap thead{position:absolute;top:-9999px;left:-9999px;}
+  .table-wrap tbody tr{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+  .table-wrap tbody tr:hover{background:var(--white);}
+  .table-wrap tbody td{border:none;border-bottom:1px solid var(--border);padding:7px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;white-space:normal;}
+  .table-wrap tbody td:last-child{border-bottom:none;}
+  .table-wrap tbody td::before{content:attr(data-label);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);font-weight:800;flex:none;}
+  .table-wrap tbody td:empty::before{content:none;}
+  .table-wrap tbody td[data-label=""]{justify-content:flex-end;}
+  .table-wrap tbody td .mini-select,.table-wrap tbody td .mini-input{max-width:none;flex:1;}
+  .table-wrap tbody td .bar-compare{min-width:0;flex:1;}
+  .action-group{justify-content:flex-end;}
+}
+
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap;}
 .pill.ok{background:var(--green-light);color:var(--green);}
 .pill.warn{background:var(--orange-light);color:var(--orange);}
@@ -125,7 +142,6 @@ td.mono,.mono{font-family:'Consolas','SF Mono',monospace;}
 .stat-inline .l{font-size:10.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;}
 .cupos-toolbar{display:flex;align-items:center;gap:18px;padding:14px 20px;flex-wrap:wrap;}
 
-.num-input{width:60px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:6px;padding:5px 7px;font-size:12px;font-family:'Consolas',monospace;text-align:center;}
 .linklike{appearance:none;border:none;background:none;color:var(--blue);font-weight:800;font-size:11.5px;cursor:pointer;padding:0;text-decoration:underline;}
 
 .source-note{font-size:11.5px;color:var(--sub);background:var(--gray-light);border-radius:8px;padding:9px 13px;margin-bottom:16px;border-left:3px solid var(--blue);}
@@ -148,6 +164,14 @@ td.mono,.mono{font-family:'Consolas','SF Mono',monospace;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .toast.err{background:var(--red);}
 .toast.ok{background:var(--green);}
+
+.dropzone{border:2px dashed var(--border);border-radius:12px;padding:36px 20px;text-align:center;cursor:pointer;background:var(--bg);transition:.15s;}
+.dropzone:hover{border-color:var(--brand-dark);}
+.dropzone.dragover{border-color:var(--brand-dark);background:var(--brand-light);}
+.dropzone-inner{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--sub);font-size:13px;}
+.dropzone-icon{font-size:26px;}
+.upload-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-top:8px;font-size:12.5px;}
+.upload-row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -183,35 +207,42 @@ td.mono,.mono{font-family:'Consolas','SF Mono',monospace;}
 
     <!-- HOJA 1 -->
     <section class="tab-content active" id="tab-t1">
-      <p class="source-note">Lee la lista <code>SaldosContratos</code> (snapshot diario de <code>/Reportes/FijacionesContratos</code> + <code>/Reportes/CuboContratosVenta</code>) cruzada con <code>Cupos</code> y <code>PadronPesoCamionPorEspecie</code>.</p>
+      <p class="source-note">Calcula el saldo pendiente por contrato en el momento: <code>FijacionesContratoVenta</code> (peso convenido) menos la suma de ventas de <code>Cubo contratos venta</code> para ese mismo contrato, cruzado con <code>Cupos</code> y <code>PadronPesoCamionPorEspecie</code>. El resultado se guarda como caché en <code>SaldosContratos</code>.</p>
       <div class="card">
         <div class="table-wrap">
           <table>
             <thead><tr>
               <th>Comprador</th><th>Contrato</th><th>Cultivo</th><th>Corredor</th>
               <th>Tn convenidas</th><th>Saldo a entregar (tn)</th><th>Camiones potenciales</th>
-              <th>Cupos cargados</th><th>Estado</th><th>Proyección semanal (cupos)</th><th></th>
+              <th>Cupos cargados</th><th>Estado</th><th></th>
             </tr></thead>
-            <tbody id="t1-body"><tr><td colspan="11" style="padding:20px;color:var(--sub);">Cargando…</td></tr></tbody>
+            <tbody id="t1-body"><tr><td colspan="10" style="padding:20px;color:var(--sub);">Cargando…</td></tr></tbody>
           </table>
         </div>
       </div>
-      <p class="note" id="t1-empty-note" style="display:none;"><b>Sin datos todavía</b> — la lista <code>SaldosContratos</code> está vacía. Falta que se configure la sincronización diaria contra la API de Álvaro.</p>
-      <p class="note"><b>Proyección semanal:</b> manual, objetivo de cupos por semana según lo asignado, lo que pide el campo y el clima. <b>Sobrecupeo:</b> cupos cargados (Disponible+Pisado+Usado) por encima de los camiones potenciales del saldo pendiente.</p>
+      <p class="note" id="t1-empty-note" style="display:none;"><b>Sin contratos con saldo pendiente</b> — o no hay datos cargados en <code>FijacionesContratoVenta</code> / <code>Cubo contratos venta</code> todavía.</p>
+      <p class="note"><b>Sobrecupeo:</b> cupos cargados (Disponible+Pisado+Usado) por encima de los camiones potenciales del saldo pendiente.</p>
     </section>
 
     <!-- HOJA 2 -->
     <section class="tab-content" id="tab-t2">
-      <div class="empty-state">
-        <span class="pill pending"><span class="dot-i"></span>Fuera de alcance de esta versión</span>
-        <h2>Carga de Modelos de Carta de Porte y Cupos</h2>
-        <p>Tres acciones posibles al cargar (pendiente de definir con Bautista: unificar en una entrada con detección automática de duplicados, o mantener dos vías separadas con alerta):</p>
-        <ol>
-          <li><b>Cargar modelo + cupos (nuevo)</b> — vía lector de imagen o carga manual del modelo.</li>
-          <li><b>Cargar cupos a un modelo existente</b> — el sistema reconoce el modelo y solo agrega los cupos nuevos.</li>
-          <li><b>Seleccionar un modelo, replicar y editar</b> — caso de retiro desde planta (ej. AgroGold).</li>
-        </ol>
-        <p>Mientras tanto, los modelos y cupos se cargan directo en las listas <code>ModelosCP</code> y <code>Cupos</code> de SharePoint.</p>
+      <div class="card card-pad">
+        <p class="section-title">📥 Subir carta de porte / cupos</p>
+        <p class="section-sub">Arrastrá una imagen o PDF acá (captura de mail, WhatsApp o la web del puerto), o hacé click para elegirlo. Se guarda en <code>Pedido Camiones / Documentos / CPyCupos</code> — un flujo automático lo lee y carga los datos en <code>ModelosCP</code> y <code>Cupos</code> solo. Cuando termina, el archivo pasa a la carpeta <code>Procesados</code>.</p>
+        <div id="dropzone" class="dropzone">
+          <input type="file" id="fileInput" accept="image/*,application/pdf" multiple style="display:none;">
+          <div class="dropzone-inner">
+            <span class="dropzone-icon">⬆</span>
+            <span><b>Arrastrá el archivo acá</b>, o click para elegirlo</span>
+          </div>
+        </div>
+        <div id="uploadList"></div>
+      </div>
+
+      <div class="empty-state" style="margin-top:16px;">
+        <span class="pill pending"><span class="dot-i"></span>Pendiente de definir con Bautista</span>
+        <h2>Detección de modelos duplicados</h2>
+        <p>El flujo de procesamiento hoy detecta automáticamente si el modelo (cultivo + comprador + destino) ya existe antes de crear uno nuevo. Falta decidir si esa es la lógica definitiva o si conviene separar en dos vías distintas con alerta manual.</p>
       </div>
     </section>
 
@@ -262,6 +293,8 @@ var CONFIG = {
     modelosCP:         "359ed7a0-a0ce-4816-8c40-4e81fbd3a22d",
     padronAux:         "bbc8741b-9358-4c1d-9bd6-e625ce04405a",
     saldosContratos:   "f07aba2c-bca6-475c-99c4-e780ed679bbf",
+    fijaciones:        "94bb6f0c-d43e-4048-9151-10481e08b654",
+    cuboVentas:        "6a7e753b-fb3b-4b65-aeab-6efc0b264f2b",
     padronHorarios:    "9b8ced53-660e-4b0b-94a0-d30ce9c6e8e4",
     padronPeso:        "93f6d6e1-e2e5-4cbc-9ef4-062019cca6e0",
     padronCampos:      "49f77686-4740-4fc5-9bcd-b53bf0fe3492",
@@ -334,6 +367,7 @@ async function onLoggedIn() {
   applyAutoVencido();
   await renderHoja1();
   initHoja3();
+  initDropzone();
 }
 
 function setLoadingTextFallback(t){ var el=document.getElementById("loadingText"); if(el) el.textContent = t; }
@@ -533,7 +567,7 @@ function pill(estado){
 // ═══════════════════════════════════════════════════════════════
 // HOJA 1
 // ═══════════════════════════════════════════════════════════════
-var saldosCache = null;
+var latestSaldos = [];
 function cargadosContrato(contratoId){
   return CUPOS.filter(function(c){ return c.contratoId===contratoId && ["Disponible","Pisado","Usado"].includes(c.estado); }).length;
 }
@@ -541,40 +575,91 @@ function camionesPotenciales(saldo){
   var peso = padronPeso[saldo.cultivo] || 25;
   return Math.ceil((saldo.saldoEntregarKg/1000) / peso);
 }
+
+// Lee FijacionesContratoVenta + Cubo contratos venta y calcula saldo pendiente por contrato:
+// saldo = pesoContrato (convenido) - suma de kilos vendidos en el cubo para ese mismo contrato.
+async function computeSaldos(){
+  var fijItems = await spGet(CONFIG.lists.fijaciones).catch(function(){ return []; });
+  debugFields("fijaciones", fijItems);
+  var cuboItems = await spGet(CONFIG.lists.cuboVentas).catch(function(){ return []; });
+  debugFields("cuboVentas", cuboItems);
+
+  // Un contrato puede aparecer en varias filas de Fijaciones (una por fijacion/forward) — nos quedamos con la primera.
+  var contratosMap = {};
+  fijItems.forEach(function(i){
+    var f = i.fields;
+    var id = String(f.idComprobanteContrato||"").trim();
+    if(!id || contratosMap[id]) return;
+    contratosMap[id] = {
+      contratoId: id, comprador: f.cliente||"", cultivo: f.especie||"", corredor: f.corredor||"",
+      pesoContratoKg: Number(f.pesoContrato||0),
+    };
+  });
+
+  // El campo "contrato" del cubo viene como "{id} - {especie} - {descripcion}" — el id es lo primero.
+  var ventasMap = {};
+  cuboItems.forEach(function(i){
+    var f = i.fields;
+    var m = String(f.contrato||"").match(/^(\d+)/);
+    if(!m) return;
+    var id = m[1];
+    ventasMap[id] = (ventasMap[id]||0) + Number(f.kilos||0);
+  });
+
+  return Object.keys(contratosMap).map(function(id){
+    var c = contratosMap[id];
+    var vendidoKg = ventasMap[id]||0;
+    var saldoKg = Math.max(0, c.pesoContratoKg - vendidoKg);
+    return { contratoId:c.contratoId, comprador:c.comprador, cultivo:c.cultivo, corredor:c.corredor,
+      tnConvenidas: Math.round(c.pesoContratoKg/1000), saldoEntregarKg: saldoKg };
+  }).filter(function(s){ return s.saldoEntregarKg > 0; });
+}
+
+// Guarda el resultado calculado en SaldosContratos (crea o actualiza por Title=contratoId). No bloquea el render.
+async function persistSaldos(saldos){
+  try {
+    var existing = await spGet(CONFIG.lists.saldosContratos).catch(function(){ return []; });
+    for (var i=0;i<saldos.length;i++){
+      var s = saldos[i];
+      var match = existing.find(function(it){ return it.fields.Title===s.contratoId; });
+      var payload = { Comprador:s.comprador, Cultivo:s.cultivo, Corredor:s.corredor,
+        TnConvenidas:s.tnConvenidas, SaldoEntregarKg:s.saldoEntregarKg, FechaActualizacion:new Date().toISOString().slice(0,10) };
+      if(match) await spPatch(CONFIG.lists.saldosContratos, match.id, payload);
+      else await spPost(CONFIG.lists.saldosContratos, Object.assign({Title:s.contratoId}, payload));
+      await sleep(150);
+    }
+  } catch(e){ console.warn("[CUPOS] No se pudo persistir SaldosContratos:", e); }
+}
+
 async function renderHoja1(){
   var body = document.getElementById("t1-body");
-  try{
-    if(!saldosCache) saldosCache = await spGet(CONFIG.lists.saldosContratos).catch(function(){ return []; });
-    debugFields("saldosContratos", saldosCache);
-  } catch(e){ saldosCache = []; }
-  document.getElementById("t1-empty-note").style.display = saldosCache.length ? "none" : "block";
-  if(!saldosCache.length){ body.innerHTML = '<tr><td colspan="11" style="padding:20px;color:var(--sub);">Sin datos en SaldosContratos todavía.</td></tr>'; return; }
+  var saldos;
+  try { saldos = await computeSaldos(); }
+  catch(e){ body.innerHTML = '<tr><td colspan="10" style="padding:20px;color:var(--red);">Error calculando saldos: '+e.message+'</td></tr>'; return; }
 
-  body.innerHTML = saldosCache.map(function(item){
-    var f = item.fields;
-    var saldo = { contratoId:f.Title, comprador:f.Comprador, cultivo:f.Cultivo, corredor:f.Corredor,
-      tnConvenidas:f.TnConvenidas, saldoEntregarKg:f.SaldoEntregarKg, proyeccionSemanal:f.ProyeccionSemanal||0, spId:item.id };
+  latestSaldos = saldos;
+  document.getElementById("t1-empty-note").style.display = saldos.length ? "none" : "block";
+  if(!saldos.length){ body.innerHTML = '<tr><td colspan="10" style="padding:20px;color:var(--sub);">Sin contratos con saldo pendiente.</td></tr>'; return; }
+
+  body.innerHTML = saldos.map(function(saldo){
     var cargados = cargadosContrato(saldo.contratoId);
     var potenciales = camionesPotenciales(saldo);
     var sobre = cargados > potenciales;
     return '<tr class="'+(sobre?'sobrecupeo':'')+'">'+
-      '<td>'+saldo.comprador+'</td>'+
-      '<td class="mono">'+saldo.contratoId+'</td>'+
-      '<td>'+saldo.cultivo+'</td>'+
-      '<td>'+saldo.corredor+'</td>'+
-      '<td class="mono">'+saldo.tnConvenidas+'</td>'+
-      '<td class="mono">'+Math.round(saldo.saldoEntregarKg/1000)+'</td>'+
-      '<td class="mono">'+potenciales+'</td>'+
-      '<td class="mono">'+cargados+'</td>'+
-      '<td>'+(sobre? '<span class="pill danger"><span class="dot-i"></span>Sobrecupeo</span>' : '<span class="pill ok"><span class="dot-i"></span>OK</span>')+'</td>'+
-      '<td><input type="number" class="num-input" min="0" value="'+saldo.proyeccionSemanal+'" onchange="setProyeccion(\''+saldo.spId+'\', this.value)"></td>'+
-      '<td><button class="linklike" onclick="verCuposDeContrato(\''+saldo.contratoId+'\',\''+saldo.comprador+'\')">Ver cupos →</button></td>'+
+      '<td data-label="Comprador">'+saldo.comprador+'</td>'+
+      '<td data-label="Contrato" class="mono">'+saldo.contratoId+'</td>'+
+      '<td data-label="Cultivo">'+saldo.cultivo+'</td>'+
+      '<td data-label="Corredor">'+saldo.corredor+'</td>'+
+      '<td data-label="Tn convenidas" class="mono">'+saldo.tnConvenidas+'</td>'+
+      '<td data-label="Saldo a entregar (tn)" class="mono">'+Math.round(saldo.saldoEntregarKg/1000)+'</td>'+
+      '<td data-label="Camiones potenciales" class="mono">'+potenciales+'</td>'+
+      '<td data-label="Cupos cargados" class="mono">'+cargados+'</td>'+
+      '<td data-label="Estado">'+(sobre? '<span class="pill danger"><span class="dot-i"></span>Sobrecupeo</span>' : '<span class="pill ok"><span class="dot-i"></span>OK</span>')+'</td>'+
+      '<td data-label=""><button class="linklike" onclick="verCuposDeContrato(\''+saldo.contratoId+'\',\''+saldo.comprador+'\')">Ver cupos →</button></td>'+
     '</tr>';
   }).join("");
-}
-async function setProyeccion(spId, val){
-  try { await spPatch(CONFIG.lists.saldosContratos, spId, {ProyeccionSemanal: Number(val)}); showToast("Proyección actualizada","ok"); }
-  catch(e){ showToast("Error al guardar: "+e.message,"err"); }
+
+  persistSaldos(saldos);
 }
 var contratoFiltro = null;
 function verCuposDeContrato(contratoId, comprador){
@@ -708,7 +793,7 @@ function renderMain(){
       }
     }
 
-    var contratosComprador = (saldosCache||[]).filter(function(s){ return s.fields.Comprador===m.comprador; }).map(function(s){ return s.fields.Title; });
+    var contratosComprador = (latestSaldos||[]).filter(function(s){ return s.comprador===m.comprador; }).map(function(s){ return s.contratoId; });
     if(contratosComprador.indexOf(c.contratoId)===-1 && c.contratoId) contratosComprador.unshift(c.contratoId);
     var terminal = ["Devuelto","Cancelado"].includes(c.estado);
     var contratoSelect = '<select class="mini-select" '+(terminal?"disabled":"")+' onchange="setContrato(\''+c.codigo+'\', this.value)">'+
@@ -732,15 +817,15 @@ function renderMain(){
     } else { actions.push('<span style="color:var(--sub);font-size:11px;">—</span>'); }
 
     return '<tr>'+
-      '<td class="mono">'+(c.fecha?fmtDate(c.fecha):"—")+'</td>'+
-      '<td class="mono">'+c.codigo+'</td>'+
-      '<td>'+contratoSelect+'</td>'+
-      '<td>'+otorgadoSelect+'</td>'+
-      '<td>'+pill(c.estado)+'</td>'+
-      '<td>'+ctgInput+'</td>'+
-      '<td>'+(c.auxiliar||"—")+'</td>'+
-      '<td>'+vencHtml+'</td>'+
-      '<td style="text-align:right;"><div class="action-group">'+actions.join("")+'</div></td>'+
+      '<td data-label="Fecha" class="mono">'+(c.fecha?fmtDate(c.fecha):"—")+'</td>'+
+      '<td data-label="Cupo" class="mono">'+c.codigo+'</td>'+
+      '<td data-label="Contrato">'+contratoSelect+'</td>'+
+      '<td data-label="Otorgado a">'+otorgadoSelect+'</td>'+
+      '<td data-label="Estado">'+pill(c.estado)+'</td>'+
+      '<td data-label="CTG">'+ctgInput+'</td>'+
+      '<td data-label="Auxiliar">'+(c.auxiliar||"—")+'</td>'+
+      '<td data-label="Vencimiento">'+vencHtml+'</td>'+
+      '<td data-label="" style="text-align:right;"><div class="action-group">'+actions.join("")+'</div></td>'+
     '</tr>';
   }).join("");
 
@@ -799,17 +884,80 @@ async function loadAndRenderHoja4(){
     var alerta = ratio < 0.5;
     var maxV = Math.max(p.pedidos, asignado, 1);
     return '<tr>'+
-      '<td>'+p.campo+'</td>'+
-      '<td class="mono">'+(p.semana||"—")+'</td>'+
-      '<td><div class="bar-compare">'+
+      '<td data-label="Campo">'+p.campo+'</td>'+
+      '<td data-label="Última semana pedida" class="mono">'+(p.semana||"—")+'</td>'+
+      '<td data-label="Comparativo"><div class="bar-compare">'+
         '<div class="bar-track"><div class="bar-fill" style="width:'+(p.pedidos/maxV*100)+'%;background:var(--gray-light);border:1px solid var(--border);"></div></div>'+
         '<div class="bar-track"><div class="bar-fill" style="width:'+(asignado/maxV*100)+'%;background:'+(alerta?'var(--red)':'var(--blue)')+';"></div></div>'+
       '</div></td>'+
-      '<td class="mono">'+p.pedidos+'</td>'+
-      '<td class="mono">'+asignado+'</td>'+
-      '<td>'+(alerta? '<span class="pill danger"><span class="dot-i"></span>Revisar</span>' : '<span class="pill ok"><span class="dot-i"></span>OK</span>')+'</td>'+
+      '<td data-label="Pedidos" class="mono">'+p.pedidos+'</td>'+
+      '<td data-label="Asignados" class="mono">'+asignado+'</td>'+
+      '<td data-label="Estado">'+(alerta? '<span class="pill danger"><span class="dot-i"></span>Revisar</span>' : '<span class="pill ok"><span class="dot-i"></span>OK</span>')+'</td>'+
     '</tr>';
   }).join("");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOJA 2 — Drag and drop de cartas de porte / cupos
+// ═══════════════════════════════════════════════════════════════
+var CPYCUPOS_FOLDER = "CPyCupos"; // carpeta dentro de la biblioteca "Documentos" del sitio Pedido Camiones
+
+function initDropzone(){
+  var dz = document.getElementById("dropzone");
+  var input = document.getElementById("fileInput");
+  dz.addEventListener("click", function(){ input.click(); });
+  dz.addEventListener("dragover", function(e){ e.preventDefault(); dz.classList.add("dragover"); });
+  dz.addEventListener("dragleave", function(){ dz.classList.remove("dragover"); });
+  dz.addEventListener("drop", function(e){
+    e.preventDefault(); dz.classList.remove("dragover");
+    handleFiles(e.dataTransfer.files);
+  });
+  input.addEventListener("change", function(){ handleFiles(input.files); input.value = ""; });
+}
+
+function handleFiles(fileList){
+  Array.from(fileList).forEach(function(file){
+    if(!/^image\//.test(file.type) && file.type!=="application/pdf"){
+      showToast(file.name+": solo se aceptan imagenes o PDF","err");
+      return;
+    }
+    uploadFile(file);
+  });
+}
+
+function addUploadRow(name){
+  var row = document.createElement("div");
+  row.className = "upload-row";
+  row.innerHTML = '<span class="name">'+name+'</span><span class="pill pending status"><span class="dot-i"></span>Subiendo…</span>';
+  document.getElementById("uploadList").prepend(row);
+  return row;
+}
+function updateUploadRow(row, kind, text){
+  var pillClass = kind==="ok" ? "ok" : (kind==="err" ? "danger" : "pending");
+  row.querySelector(".status").outerHTML = '<span class="pill '+pillClass+' status"><span class="dot-i"></span>'+text+'</span>';
+}
+
+async function uploadFile(file){
+  var row = addUploadRow(file.name);
+  try{
+    var safeName = file.name.replace(/[#%*:<>?/\\{|}"]/g, "_");
+    var url = "https://graph.microsoft.com/v1.0/sites/"+CONFIG.siteId+"/drive/root:/"+CPYCUPOS_FOLDER+"/"+encodeURIComponent(safeName)+":/content";
+    var r = await fetch(url, {
+      method:"PUT",
+      headers:{ Authorization:"Bearer "+graphToken, "Content-Type": file.type||"application/octet-stream" },
+      body: file
+    });
+    if(r.status===401){
+      await acquireToken();
+      r = await fetch(url, { method:"PUT", headers:{ Authorization:"Bearer "+graphToken, "Content-Type": file.type||"application/octet-stream" }, body: file });
+    }
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    updateUploadRow(row, "ok", "Subido — procesando");
+    showToast(file.name+" subido correctamente","ok");
+  } catch(e){
+    updateUploadRow(row, "err", "Error: "+e.message);
+    showToast("Error subiendo "+file.name+": "+e.message,"err");
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
