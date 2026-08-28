@@ -227,6 +227,13 @@ th.sortable.active .arrow{opacity:1;color:var(--brand-dark);}
     <!-- HOJA 1 -->
     <section class="tab-content active" id="tab-t1">
       <div class="card card-pad" style="margin-bottom:16px;">
+        <p class="section-title">📊 Resumen de contratos</p>
+        <div id="t1-resumen-kpis" class="kpi-row"></div>
+        <h4 class="bl-title">Cumplimiento por cultivo</h4>
+        <div id="t1-resumen-cumplimiento"></div>
+      </div>
+
+      <div class="card card-pad" style="margin-bottom:16px;">
         <p class="section-title">🚚 Camiones pedidos — próximos 7 días<span class="count-chip" id="t1-cam7-count">0</span></p>
         <p class="section-sub">De <code style="font-family:'Consolas',monospace;">Lista_PedidoCamiones</code>, igual que en la app de Pedido de Camiones.</p>
         <div id="t1-cam7-kpis" class="kpi-row"></div>
@@ -652,13 +659,15 @@ async function computeSaldos(){
     ventasMap[id] = (ventasMap[id]||0) + Number(f.Kilos||0);
   });
 
+  // Devuelve TODOS los contratos (incluidos los ya completados) — quien lo use filtra segun necesite.
   return Object.keys(contratosMap).map(function(id){
     var c = contratosMap[id];
     var vendidoKg = ventasMap[id]||0;
     var saldoKg = Math.max(0, c.pesoContratoKg - vendidoKg);
     return { contratoId:c.contratoId, comprador:c.comprador, cultivo:c.cultivo, corredor:c.corredor,
-      tnConvenidas: Math.round(c.pesoContratoKg/1000), saldoEntregarKg: saldoKg };
-  }).filter(function(s){ return s.saldoEntregarKg > 0; });
+      tnConvenidas: Math.round(c.pesoContratoKg/1000), pesoContratoKg: c.pesoContratoKg,
+      entregadoKg: vendidoKg, saldoEntregarKg: saldoKg };
+  });
 }
 
 // Guarda el resultado calculado en SaldosContratos (crea o actualiza por Title=contratoId). No bloquea el render.
@@ -679,15 +688,45 @@ async function persistSaldos(saldos){
 
 async function renderHoja1(){
   var body = document.getElementById("t1-body");
-  var saldos;
-  try { saldos = await computeSaldos(); }
+  var allSaldos;
+  try { allSaldos = await computeSaldos(); }
   catch(e){ body.innerHTML = '<tr><td colspan="10" style="padding:20px;color:var(--red);">Error calculando saldos: '+e.message+'</td></tr>'; return; }
 
-  latestSaldos = saldos;
-  populateHoja1Filters(saldos);
+  var openSaldos = allSaldos.filter(function(s){ return s.saldoEntregarKg > 0; });
+  latestSaldos = openSaldos;
+  populateHoja1Filters(openSaldos);
   renderHoja1Table();
-  persistSaldos(saldos);
+  persistSaldos(openSaldos);
+  renderResumenContratos(allSaldos);
   renderCamionesProximos7();
+}
+
+function renderResumenContratos(allSaldos){
+  var contratosAbiertos = allSaldos.filter(function(s){ return s.saldoEntregarKg > 0; }).length;
+  var toneladasEntregadas = allSaldos.reduce(function(acc,s){ return acc + (s.entregadoKg||0); }, 0) / 1000;
+
+  document.getElementById("t1-resumen-kpis").innerHTML =
+    kpiTile("Contratos abiertos", contratosAbiertos) +
+    kpiTile("Toneladas entregadas", Math.round(toneladasEntregadas).toLocaleString("es-AR"));
+
+  var porCultivo = {};
+  allSaldos.forEach(function(s){
+    if(!s.cultivo) return;
+    if(!porCultivo[s.cultivo]) porCultivo[s.cultivo] = {conv:0, ent:0};
+    porCultivo[s.cultivo].conv += s.pesoContratoKg;
+    porCultivo[s.cultivo].ent += (s.entregadoKg||0);
+  });
+  var rows = Object.keys(porCultivo).map(function(c){
+    var d = porCultivo[c];
+    var pct = d.conv>0 ? Math.round(d.ent/d.conv*100) : 0;
+    return [c, pct];
+  }).sort(function(a,b){ return b[1]-a[1]; });
+
+  document.getElementById("t1-resumen-cumplimiento").innerHTML = rows.length ? rows.map(function(r){
+    return '<div class="bl-row"><span class="bl-label">'+r[0]+'</span>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+Math.min(r[1],100)+'%;background:'+(r[1]>=100?'var(--green)':'var(--brand-dark)')+';"></div></div>'+
+      '<span class="bl-value">'+r[1]+'%</span></div>';
+  }).join("") : '<p style="color:var(--sub);font-size:12px;">Sin datos.</p>';
 }
 
 function populateHoja1Filters(saldos){
