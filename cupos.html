@@ -495,8 +495,8 @@ async function refreshRoleChip() {
   try {
     if (!padronAuxCache) padronAuxCache = await spGet(CONFIG.lists.padronAux).catch(function(){ return []; });
     debugFields("padronAux", padronAuxCache);
-    var entry = padronAuxCache.find(function(i){ return (i.fields.Email||"").toLowerCase() === currentUserEmail.toLowerCase(); });
-    currentUserRol = (entry && entry.fields.Rol) ? entry.fields.Rol : "Operador";
+    var entry = padronAuxCache.find(function(i){ return (i.fields.field_1||"").toLowerCase() === currentUserEmail.toLowerCase(); });
+    currentUserRol = (entry && entry.fields.field_2) ? entry.fields.field_2 : "Operador";
   } catch(e) { currentUserRol = "Operador"; }
   var chip = document.getElementById("role-chip");
   chip.textContent = currentUserRol;
