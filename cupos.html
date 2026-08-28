@@ -585,25 +585,25 @@ async function computeSaldos(){
   debugFields("cuboVentas", cuboItems);
 
   // Un contrato puede aparecer en varias filas de Fijaciones (una por fijacion/forward) — nos quedamos con la primera.
+  // PesoContrato viene en TONELADAS (ej. 102.822), no en kg.
   var contratosMap = {};
   fijItems.forEach(function(i){
     var f = i.fields;
-    var id = String(f.idComprobanteContrato||"").trim();
+    var id = String(f.IDComprobanteContrato||"").trim();
     if(!id || contratosMap[id]) return;
     contratosMap[id] = {
-      contratoId: id, comprador: f.cliente||"", cultivo: f.especie||"", corredor: f.corredor||"",
-      pesoContratoKg: Number(f.pesoContrato||0),
+      contratoId: id, comprador: f.Cliente||"", cultivo: f.Especie||"", corredor: f.Corredor||"",
+      pesoContratoKg: Number(f.PesoContrato||0) * 1000,
     };
   });
 
-  // El campo "contrato" del cubo viene como "{id} - {especie} - {descripcion}" — el id es lo primero.
+  // El campo "Title" del cubo es el numero de contrato, tal cual (sin texto extra). "Kilos" ya viene en kilogramos.
   var ventasMap = {};
   cuboItems.forEach(function(i){
     var f = i.fields;
-    var m = String(f.contrato||"").match(/^(\d+)/);
-    if(!m) return;
-    var id = m[1];
-    ventasMap[id] = (ventasMap[id]||0) + Number(f.kilos||0);
+    var id = String(f.Title||"").trim();
+    if(!id) return;
+    ventasMap[id] = (ventasMap[id]||0) + Number(f.Kilos||0);
   });
 
   return Object.keys(contratosMap).map(function(id){
