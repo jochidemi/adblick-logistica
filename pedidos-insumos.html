@@ -918,15 +918,13 @@ tr:hover td{background:var(--brand-light);}
         <div class="combo-wrap" id="combo-campo-edit"></div>
         <div id="campo-edit-localidad-hint" style="font-size:11px;color:var(--blue);font-weight:600;margin-top:4px;min-height:14px;"></div>
       </div>
-      <div class="g2">
-        <div class="fld">
-          <label class="lbl">Cantidad</label>
-          <input type="number" id="inp-edit-cantidad" min="0.01" step="0.01">
-        </div>
-        <div class="fld">
-          <label class="lbl">Fecha de entrega</label>
-          <input type="date" id="inp-edit-fecha">
-        </div>
+      <div class="fld">
+        <label class="lbl">Fecha de entrega</label>
+        <input type="date" id="inp-edit-fecha">
+      </div>
+      <div class="fld">
+        <label class="lbl">Productos</label>
+        <div id="editar-lineas-list"></div>
       </div>
       <div class="fld">
         <label class="lbl">Observaciones</label>
@@ -1055,7 +1053,9 @@ var pedidosInsumos = [], pedidosLogistica = [];
 var pedidoOrigenActual = null; // {id, spId, insumo, cantidad, presentacion, campo}
 var pedidoRemitoActual = null;
 var carritoItems = []; // [{grupoInsumo, tipoInsumo, insumo, presentacion, unidad, cantidad}]
-var editandoPedidoSpId = null;
+var editandoPedidoNro = null;
+var editandoLineas = [];       // líneas SP (id, fields) del pedido en edición
+var editandoLineasState = [];  // estado editable por línea: {insumo, tipoInsumo, categoria, presentacion, unidad, codigo}
 var selectedPropioItems  = [];    // multi-select existencia propia: [{idx, cantidadAsignada}]
 var selectedOCItems      = [];   // [{idx, cantidadAsignada}] — OC items seleccionados (multi-select)
 var comprometidoPorOC    = {};   // {referencia: cant} — OC pendiente de remito
@@ -1918,9 +1918,10 @@ function renderGrupoPedido(nro, lineas, tabTipo) {
   html += '<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap;justify-content:flex-end;">';
   // Botón eliminar siempre disponible
   html += '<button class="btn btn-danger btn-sm" onclick="eliminarPedido(\''+lineas.map(function(l){return l.id;}).join(",")+'\')">🗑 Eliminar</button>';
-  if (esPendiente && lineas.length === 1) {
-    var l0=lineas[0]; var lf=l0.fields;
-    html += '<button class="btn btn-outline btn-sm" onclick="abrirEditarPedido(\''+l0.id+'\',\''+esc(lf.Campo||'')+'\',\''+lf.Cantidad+'\',\''+lf.FechaEntrega+'\',\''+esc(lf.Observaciones||'')+'\')">✏ Editar</button>';
+  // Editar disponible mientras ninguna línea tenga origen asignado desde Insumos (sin importar cuántos productos tenga el pedido)
+  var sinOrigenAsignado = lineas.every(function(l){ return !l.fields.OrigenAsignado; });
+  if (esPendiente && sinOrigenAsignado) {
+    html += '<button class="btn btn-outline btn-sm" onclick="abrirEditarPedido(\''+esc(nro)+'\')">✏ Editar</button>';
   }
   if (esCerrado) {
     html += '<button class="btn btn-outline btn-sm" onclick="verComprobanteGrupo(\''+nro+'\')">📋 Ver comprobante</button>';
@@ -2028,36 +2029,89 @@ async function eliminarPedido(idsStr) {
   } catch(e){ showToast("Error: "+e.message,"error"); }
 }
 
-function abrirEditarPedido(spId, campo, cantidad, fechaEntrega, obs) {
-  editandoPedidoSpId = spId;
-  buildCombo("combo-campo-edit", getCamposYDestinos(), campo, "Buscar campo...", function(v){
+function abrirEditarPedido(nro) {
+  var lineas = misPedidosData.filter(function(i){ return (i.fields.NumeroPedido||i.id) === nro; });
+  if (!lineas.length) return;
+  editandoPedidoNro = nro;
+  editandoLineas = lineas;
+  var f0 = lineas[0].fields;
+  buildCombo("combo-campo-edit", getCamposYDestinos(), f0.Campo||"", "Buscar campo...", function(v){
     buildCombo("combo-campo-edit", getCamposYDestinos(), v, "Buscar campo...", arguments.callee);
     var hint = document.getElementById("campo-edit-localidad-hint");
     if (hint) hint.textContent = camposLocalidad[v] ? "📍 " + camposLocalidad[v] : "";
   });
+  var hint0 = document.getElementById("campo-edit-localidad-hint");
+  if (hint0) hint0.textContent = camposLocalidad[f0.Campo] ? "📍 " + camposLocalidad[f0.Campo] : "";
   var today = new Date().toISOString().split("T")[0];
-  document.getElementById("inp-edit-cantidad").value = cantidad;
   document.getElementById("inp-edit-fecha").min = today;
-  document.getElementById("inp-edit-fecha").value = fechaEntrega;
-  document.getElementById("inp-edit-obs").value = obs;
+  document.getElementById("inp-edit-fecha").value = f0.FechaEntrega || "";
+  document.getElementById("inp-edit-obs").value = f0.Observaciones || "";
+
+  editandoLineasState = lineas.map(function(l){
+    var f = l.fields;
+    return { insumo:f.Insumo||"", tipoInsumo:f.TipoInsumo||"", categoria:f.GrupoInsumo||"", presentacion:f.Presentacion||"", unidad:f.Unidad||"", codigo:f.CodigoInsumo||"" };
+  });
+  var rowsHtml = "";
+  lineas.forEach(function(l, idx){
+    rowsHtml += '<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;">'+
+      '<div style="flex:1;"><div class="combo-wrap" id="combo-insumo-edit-'+idx+'"></div></div>'+
+      '<div style="width:100px;"><input type="number" min="0.01" step="0.01" id="inp-edit-cantidad-'+idx+'" placeholder="Cant."></div>'+
+      '</div>';
+  });
+  document.getElementById("editar-lineas-list").innerHTML = rowsHtml;
+  lineas.forEach(function(l, idx){
+    document.getElementById("inp-edit-cantidad-"+idx).value = l.fields.Cantidad;
+    buildInsumoComboEdit(idx, l.fields.Insumo||"");
+  });
+
   document.getElementById("modal-editar").classList.add("open");
+}
+
+function buildInsumoComboEdit(idx, currentVal) {
+  buildCombo("combo-insumo-edit-"+idx, padronInsumos, currentVal, "Buscar insumo...", function(v, item){
+    editandoLineasState[idx] = {
+      insumo:       v,
+      tipoInsumo:   item ? item.tipo        : "",
+      categoria:    item ? item.categoria   : "",
+      presentacion: item ? item.presentacion: "",
+      unidad:       item ? item.unidad      : "",
+      codigo:       item ? item.codigo      : "",
+    };
+    buildInsumoComboEdit(idx, v);
+  }, function(i){
+    var sub = [i.unidad, i.presentacion].filter(Boolean).join(" · ");
+    return '<div><div style="font-weight:600;">'+i.nombre+'</div><div class="combo-item-sub">'+sub+'</div></div>';
+  }, function(v){ return v; });
 }
 
 async function guardarEdicion() {
   var campoEl = document.querySelector("#combo-campo-edit .combo-val");
   var campo = (campoEl && !campoEl.classList.contains("placeholder")) ? campoEl.textContent.trim() : "";
-  var cantidad = parseFloat(document.getElementById("inp-edit-cantidad").value)||0;
   var fecha = document.getElementById("inp-edit-fecha").value;
   var obs = document.getElementById("inp-edit-obs").value.trim();
-  if (!campo||!cantidad||!fecha) { showToast("Completá todos los campos","error"); return; }
+  if (!campo||!fecha) { showToast("Completá todos los campos","error"); return; }
+  var cantidades = [];
+  for (var i=0; i<editandoLineas.length; i++) {
+    var cant = parseFloat((document.getElementById("inp-edit-cantidad-"+i)||{}).value)||0;
+    if (!editandoLineasState[i].insumo || !cant) { showToast("Completá producto y cantidad en todas las líneas","error"); return; }
+    cantidades.push(cant);
+  }
   var btn = document.getElementById("btn-guardar-editar");
   btn.disabled=true; btn.textContent="Guardando...";
   try {
     var loc = camposLocalidad[campo] || "";
-    var fields = { Campo:campo, Cantidad:cantidad, FechaEntrega:fecha };
-    if (loc) fields.Localidad = loc;
-    if (obs) fields.Observaciones = obs;
-    await spPatch(CONFIG.lists.pedidos, editandoPedidoSpId, fields);
+    for (var i=0; i<editandoLineas.length; i++) {
+      var st = editandoLineasState[i];
+      var fields = { Campo:campo, FechaEntrega:fecha, Cantidad:cantidades[i], Insumo:st.insumo };
+      if (loc) fields.Localidad = loc;
+      if (obs) fields.Observaciones = obs;
+      if (st.tipoInsumo)   fields.TipoInsumo   = st.tipoInsumo;
+      if (st.categoria)    fields.GrupoInsumo  = st.categoria;
+      if (st.presentacion) fields.Presentacion = st.presentacion;
+      if (st.unidad)       fields.Unidad       = st.unidad;
+      if (st.codigo)       fields.CodigoInsumo = st.codigo;
+      await spPatch(CONFIG.lists.pedidos, editandoLineas[i].id, fields);
+    }
     cerrarModal("modal-editar");
     showToast("Pedido actualizado ✓","ok");
     cargarMisPedidos();
