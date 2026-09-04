@@ -707,6 +707,10 @@ tr:hover td{background:var(--brand-light);}
               <select id="inp-env-operador" style="font-size:12px;min-width:130px;" onchange="renderPedidosEnviados()"><option value="">Todos los operadores</option></select>
               <button onclick="limpiarFiltroEnv('inp-env-operador')" title="Limpiar" style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
             </div>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--sub);cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" id="chk-env-todo-historial" onchange="renderPedidosEnviados()" style="cursor:pointer;">
+              Ver todo el historial
+            </label>
             <button class="btn btn-outline btn-sm" onclick="cargarPedidosLogistica().then(renderPedidosEnviados)">↺</button>
           </div>
           <div id="log-enviados-container" style="padding:8px 0;"></div>
@@ -1050,6 +1054,7 @@ var _origenPrefilP = [], _origenPrefilOC = [];
 
 // Pedidos
 var pedidosInsumos = [], pedidosLogistica = [];
+var pedidosEnviadosTodos = []; // "En camino" + "Cerrado" (no retiro personal), cualquier fecha — para pestaña "Pedidos enviados"
 var pedidoOrigenActual = null; // {id, spId, insumo, cantidad, presentacion, campo}
 var pedidoRemitoActual = null;
 var carritoItems = []; // [{grupoInsumo, tipoInsumo, insumo, presentacion, unidad, cantidad}]
@@ -3505,11 +3510,16 @@ function renderPedidosEnviados() {
   var container = document.getElementById("log-enviados-container");
   if (!container) return;
 
-  // Pedidos "En camino" despachados por logística (excluir retiro personal — saltan logística)
-  var enviados = pedidosLogistica.filter(function(p){
-    return p.fields.Estado === "En camino" &&
-           (p.fields.RetiroPersonal||"").toUpperCase() !== "SI";
-  });
+  // Pedidos despachados por logística, en camino o ya cerrados (excluir retiro personal — saltan logística)
+  var verTodoHistorial = !!(document.getElementById("chk-env-todo-historial")||{}).checked;
+  var enviados = pedidosEnviadosTodos;
+  if (!verTodoHistorial) {
+    var haceUnMes = new Date(); haceUnMes.setDate(haceUnMes.getDate() - 30);
+    enviados = enviados.filter(function(p){
+      var fRef = p.fields.FechaEntrega || p.fields.FechaPedido;
+      return !fRef || new Date(fRef) >= haceUnMes;
+    });
+  }
 
   // Poblar selects con valores únicos
   var campSel = document.getElementById("inp-env-campo");
@@ -3542,9 +3552,10 @@ function renderPedidosEnviados() {
   filtrados.forEach(function(p){ var cid = p.fields.CamionId||"s/c"; if (!porCam[cid]) porCam[cid]=[]; porCam[cid].push(p); });
 
   var html = "";
-  Object.keys(porCam).sort().forEach(function(cid){
+  Object.keys(porCam).sort().reverse().forEach(function(cid){
     var items = porCam[cid];
     var cam = camiones.find(function(c){ return c.id===cid; }) || {};
+    var todoCerrado = items.every(function(p){ return p.fields.Estado === "Cerrado"; });
     html += '<div style="margin:0 16px 16px;border:1px solid var(--border);border-radius:10px;overflow:hidden;">';
     // Cabecera del camión
     html += '<div style="background:var(--bg);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;">';
@@ -3553,7 +3564,9 @@ function renderPedidosEnviados() {
     if (cam.chofer)        html += '<span style="font-size:12px;color:var(--sub);">👤 '+cam.chofer+'</span>';
     if (cam.patente)       html += '<span style="font-size:12px;color:var(--sub);">🪪 '+cam.patente+(cam.patenteAcoplado?' / '+cam.patenteAcoplado:'')+'</span>';
     if (cam.cupo)          html += '<span style="font-size:12px;color:var(--sub);">Cupo: '+cam.cupo+'</span>';
-    html += '<span class="badge badge-transit" style="margin-left:auto;">En camino</span>';
+    html += todoCerrado
+      ? '<span class="badge badge-done" style="margin-left:auto;">Cerrado</span>'
+      : '<span class="badge badge-transit" style="margin-left:auto;">En camino</span>';
     html += '</div>';
     // Tabla de ítems
     html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
@@ -3633,6 +3646,11 @@ async function cargarPedidosLogistica() {
     ]);
 
     pedidosLogistica = pedItems.filter(function(i){ return i.fields.Estado==="Pendiente logística"||i.fields.Estado==="En camino"||i.fields.Estado==="Listo para retirar"; });
+    // Historial completo de despachos (para pestaña "Pedidos enviados") — incluye Cerrado, no solo En camino
+    pedidosEnviadosTodos = pedItems.filter(function(i){
+      var f = i.fields;
+      return (f.Estado === "En camino" || f.Estado === "Cerrado") && (f.RetiroPersonal||"").toUpperCase() !== "SI";
+    });
 
     // Reconstruir camiones desde la lista Camiones SP (fuente de verdad)
     camiones = camItems.map(function(item) {
