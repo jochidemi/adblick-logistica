@@ -4313,28 +4313,37 @@ function verComprobanteGrupo(nroPedido) {
 
 function mostrarComprobante(fieldsArr, remito) {
   var f0 = fieldsArr[0];
-  var ocStr = String(f0.OrdenCompra||"");
-  var esPropio = ocStr.startsWith("PROPIO");
-  var tipo = esPropio ? "Transferencia de mercadería" : "Ingreso de mercadería";
 
-  // Origen / proveedor
-  var origen = f0.OrigenAsignado || "-";
-
-  // OC refs (formato "ref:qty,ref:qty")
+  // Un pedido con varios productos puede tener origen/OC distinto por línea
+  // (el origen se asigna línea por línea en confirmarOrigen) — agregar sobre TODAS las líneas.
+  var origenesUnicos = [];
   var ocRefs = [];
-  if (!esPropio && ocStr) {
+  var huboPropio = false, huboOC = false;
+  fieldsArr.forEach(function(f){
+    var o = f.OrigenAsignado || "";
+    if (o && origenesUnicos.indexOf(o) === -1) origenesUnicos.push(o);
+    var ocStr = String(f.OrdenCompra||"");
+    if (ocStr.startsWith("PROPIO")) { huboPropio = true; return; }
+    if (!ocStr) return;
+    huboOC = true;
     ocStr.split(",").forEach(function(part){
       var ref = part.split(":")[0].trim();
       if (ref && ocRefs.indexOf(ref)===-1) ocRefs.push(ref);
     });
-  }
+  });
+  var esPropio  = huboPropio && !huboOC;
+  var tipo      = (huboPropio && huboOC) ? "Ingreso y transferencia de mercadería" : (esPropio ? "Transferencia de mercadería" : "Ingreso de mercadería");
+  var tipoColor = (huboPropio && huboOC) ? "var(--orange)" : (esPropio ? "var(--blue)" : "var(--green)");
+
+  // Origen / proveedor — puede haber más de uno si los productos vinieron de orígenes distintos
+  var origen = origenesUnicos.length ? origenesUnicos.join(" · ") : "-";
 
   // Campaña: "26/27" para stock propio, sino la del pedido
   var campana = esPropio ? "26/27" : (f0.Campa_x00f1_a || f0.Campana || "-");
 
   // Filas del card
   var rows = [
-    { label:"Tipo de comprobante", value:'<span style="font-weight:800;color:'+(esPropio?"var(--blue)":"var(--green)")+';">'+tipo+'</span>' },
+    { label:"Tipo de comprobante", value:'<span style="font-weight:800;color:'+tipoColor+';">'+tipo+'</span>' },
     { label:"N° de comprobante",   value:'<b>'+remito+'</b>' },
     { label:"Pto. stock destino",  value:(f0.Campo||"-")+(f0.Localidad?' <span style="color:var(--blue);font-size:11px;font-weight:700;">('+f0.Localidad+')</span>':"") },
     { label:"Origen / Proveedor",  value:origen },
@@ -4360,12 +4369,18 @@ function mostrarComprobante(fieldsArr, remito) {
     var _cuni  = f.Unidad       || _cinf.unidad       || "";
     var _cpres = f.Presentacion || _cinf.presentacion || "";
     var _ccod  = f.CodigoInsumo || _cinf.codigo       || "";
-    html += '<div style="display:flex;align-items:center;padding:10px 14px;'+(i>0?'border-top:1px solid var(--border);':'')+'">'
+    html += '<div style="'+(i>0?'border-top:1px solid var(--border);':'')+'">';
+    html += '<div style="display:flex;align-items:center;padding:10px 14px;">'
       +(_ccod?'<div style="font-size:10px;color:var(--sub);font-family:monospace;margin-right:8px;min-width:48px;">'+_ccod+'</div>':"")
       +'<div style="flex:1;font-weight:700;font-size:13px;">'+(f.Insumo||"-")+'</div>'
       +'<div style="font-weight:700;color:var(--blue);font-size:13px;">'+(f.Cantidad||"")+" "+_cuni+'</div>'
       +(_cpres?'<div style="font-size:11px;color:var(--sub);margin-left:10px;">'+_cpres+'</div>':"")
       +'</div>';
+    // Si los productos del pedido vinieron de orígenes distintos, aclarar cuál corresponde a cada uno
+    if (origenesUnicos.length > 1) {
+      html += '<div style="padding:0 14px 9px 62px;font-size:11px;color:var(--blue);">📦 '+esc(f.OrigenAsignado||"—")+'</div>';
+    }
+    html += '</div>';
   });
   html += '</div>';
 
