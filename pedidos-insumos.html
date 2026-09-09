@@ -2209,7 +2209,13 @@
         await sleep(300);
         setLoadingText("Cargando puntos de stock...");
         var puntosStockSP = await spGet(CONFIG.lists.padronPuntosStock).catch(function () { return []; });
-        var respPtosSP = await spGet(CONFIG.lists.responsablesPuntosStock).catch(function () { return []; });
+        var respPtosSP = await spGet(CONFIG.lists.responsablesPuntosStock).catch(function (err) {
+          console.warn("No se pudo cargar Responsables_PuntosStock por GUID:", err);
+          return spGet("Responsables_PuntosStock").catch(function(err2) {
+            console.warn("No se pudo cargar Responsables_PuntosStock por nombre:", err2);
+            return [];
+          });
+        });
         await sleep(300);
         setLoadingText("Cargando stock...");
         var snap = await spGet(CONFIG.lists.stockSnapshot, "");
@@ -2220,13 +2226,49 @@
         padronPuntosStock = puntosStockSP.map(function (i) {
           return { nombre: (i.fields.Title || "").trim(), tipo: (i.fields.TipoPuntoStock || "").trim() };
         }).filter(function (i) { return i.nombre; }).sort(function (a, b) { return a.nombre.localeCompare(b.nombre, "es"); });
-        // "Punto de Stock" → interno SP: Punto_x0020_de_x0020_Stock
+
+        // Detectar columnas de Responsables_PuntosStock si es posible
+        var colZonaName = "Zona";
+        var colPtoName = "Punto_x0020_de_x0020_Stock";
+        try {
+          var colsData = await fetch("https://graph.microsoft.com/v1.0/sites/" + CONFIG.siteId + "/lists/" + CONFIG.lists.responsablesPuntosStock + "/columns", {
+            headers: { Authorization: "Bearer " + graphToken }
+          }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+          if (colsData && colsData.value) {
+            colsData.value.forEach(function (c) {
+              var dn = (c.displayName || "").toLowerCase().trim();
+              if (dn === "zona" || dn.includes("zona")) colZonaName = c.name;
+              if (dn === "punto de stock" || dn.includes("punto")) colPtoName = c.name;
+            });
+            console.log("Columnas detectadas en Responsables_PuntosStock:", { colZonaName: colZonaName, colPtoName: colPtoName });
+          }
+        } catch (e) { console.warn("Error consultando columnas:", e); }
+
         responsablesPuntosStock = respPtosSP.map(function (i) {
-          var ptoNombre = (i.fields["Punto_x0020_de_x0020_Stock"] || i.fields.PuntoDeStock || i.fields.Title || "").trim();
-          var zona = (i.fields.Zona || "").trim();
-          return { nombre: ptoNombre, zona: zona };
+          var f = i.fields || {};
+          var pto = f[colPtoName] || f["Punto_x0020_de_x0020_Stock"] || f.PuntoDeStock || f.PuntoStock || f.Punto || f.Title || "";
+          if (!pto) {
+            var kP = Object.keys(f).find(function (k) { return k.toLowerCase().includes("punto") || k.toLowerCase().includes("stock"); });
+            if (kP) pto = f[kP];
+          }
+          var zn = f[colZonaName] || f.Zona || f.zona || "";
+          if (!zn) {
+            var kZ = Object.keys(f).find(function (k) { return k.toLowerCase().includes("zona") || k.toLowerCase().includes("region"); });
+            if (kZ) zn = f[kZ];
+          }
+          if (zn && typeof zn === "object") {
+            zn = zn.Label || zn.Title || (Array.isArray(zn) ? zn.join(", ") : "");
+          }
+          if (pto && typeof pto === "object") {
+            pto = pto.Label || pto.Title || (Array.isArray(pto) ? pto.join(", ") : "");
+          }
+          return {
+            nombre: String(pto || "").trim(),
+            zona: String(zn || "").trim(),
+            raw: f
+          };
         }).filter(function (i) { return i.nombre; });
-        console.log("Responsables puntos de stock cargados:", responsablesPuntosStock.length, responsablesPuntosStock.slice(0, 3));
+        console.log("Responsables puntos de stock cargados:", responsablesPuntosStock.length, responsablesPuntosStock.slice(0, 5));
         console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0, 3));
         console.log("Destinos cargados:", padronDestinos.length, padronDestinos.slice(0, 3));
         console.log("Puntos de stock cargados:", padronPuntosStock.length, padronPuntosStock.slice(0, 3));
@@ -2283,6 +2325,7 @@
             }
           });
           renderStockTable();
+          if (typeof renderOpStock === "function") renderOpStock();
         }
         renderPadronesPanel();
       } catch (e) {
@@ -3679,43 +3722,63 @@
       }
     }
 
-    var _opStockFiltrosInit = false;
+    function normStr(s) {
+      return (s || "")
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
+    }
+
+    function findRespPuntoStock(puntoNombre) {
+      if (!puntoNombre || !responsablesPuntosStock || !responsablesPuntosStock.length) return null;
+      var target = normStr(puntoNombre);
+      if (!target) return null;
+      var direct = responsablesPuntosStock.find(function (x) {
+        return normStr(x.nombre) === target;
+      });
+      if (direct) return direct;
+      return responsablesPuntosStock.find(function (x) {
+        var xn = normStr(x.nombre);
+        return xn && (xn.includes(target) || target.includes(xn));
+      }) || null;
+    }
 
     function renderOpStock() {
       var cont = document.getElementById("opst-table-container");
       if (!cont) return;
 
-      // Poblar filtros la primera vez
-      if (!_opStockFiltrosInit) {
-        _opStockFiltrosInit = true;
-        var selZona = document.getElementById("opst-zona");
-        var selCat  = document.getElementById("opst-categoria");
-        if (selZona) {
-          var zonas = [...new Set(stockPropio.map(function(r) {
-            var resp = responsablesPuntosStock.find(function(x) { return x.nombre === r.puntoStock; });
-            return resp ? resp.zona : "";
-          }).filter(Boolean))].sort(function(a,b){ return a.localeCompare(b,"es"); });
-          zonas.forEach(function(z) {
-            var o = document.createElement("option"); o.value = z; o.textContent = z; selZona.appendChild(o);
-          });
-        }
-        if (selCat) {
-          var cats = [...new Set(stockPropio.map(function(r){ return r.categoria; }).filter(Boolean))].sort(function(a,b){ return a.localeCompare(b,"es"); });
-          cats.forEach(function(c) {
-            var o = document.createElement("option"); o.value = c; o.textContent = c; selCat.appendChild(o);
-          });
-        }
+      var selZona = document.getElementById("opst-zona");
+      var selCat  = document.getElementById("opst-categoria");
+
+      // Poblar filtros si aún no tienen opciones
+      if (selZona && selZona.options.length <= 1) {
+        var zonasSet = new Set();
+        responsablesPuntosStock.forEach(function (x) { if (x.zona) zonasSet.add(x.zona); });
+        stockPropio.forEach(function (r) {
+          var resp = findRespPuntoStock(r.puntoStock);
+          if (resp && resp.zona) zonasSet.add(resp.zona);
+        });
+        var zonas = [...zonasSet].sort(function (a, b) { return a.localeCompare(b, "es"); });
+        zonas.forEach(function (z) {
+          var o = document.createElement("option"); o.value = z; o.textContent = z; selZona.appendChild(o);
+        });
       }
 
-      var q       = ((document.getElementById("opst-search")   || {}).value || "").toLowerCase().trim();
+      if (selCat && selCat.options.length <= 1) {
+        var cats = [...new Set(stockPropio.map(function (r) { return r.categoria; }).filter(Boolean))].sort(function (a, b) { return a.localeCompare(b, "es"); });
+        cats.forEach(function (c) {
+          var o = document.createElement("option"); o.value = c; o.textContent = c; selCat.appendChild(o);
+        });
+      }
+
+      var q        = ((document.getElementById("opst-search")   || {}).value || "").toLowerCase().trim();
       var filtZona = (document.getElementById("opst-zona")      || {}).value || "";
       var filtCat  = (document.getElementById("opst-categoria") || {}).value || "";
 
-      // Solo ExistenciaPropia (stockPropio ya viene filtrado así)
-      var rows = stockPropio.filter(function(r) {
-        // Zona: lookup en responsablesPuntosStock
+      // Solo ExistenciaPropia
+      var rows = stockPropio.filter(function (r) {
         if (filtZona) {
-          var resp = responsablesPuntosStock.find(function(x) { return x.nombre === r.puntoStock; });
+          var resp = findRespPuntoStock(r.puntoStock);
           if (!resp || resp.zona !== filtZona) return false;
         }
         if (filtCat && r.categoria !== filtCat) return false;
@@ -3738,17 +3801,17 @@
                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Unidad</th>'
                + '</tr></thead><tbody>';
 
-      rows.forEach(function(r, idx) {
-        var resp = responsablesPuntosStock.find(function(x) { return x.nombre === r.puntoStock; });
-        var zona = resp ? resp.zona : "—";
+      rows.forEach(function (r, idx) {
+        var resp = findRespPuntoStock(r.puntoStock);
+        var zona = (resp && resp.zona && resp.zona.trim()) ? resp.zona.trim() : "-";
         var cantColor = r.existencia > 0 ? "var(--green)" : "var(--red)";
         html += '<tr style="border-bottom:1px solid var(--border);' + (idx % 2 === 0 ? "" : "background:var(--bg);") + '">'
-              + '<td style="padding:10px 14px;font-weight:600;">' + (r.nombre || "—") + '</td>'
-              + '<td style="padding:10px 14px;color:var(--sub);">' + (r.categoria || "—") + '</td>'
-              + '<td style="padding:10px 14px;">' + (r.puntoStock || "—") + '</td>'
-              + '<td style="padding:10px 14px;color:var(--sub);">' + zona + '</td>'
+              + '<td style="padding:10px 14px;font-weight:600;">' + (r.nombre || "-") + '</td>'
+              + '<td style="padding:10px 14px;color:var(--sub);">' + (r.categoria || "-") + '</td>'
+              + '<td style="padding:10px 14px;">' + (r.puntoStock || "-") + '</td>'
+              + '<td style="padding:10px 14px;color:var(--sub);font-weight:600;">' + zona + '</td>'
               + '<td style="padding:10px 14px;text-align:right;font-weight:700;color:' + cantColor + ';">' + r.existencia.toLocaleString("es-AR") + '</td>'
-              + '<td style="padding:10px 14px;color:var(--sub);">' + (r.unidad || "—") + '</td>'
+              + '<td style="padding:10px 14px;color:var(--sub);">' + (r.unidad || "-") + '</td>'
               + '</tr>';
       });
 
