@@ -1334,7 +1334,6 @@
           <button class="sub-pill on" id="ipill-stock" onclick="subTab('insumos','stock')">Stock</button>
           <button class="sub-pill off" id="ipill-pedidos" onclick="subTab('insumos','pedidos')">Pedidos <span
               id="ins-pend-count"></span></button>
-          <button class="sub-pill off" id="ipill-metricas" onclick="subTab('insumos','metricas')">📊 Métricas</button>
         </div>
 
         <!-- STOCK -->
@@ -1394,13 +1393,6 @@
               <div style="padding:32px;text-align:center;color:var(--light);font-size:13px;">Subí el archivo Excel para
                 ver el stock</div>
             </div>
-          </div>
-        </div>
-
-        <!-- MÉTRICAS INSUMOS -->
-        <div id="ins-metricas" style="display:none;">
-          <div id="ins-metricas-content">
-            <div style="padding:48px;text-align:center;color:var(--light);">Cargando métricas...</div>
           </div>
         </div>
 
@@ -1476,9 +1468,6 @@
           <button id="ltab-retiro" onclick="switchLogTab('retiro')"
             style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">🏃
             Retiro Personal</button>
-          <button id="ltab-metricas-log" onclick="switchLogTab('metricas')"
-            style="flex:1;padding:12px 8px;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:transparent;color:var(--sub);border-bottom:2px solid transparent;transition:all 0.15s;">📊
-            Métricas</button>
         </div>
 
         <!-- Tab: Armado de pedidos -->
@@ -1543,13 +1532,6 @@
           </div>
         </div>
 
-        <!-- Tab: Métricas Logística -->
-        <div id="log-panel-metricas" style="display:none;">
-          <div id="log-metricas-content">
-            <div style="padding:48px;text-align:center;color:var(--light);">Cargando...</div>
-          </div>
-        </div>
-
         <!-- Tab: Pedidos enviados -->
         <div id="log-panel-enviados" style="display:none;">
           <div class="card" style="padding:0;overflow:hidden;">
@@ -1582,6 +1564,29 @@
                 onclick="cargarPedidosLogistica().then(renderPedidosEnviados)">↺</button>
             </div>
             <div id="log-enviados-container" style="padding:8px 0;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS -->
+    <div class="tab-panel" id="tab-metricas">
+      <div class="main-wide">
+        <!-- Sub-tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:20px;">
+          <button class="sub-pill on"  id="mpill-insumos"   onclick="switchMetricasTab('insumos')">📦 Insumos</button>
+          <button class="sub-pill off" id="mpill-logistica" onclick="switchMetricasTab('logistica')">🚛 Logística</button>
+        </div>
+        <!-- Panel Métricas Insumos -->
+        <div id="met-panel-insumos">
+          <div id="ins-metricas-content">
+            <div style="padding:48px;text-align:center;color:var(--light);">Cargando métricas...</div>
+          </div>
+        </div>
+        <!-- Panel Métricas Logística -->
+        <div id="met-panel-logistica" style="display:none;">
+          <div id="log-metricas-content">
+            <div style="padding:48px;text-align:center;color:var(--light);">Cargando...</div>
           </div>
         </div>
       </div>
@@ -1879,11 +1884,11 @@
     var currentUserRol = "operador";
 
     var ROL_TABS = {
-      "operador": [["operador", "Operador"]],
-      "insumos": [["insumos", "Insumos"], ["padrones", "Padrones"]],
-      "logistica": [["logistica", "Logística"], ["padrones", "Padrones"]],
-      "administrador": [["operador", "Operador"], ["insumos", "Insumos"], ["logistica", "Logística"], ["padrones", "Padrones"]],
-      "superadmin": [["operador", "👁 Operadores"], ["insumos", "Insumos"], ["logistica", "Logística"], ["padrones", "Padrones"]],
+      "operador": [[\"operador\", \"Operador\"], [\"metricas\", \"📊 Métricas\"]],
+      "insumos": [[\"insumos\", \"Insumos\"], [\"metricas\", \"📊 Métricas\"], [\"padrones\", \"Padrones\"]],
+      "logistica": [[\"logistica\", \"Logística\"], [\"metricas\", \"📊 Métricas\"], [\"padrones\", \"Padrones\"]],
+      "administrador": [[\"operador\", \"Operador\"], [\"insumos\", \"Insumos\"], [\"logistica\", \"Logística\"], [\"metricas\", \"📊 Métricas\"], [\"padrones\", \"Padrones\"]],
+      "superadmin": [[\"operador\", \"👁 Operadores\"], [\"insumos\", \"Insumos\"], [\"logistica\", \"Logística\"], [\"metricas\", \"📊 Métricas\"], [\"padrones\", \"Padrones\"]],
     };
     var superadminViewUser = ""; // Para superadmin: nombre del operador cuya vista se está mostrando
 
@@ -2263,6 +2268,7 @@
       document.getElementById("tab-" + name).classList.add("active");
       if (name === "insumos") { subTab("insumos", "pedidos"); cargarPedidosInsumos(); }
       if (name === "logistica") { cargarPedidosLogistica(); }
+      if (name === "metricas") { switchMetricasTab("insumos"); }
       if (name === "operador") {
         // Mostrar banner superadmin y cargar dropdown de operadores
         var banner = document.getElementById("superadmin-banner");
@@ -2291,6 +2297,25 @@
       }
     }
 
+    function switchMetricasTab(sub) {
+      var pI = document.getElementById("met-panel-insumos");
+      var pL = document.getElementById("met-panel-logistica");
+      var bI = document.getElementById("mpill-insumos");
+      var bL = document.getElementById("mpill-logistica");
+      if (!pI || !pL) return;
+      if (sub === "insumos") {
+        pI.style.display = "block"; pL.style.display = "none";
+        if (bI) bI.className = "sub-pill on";
+        if (bL) bL.className = "sub-pill off";
+        renderMetricasInsumos();
+      } else {
+        pI.style.display = "none"; pL.style.display = "block";
+        if (bI) bI.className = "sub-pill off";
+        if (bL) bL.className = "sub-pill on";
+        renderMetricasLogistica();
+      }
+    }
+
     function superAdminCambiarOperador(nombre) {
       superadminViewUser = nombre;
       var label = document.getElementById("superadmin-viewlabel");
@@ -2300,7 +2325,7 @@
 
     function subTab(parent, name) {
       var pills = ["nuevo", "mispedidos"];
-      if (parent === "insumos") pills = ["stock", "pedidos", "metricas"];
+      if (parent === "insumos") pills = ["stock", "pedidos"];
       pills.forEach(function (p) {
         var pill = document.getElementById((parent === "operador" ? "spill" : "ipill") + "-" + p);
         var panel = document.getElementById((parent === "operador" ? "op-" : "ins-") + p);
@@ -4261,12 +4286,12 @@
 
     function switchLogTab(tab) {
       logTabActiva = tab;
-      var tA = document.getElementById("ltab-armado"), tE = document.getElementById("ltab-enviados"), tR = document.getElementById("ltab-retiro"), tM = document.getElementById("ltab-metricas-log");
-      var pA = document.getElementById("log-panel-armado"), pE = document.getElementById("log-panel-enviados"), pR = document.getElementById("log-panel-retiro"), pM = document.getElementById("log-panel-metricas");
+      var tA = document.getElementById("ltab-armado"), tE = document.getElementById("ltab-enviados"), tR = document.getElementById("ltab-retiro");
+      var pA = document.getElementById("log-panel-armado"), pE = document.getElementById("log-panel-enviados"), pR = document.getElementById("log-panel-retiro");
       var acts = document.getElementById("log-main-actions");
       // Reset all tabs
-      [tA, tE, tR, tM].forEach(function (t) { if (t) { t.style.background = "transparent"; t.style.color = "var(--sub)"; t.style.borderBottom = "2px solid transparent"; } });
-      [pA, pE, pR, pM].forEach(function (p) { if (p) p.style.display = "none"; });
+      [tA, tE, tR].forEach(function (t) { if (t) { t.style.background = "transparent"; t.style.color = "var(--sub)"; t.style.borderBottom = "2px solid transparent"; } });
+      [pA, pE, pR].forEach(function (p) { if (p) p.style.display = "none"; });
       if (tab === "armado") {
         if (tA) { tA.style.background = "var(--white)"; tA.style.color = "var(--text)"; tA.style.borderBottom = "2px solid var(--brand)"; }
         if (pA) pA.style.display = "";
@@ -4281,11 +4306,6 @@
         if (pR) pR.style.display = "";
         if (acts) acts.style.display = "none";
         renderPedidosRetiro();
-      } else if (tab === "metricas") {
-        if (tM) { tM.style.background = "var(--white)"; tM.style.color = "var(--text)"; tM.style.borderBottom = "2px solid var(--brand)"; }
-        if (pM) pM.style.display = "";
-        if (acts) acts.style.display = "none";
-        renderMetricasLogistica();
       }
     }
 
