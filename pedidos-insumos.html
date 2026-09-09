@@ -1340,40 +1340,8 @@
         <!-- STOCK -->
         <div id="ins-stock">
           <div class="card" style="padding:18px;">
-            <div class="card-hdr" style="margin-bottom:12px;">
-              <div>
-                <div class="card-title" style="font-size:15px;">Archivos Albor</div>
-                <div class="card-sub" id="stock-last-update">Sin datos cargados hoy</div>
-              </div>
-              <button class="btn btn-brand btn-sm" id="btn-guardar-stock" onclick="guardarStockEnSP()">↑ Guardar en
-                SharePoint</button>
-            </div>
-            <div id="stock-save-progress" style="display:none;margin-top:10px;">
-              <div id="stock-progress-label" style="font-size:11px;color:var(--sub);margin-bottom:4px;">Guardando…</div>
-              <div style="background:var(--border);border-radius:4px;height:7px;overflow:hidden;">
-                <div id="stock-progress-bar"
-                  style="background:var(--brand);height:100%;width:0%;transition:width 0.25s;border-radius:4px;"></div>
-              </div>
-            </div>
-            <div class="g2" style="gap:10px;margin-bottom:0;margin-top:12px;">
-              <div id="drop-existencia" class="drop-zone" onclick="document.getElementById('inp-existencia').click();"
-                ondragover="event.preventDefault();this.classList.add('over');"
-                ondragleave="this.classList.remove('over');" ondrop="dropFile(event,'existencia')">
-                <div style="font-size:24px;margin-bottom:6px;">📦</div>
-                <div style="font-weight:700;font-size:13px;color:var(--sub);">Existencia de Insumos</div>
-                <div style="font-size:11px;color:var(--light);margin-top:3px;">ExistenciaDeInsumos.csv / .xlsx</div>
-                <input type="file" id="inp-existencia" accept=".xlsx,.xls,.csv" style="display:none;"
-                  onchange="loadFile(this,'existencia')">
-              </div>
-              <div id="drop-cubo" class="drop-zone" onclick="document.getElementById('inp-cubo').click();"
-                ondragover="event.preventDefault();this.classList.add('over');"
-                ondragleave="this.classList.remove('over');" ondrop="dropFile(event,'cubo')">
-                <div style="font-size:24px;margin-bottom:6px;">🚛</div>
-                <div style="font-weight:700;font-size:13px;color:var(--sub);">Cubo OC</div>
-                <div style="font-size:11px;color:var(--light);margin-top:3px;">Cubo_OC.xlsx</div>
-                <input type="file" id="inp-cubo" accept=".xlsx,.xls" style="display:none;"
-                  onchange="loadFile(this,'cubo')">
-              </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="card-sub" id="stock-last-update" style="font-size:13px;">Sin datos</div>
             </div>
           </div>
 
@@ -2259,7 +2227,7 @@
           var _snapTs = _snapDate.toLocaleDateString("es-AR") + "  " +
             String(_snapDate.getHours()).padStart(2, "0") + ":" +
             String(_snapDate.getMinutes()).padStart(2, "0") + " hs";
-          document.getElementById("stock-last-update").textContent = "Último snapshot: " + (f0.CargadoPor || "") + " · " + _snapTs;
+          document.getElementById("stock-last-update").textContent = "Última actualización: " + (f0.CargadoPor || "") + " · " + _snapTs;
           stockPropio = [];
           stockPendiente = [];
           snap.forEach(function (s) {
