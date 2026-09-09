@@ -1166,6 +1166,7 @@
           <button class="sub-pill on" id="spill-nuevo" onclick="subTab('operador','nuevo')">+ Nuevo pedido</button>
           <button class="sub-pill off" id="spill-mispedidos" onclick="subTab('operador','mispedidos')">Mis pedidos <span
               id="mis-count"></span></button>
+          <button class="sub-pill off" id="spill-stock" onclick="subTab('operador','stock')">📦 Consultar stock</button>
         </div>
 
         <!-- NUEVO PEDIDO -->
@@ -1324,6 +1325,30 @@
               onclick="limpiarSelRemito()">✕ Cancelar</button>
           </div>
         </div>
+
+        <!-- CONSULTAR STOCK (Operador) -->
+        <div id="op-stock" style="display:none;">
+          <!-- Filtros -->
+          <div class="card" style="padding:14px 18px;margin-bottom:12px;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+              <input type="text" id="opst-search" placeholder="🔍 Buscar insumo..."
+                style="font-size:13px;flex:1;min-width:160px;" oninput="renderOpStock()">
+              <select id="opst-zona" onchange="renderOpStock()" style="font-size:12px;min-width:140px;font-family:'Montserrat',sans-serif;padding:6px 8px;border:1px solid var(--border);border-radius:7px;">
+                <option value="">Todas las zonas</option>
+              </select>
+              <select id="opst-categoria" onchange="renderOpStock()" style="font-size:12px;min-width:150px;font-family:'Montserrat',sans-serif;padding:6px 8px;border:1px solid var(--border);border-radius:7px;">
+                <option value="">Todas las categorías</option>
+              </select>
+            </div>
+          </div>
+          <!-- Tabla -->
+          <div class="card" style="padding:0;overflow:hidden;">
+            <div id="opst-table-container" style="overflow-x:auto;">
+              <div style="padding:48px;text-align:center;color:var(--light);">Cargando stock...</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1871,6 +1896,7 @@
         camiones: "Camiones",
         padronDestinos: "6113f5de-e124-4f60-bc6e-69e9a37773f2",
         padronPuntosStock: "b5cc6040-caf7-4d8e-ae06-eadc35664732",
+        responsablesPuntosStock: "70492af6-f3f9-408a-8667-5e48812c17cc",
       },
       redirectUri: "https://jochidemi.github.io/adblick-logistica/pedidos-insumos.html",
     };
@@ -1908,6 +1934,7 @@
 
     // Padrones (en memoria)
     var padronCampos = [], padronInsumos = [], padronTransp = [], padronOperadores = [], padronDestinos = [], padronPuntosStock = [];
+    var responsablesPuntosStock = []; // [{ nombre (punto de stock), zona }]
 
     function getCamposYDestinos() {
       var result = [];
@@ -2182,6 +2209,7 @@
         await sleep(300);
         setLoadingText("Cargando puntos de stock...");
         var puntosStockSP = await spGet(CONFIG.lists.padronPuntosStock).catch(function () { return []; });
+        var respPtosSP = await spGet(CONFIG.lists.responsablesPuntosStock).catch(function () { return []; });
         await sleep(300);
         setLoadingText("Cargando stock...");
         var snap = await spGet(CONFIG.lists.stockSnapshot, "");
@@ -2192,6 +2220,13 @@
         padronPuntosStock = puntosStockSP.map(function (i) {
           return { nombre: (i.fields.Title || "").trim(), tipo: (i.fields.TipoPuntoStock || "").trim() };
         }).filter(function (i) { return i.nombre; }).sort(function (a, b) { return a.nombre.localeCompare(b.nombre, "es"); });
+        // "Punto de Stock" → interno SP: Punto_x0020_de_x0020_Stock
+        responsablesPuntosStock = respPtosSP.map(function (i) {
+          var ptoNombre = (i.fields["Punto_x0020_de_x0020_Stock"] || i.fields.PuntoDeStock || i.fields.Title || "").trim();
+          var zona = (i.fields.Zona || "").trim();
+          return { nombre: ptoNombre, zona: zona };
+        }).filter(function (i) { return i.nombre; });
+        console.log("Responsables puntos de stock cargados:", responsablesPuntosStock.length, responsablesPuntosStock.slice(0, 3));
         console.log("Campos cargados:", padronCampos.length, padronCampos.slice(0, 3));
         console.log("Destinos cargados:", padronDestinos.length, padronDestinos.slice(0, 3));
         console.log("Puntos de stock cargados:", padronPuntosStock.length, padronPuntosStock.slice(0, 3));
@@ -2324,7 +2359,7 @@
     }
 
     function subTab(parent, name) {
-      var pills = ["nuevo", "mispedidos"];
+      var pills = ["nuevo", "mispedidos", "stock"];
       if (parent === "insumos") pills = ["stock", "pedidos"];
       pills.forEach(function (p) {
         var pill = document.getElementById((parent === "operador" ? "spill" : "ipill") + "-" + p);
@@ -2333,8 +2368,9 @@
         if (p === name) { pill.className = "sub-pill on"; panel.style.display = "block"; }
         else { pill.className = "sub-pill off"; panel.style.display = "none"; }
       });
-      // Recargar datos al abrir "Mis pedidos" para que el operador vea el estado actualizado
+      // Recargar datos al abrir cada sub-tab del operador
       if (parent === "operador" && name === "mispedidos") cargarMisPedidos();
+      if (parent === "operador" && name === "stock") renderOpStock();
       if (parent === "insumos" && name === "metricas") renderMetricasInsumos();
     }
 
@@ -3641,6 +3677,83 @@
       } catch (e) {
         cA.innerHTML = cL.innerHTML = cEC.innerHTML = cCE.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red);">Error: ' + e.message + '</div>';
       }
+    }
+
+    var _opStockFiltrosInit = false;
+
+    function renderOpStock() {
+      var cont = document.getElementById("opst-table-container");
+      if (!cont) return;
+
+      // Poblar filtros la primera vez
+      if (!_opStockFiltrosInit) {
+        _opStockFiltrosInit = true;
+        var selZona = document.getElementById("opst-zona");
+        var selCat  = document.getElementById("opst-categoria");
+        if (selZona) {
+          var zonas = [...new Set(stockPropio.map(function(r) {
+            var resp = responsablesPuntosStock.find(function(x) { return x.nombre === r.puntoStock; });
+            return resp ? resp.zona : "";
+          }).filter(Boolean))].sort(function(a,b){ return a.localeCompare(b,"es"); });
+          zonas.forEach(function(z) {
+            var o = document.createElement("option"); o.value = z; o.textContent = z; selZona.appendChild(o);
+          });
+        }
+        if (selCat) {
+          var cats = [...new Set(stockPropio.map(function(r){ return r.categoria; }).filter(Boolean))].sort(function(a,b){ return a.localeCompare(b,"es"); });
+          cats.forEach(function(c) {
+            var o = document.createElement("option"); o.value = c; o.textContent = c; selCat.appendChild(o);
+          });
+        }
+      }
+
+      var q       = ((document.getElementById("opst-search")   || {}).value || "").toLowerCase().trim();
+      var filtZona = (document.getElementById("opst-zona")      || {}).value || "";
+      var filtCat  = (document.getElementById("opst-categoria") || {}).value || "";
+
+      // Solo ExistenciaPropia (stockPropio ya viene filtrado así)
+      var rows = stockPropio.filter(function(r) {
+        // Zona: lookup en responsablesPuntosStock
+        if (filtZona) {
+          var resp = responsablesPuntosStock.find(function(x) { return x.nombre === r.puntoStock; });
+          if (!resp || resp.zona !== filtZona) return false;
+        }
+        if (filtCat && r.categoria !== filtCat) return false;
+        if (q && !r._searchText.includes(q)) return false;
+        return true;
+      });
+
+      if (!rows.length) {
+        cont.innerHTML = '<div style="padding:48px;text-align:center;color:var(--light);font-size:13px;">Sin resultados</div>';
+        return;
+      }
+
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+               + '<thead><tr style="background:var(--bg);border-bottom:2px solid var(--border);">'
+               + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Insumo</th>'
+               + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Categoría</th>'
+               + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Punto de stock</th>'
+               + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Zona</th>'
+               + '<th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Cantidad</th>'
+               + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Unidad</th>'
+               + '</tr></thead><tbody>';
+
+      rows.forEach(function(r, idx) {
+        var resp = responsablesPuntosStock.find(function(x) { return x.nombre === r.puntoStock; });
+        var zona = resp ? resp.zona : "—";
+        var cantColor = r.existencia > 0 ? "var(--green)" : "var(--red)";
+        html += '<tr style="border-bottom:1px solid var(--border);' + (idx % 2 === 0 ? "" : "background:var(--bg);") + '">'
+              + '<td style="padding:10px 14px;font-weight:600;">' + (r.nombre || "—") + '</td>'
+              + '<td style="padding:10px 14px;color:var(--sub);">' + (r.categoria || "—") + '</td>'
+              + '<td style="padding:10px 14px;">' + (r.puntoStock || "—") + '</td>'
+              + '<td style="padding:10px 14px;color:var(--sub);">' + zona + '</td>'
+              + '<td style="padding:10px 14px;text-align:right;font-weight:700;color:' + cantColor + ';">' + r.existencia.toLocaleString("es-AR") + '</td>'
+              + '<td style="padding:10px 14px;color:var(--sub);">' + (r.unidad || "—") + '</td>'
+              + '</tr>';
+      });
+
+      html += '</tbody></table>';
+      cont.innerHTML = html;
     }
 
     async function renderMetricasInsumos() {
