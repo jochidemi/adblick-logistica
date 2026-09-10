@@ -366,6 +366,12 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
             <div class="field-value" id="lblResponsable" style="min-width:200px;">-</div>
           </div>
           <div class="field">
+            <label>Cultivo a Tratar (MDA)</label>
+            <select id="selCultivoReceta" style="min-width:180px;">
+              <option value="">-- Seleccionar cultivo --</option>
+            </select>
+          </div>
+          <div class="field">
             <label>Estadío</label>
             <select id="selEstadio" style="min-width:180px;">
               <option value="">-- Seleccionar --</option>
@@ -1005,6 +1011,60 @@ function onZonaFiltroChange() {
   onCampoChange();
 }
 
+
+function sortCultivos(a, b) {
+  var aIsSec = /(?:^|\s)(?:2|2da|segund[ao])(?:\s|$)/i.test(a);
+  var bIsSec = /(?:^|\s)(?:2|2da|segund[ao])(?:\s|$)/i.test(b);
+  if (aIsSec && !bIsSec) return 1;
+  if (!aIsSec && bIsSec) return -1;
+  return a.localeCompare(b);
+}
+
+function updateCultivosReceta() {
+  var sel = document.getElementById("selCultivoReceta");
+  if (!sel) return;
+  var currentVal = sel.value;
+
+  var cultivosSet = new Set();
+  lotesSeleccionados.forEach(function(l) {
+    var list = (l.cultivos && l.cultivos.length > 0)
+      ? l.cultivos
+      : (l.cultivo ? l.cultivo.split(/[\/\+]/).map(function(s){ return s.trim(); }).filter(Boolean) : []);
+    list.forEach(function(c) {
+      if (c && c !== "-") cultivosSet.add(c);
+    });
+  });
+
+  var arr = Array.from(cultivosSet).sort(sortCultivos);
+  sel.innerHTML = "";
+
+  if (arr.length === 0) {
+    sel.innerHTML = "<option value=\"\">-- Seleccionar cultivo --</option>";
+    return;
+  }
+
+  arr.forEach(function(c) {
+    var opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+
+  if (arr.length > 1) {
+    var rotText = arr.join(" / ");
+    var optRot = document.createElement("option");
+    optRot.value = rotText;
+    optRot.textContent = rotText + " (Rotación completa)";
+    sel.appendChild(optRot);
+  }
+
+  if (currentVal && Array.from(sel.options).some(function(o){ return o.value === currentVal; })) {
+    sel.value = currentVal;
+  } else {
+    sel.selectedIndex = 0;
+  }
+}
+
 async function loadCampos() {
   var mdaData = null;
 
@@ -1078,7 +1138,20 @@ async function loadCampos() {
                    l.descripcion_mda.toLowerCase().includes(spLote.toLowerCase());
           });
           if (lotMatch) {
-            if (spCultivo) lotMatch.cultivo = spCultivo;
+            if (spCultivo) {
+              if (!lotMatch._spCultivos) {
+                lotMatch._spCultivos = [];
+              }
+              var partes = spCultivo.split(/[\/\+]/).map(function(s){ return s.trim(); }).filter(Boolean);
+              partes.forEach(function(p) {
+                if (lotMatch._spCultivos.indexOf(p) === -1) {
+                  lotMatch._spCultivos.push(p);
+                }
+              });
+              lotMatch._spCultivos.sort(sortCultivos);
+              lotMatch.cultivo = lotMatch._spCultivos.join(" / ");
+              lotMatch.cultivos = lotMatch._spCultivos.slice();
+            }
             if (spZona) { lotMatch.zona = spZona; zonasSet.add(spZona); }
             if (spHas > 0) lotMatch.has = spHas;
             if (spLoc) lotMatch.localidad = spLoc;
@@ -1090,6 +1163,19 @@ async function loadCampos() {
   } catch(e) {
     console.warn("[loadCampos] SharePoint no disponible:", e);
   }
+
+  // Normalizar cultivos para lotes base que tengan rotación (+ o /)
+  Object.keys(CAMPOS_MAP).forEach(function(c) {
+    CAMPOS_MAP[c].forEach(function(l) {
+      if (!l.cultivos) {
+        l.cultivos = l.cultivo ? l.cultivo.split(/[\/\+]/).map(function(s){ return s.trim(); }).filter(Boolean) : [];
+        if (l.cultivos.length > 1) {
+          l.cultivos.sort(sortCultivos);
+          l.cultivo = l.cultivos.join(" / ");
+        }
+      }
+    });
+  });
 
   // Poblar selector de Zonas
   var selZ = document.getElementById("selZonaFiltro");
@@ -1312,6 +1398,7 @@ function agregarSeleccion() {
         descripcion_mda: l.descripcion_mda,
         zona:            l.zona,
         cultivo:         l.cultivo,
+        cultivos:        l.cultivos || (l.cultivo ? l.cultivo.split(/[\/\+]/).map(function(s){ return s.trim(); }) : []),
         has:             l.has,
         localidad:       l.localidad,
         partido:         l.partido
@@ -1358,6 +1445,9 @@ function renderSeleccion() {
           "<td class=\"center\"><button class=\"btn btn-danger\" style=\"padding:3px 8px;font-size:11px;\" onclick=\"quitarLote(" + i + ")\">✕</button></td></tr>";
   });
   document.getElementById("bodySeleccion").innerHTML = tb;
+
+  // Actualizar selector de cultivo a tratar
+  updateCultivosReceta();
 
   // Actualizar consumos estimados en productos
   renderProductos();
@@ -1505,6 +1595,14 @@ async function generarReceta() {
       var haCampo = lotesDeCampo.reduce(function(s,l){ return s + (l.has||0); }, 0);
       var primeraFila = lotesDeCampo[0];
 
+      var cultivoReceta = (document.getElementById("selCultivoReceta") && document.getElementById("selCultivoReceta").value)
+        ? document.getElementById("selCultivoReceta").value
+        : (primeraFila.cultivo || "");
+      var rotacionNota = (primeraFila.cultivo && primeraFila.cultivo !== cultivoReceta)
+        ? " [Rotación lote: " + primeraFila.cultivo + "]"
+        : "";
+      var obsFinal = ((obs || "") + rotacionNota).trim();
+
       var fields = {
         Title:            nroReceta + (camposUnicos.length > 1 ? "-" + (ci+1) : ""),
         FechaCreacion:    new Date().toISOString(),
@@ -1512,7 +1610,7 @@ async function generarReceta() {
         Responsable:      responsable,
         Campo:            campo,
         Lotes:            JSON.stringify(lotesDeCampo.map(function(l){ return {lote:l.lote, id_mda:l.id_mda, descripcion_mda:l.descripcion_mda, has:l.has}; })),
-        Cultivo:          primeraFila.cultivo || "",
+        Cultivo:          cultivoReceta,
         HectareasTotales: haCampo,
         Localidad:        primeraFila.localidad || "",
         Partido:          primeraFila.partido   || "",
@@ -1521,7 +1619,7 @@ async function generarReceta() {
         Diagnostico:      diagnostico,
         Contratista:      contratista,
         Productos:        JSON.stringify(productosReceta),
-        Observaciones:    obs
+        Observaciones:    obsFinal
       };
       if (fechaApl) fields.FechaAplicacion = new Date(fechaApl + "T00:00:00").toISOString();
 
@@ -1627,7 +1725,7 @@ function dispararEmisionMDA() {
   var payload = {
     nro_receta: _resumenData.nroReceta,
     campo: b0.campo || "",
-    cultivo: (primerLoteObj.cultivo || (document.getElementById("lblCultivo") ? document.getElementById("lblCultivo").textContent : "") || "").replace(/^-$/, "").trim(),
+    cultivo: ((document.getElementById("selCultivoReceta") && document.getElementById("selCultivoReceta").value) || primerLoteObj.cultivo || (document.getElementById("lblCultivo") ? document.getElementById("lblCultivo").textContent : "") || "").replace(/^-$/, "").trim(),
     lotes: b0.lotes || [],
     cuit: loteCuit,
     zona: loteZona,
