@@ -1329,18 +1329,24 @@
         <!-- CONSULTAR STOCK (Operador) -->
         <div id="op-stock" style="display:none;">
           <div class="card" style="padding:14px 18px;margin-bottom:12px;">
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-              <input type="text" id="opst-search" placeholder="🔍 Buscar insumo..."
-                style="font-size:13px;flex:1;min-width:160px;" oninput="renderOpStock()">
-              <select id="opst-zona" onchange="renderOpStock()" style="font-size:12px;min-width:140px;font-family:'Montserrat',sans-serif;padding:6px 8px;border:1px solid var(--border);border-radius:7px;">
-                <option value="">Todas las zonas</option>
-              </select>
-              <select id="opst-pto" onchange="renderOpStock()" style="font-size:12px;min-width:150px;font-family:'Montserrat',sans-serif;padding:6px 8px;border:1px solid var(--border);border-radius:7px;">
-                <option value="">Todos los puntos de stock</option>
-              </select>
-              <select id="opst-categoria" onchange="renderOpStock()" style="font-size:12px;min-width:150px;font-family:'Montserrat',sans-serif;padding:6px 8px;border:1px solid var(--border);border-radius:7px;">
-                <option value="">Todas las categorías</option>
-              </select>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;flex:1;">
+                <input type="text" id="opst-search" placeholder="🔍 Buscar insumo..."
+                  style="font-size:13px;flex:1;min-width:160px;" oninput="renderOpStock()">
+                <select id="opst-zona" onchange="renderOpStock()" style="font-size:12px;min-width:140px;font-family:'Montserrat',sans-serif;padding:6px 8px;border:1px solid var(--border);border-radius:7px;">
+                  <option value="">Todas las zonas</option>
+                </select>
+                <select id="opst-pto" onchange="renderOpStock()" style="font-size:12px;min-width:150px;font-family:'Montserrat',sans-serif;padding:6px 8px;border:1px solid var(--border);border-radius:7px;">
+                  <option value="">Todos los puntos de stock</option>
+                </select>
+                <select id="opst-categoria" onchange="renderOpStock()" style="font-size:12px;min-width:150px;font-family:'Montserrat',sans-serif;padding:6px 8px;border:1px solid var(--border);border-radius:7px;">
+                  <option value="">Todas las categorías</option>
+                </select>
+              </div>
+              <button class="btn-ghost btn-sm" onclick="toggleAllOpPtos()" id="btn-toggle-all-ptos"
+                style="font-size:11px;font-weight:700;color:var(--sub);white-space:nowrap;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--white);cursor:pointer;">
+                Colapsar todos
+              </button>
             </div>
           </div>
           <!-- Tabla -->
@@ -3745,6 +3751,54 @@
       }) || null;
     }
 
+    var _opCollapsedPtos = {};
+
+    function toggleOpPtoGroup(gId) {
+      var body = document.getElementById("pto-body-" + gId);
+      var arrow = document.getElementById("pto-arrow-" + gId);
+      if (!body) return;
+      var isHidden = body.style.display === "none";
+      if (isHidden) {
+        body.style.display = "";
+        if (arrow) arrow.style.transform = "rotate(0deg)";
+        _opCollapsedPtos[gId] = false;
+      } else {
+        body.style.display = "none";
+        if (arrow) arrow.style.transform = "rotate(-90deg)";
+        _opCollapsedPtos[gId] = true;
+      }
+      updateToggleAllBtn();
+    }
+
+    function toggleAllOpPtos() {
+      var bodies = document.querySelectorAll("[id^='pto-body-']");
+      var arrows = document.querySelectorAll("[id^='pto-arrow-']");
+      if (!bodies.length) return;
+      var anyVisible = false;
+      bodies.forEach(function (b) { if (b.style.display !== "none") anyVisible = true; });
+      var shouldCollapse = anyVisible;
+      bodies.forEach(function (b) {
+        var gId = b.id.replace("pto-body-", "");
+        b.style.display = shouldCollapse ? "none" : "";
+        _opCollapsedPtos[gId] = shouldCollapse;
+      });
+      arrows.forEach(function (a) {
+        a.style.transform = shouldCollapse ? "rotate(-90deg)" : "rotate(0deg)";
+      });
+      updateToggleAllBtn();
+    }
+
+    function updateToggleAllBtn() {
+      var btn = document.getElementById("btn-toggle-all-ptos");
+      if (!btn) return;
+      var bodies = document.querySelectorAll("[id^='pto-body-']");
+      if (!bodies.length) { btn.style.display = "none"; return; }
+      btn.style.display = "inline-block";
+      var anyVisible = false;
+      bodies.forEach(function (b) { if (b.style.display !== "none") anyVisible = true; });
+      btn.textContent = anyVisible ? "Colapsar todos" : "Expandir todos";
+    }
+
     function renderOpStock() {
       var cont = document.getElementById("opst-table-container");
       if (!cont) return;
@@ -3821,8 +3875,30 @@
 
       if (!rows.length) {
         cont.innerHTML = '<div style="padding:48px;text-align:center;color:var(--light);font-size:13px;">Sin resultados</div>';
+        var btnAll = document.getElementById("btn-toggle-all-ptos");
+        if (btnAll) btnAll.style.display = "none";
         return;
       }
+
+      // Agrupar filas por Punto de Stock
+      var gruposMap = new Map();
+      rows.forEach(function (r) {
+        var pto = (r.puntoStock || "Sin punto de stock asignado").trim();
+        if (!gruposMap.has(pto)) {
+          var resp = findRespPuntoStock(pto);
+          var zona = (resp && resp.zona && resp.zona.trim()) ? resp.zona.trim() : "-";
+          gruposMap.set(pto, {
+            nombre: pto,
+            zona: zona,
+            items: []
+          });
+        }
+        gruposMap.get(pto).items.push(r);
+      });
+
+      var grupos = Array.from(gruposMap.values()).sort(function (a, b) {
+        return a.nombre.localeCompare(b.nombre, "es");
+      });
 
       var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
                + '<thead><tr style="background:var(--bg);border-bottom:2px solid var(--border);">'
@@ -3832,24 +3908,57 @@
                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Zona</th>'
                + '<th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Cantidad</th>'
                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;">Unidad</th>'
-               + '</tr></thead><tbody>';
+               + '</tr></thead>';
 
-      rows.forEach(function (r, idx) {
-        var resp = findRespPuntoStock(r.puntoStock);
-        var zona = (resp && resp.zona && resp.zona.trim()) ? resp.zona.trim() : "-";
-        var cantColor = r.existencia > 0 ? "var(--green)" : "var(--red)";
-        html += '<tr style="border-bottom:1px solid var(--border);' + (idx % 2 === 0 ? "" : "background:var(--bg);") + '">'
-              + '<td style="padding:10px 14px;font-weight:600;">' + (r.nombre || "-") + '</td>'
-              + '<td style="padding:10px 14px;">' + (r.puntoStock || "-") + '</td>'
-              + '<td style="padding:10px 14px;color:var(--sub);">' + (r.categoria || "-") + '</td>'
-              + '<td style="padding:10px 14px;color:var(--sub);font-weight:600;">' + zona + '</td>'
-              + '<td style="padding:10px 14px;text-align:right;font-weight:700;color:' + cantColor + ';">' + r.existencia.toLocaleString("es-AR") + '</td>'
-              + '<td style="padding:10px 14px;color:var(--sub);">' + (r.unidad || "-") + '</td>'
-              + '</tr>';
+      grupos.forEach(function (g) {
+        g.items.sort(function (a, b) {
+          return (a.nombre || "").localeCompare(b.nombre || "", "es");
+        });
+
+        var gId = "pto_" + normStr(g.nombre);
+        var isCollapsed = !!_opCollapsedPtos[gId];
+        var arrowRot = isCollapsed ? "rotate(-90deg)" : "rotate(0deg)";
+        var dispStyle = isCollapsed ? "display:none;" : "";
+
+        // Barra divisoria de Punto de Stock
+        html += '<tbody style="border-top:3px solid var(--border);">'
+              + '<tr onclick="toggleOpPtoGroup(\'' + gId + '\')" style="background:#F8FAFC;cursor:pointer;user-select:none;transition:background 0.15s;" onmouseover="this.style.background=\'#EDF2F7\'" onmouseout="this.style.background=\'#F8FAFC\'" title="Click para colapsar / desplegar">'
+              + '<td colspan="6" style="padding:10px 14px;border-bottom:1px solid var(--border);">'
+              + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">'
+              + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+              + '<span id="pto-arrow-' + gId + '" style="display:inline-block;font-size:10px;color:var(--sub);transition:transform 0.18s;transform:' + arrowRot + ';">▼</span>'
+              + '<span style="font-weight:800;font-size:13px;color:var(--text);letter-spacing:0.02em;">📍 ' + g.nombre + '</span>'
+              + '<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;background:var(--white);border:1px solid var(--border);color:var(--sub);">Zona: ' + g.zona + '</span>'
+              + '</div>'
+              + '<div style="font-size:11px;font-weight:600;color:var(--sub);background:var(--white);border:1px solid var(--border);padding:2px 8px;border-radius:10px;">'
+              + g.items.length + (g.items.length === 1 ? ' ítem' : ' ítems')
+              + '</div>'
+              + '</div>'
+              + '</td>'
+              + '</tr>'
+              + '</tbody>';
+
+        // Filas del grupo
+        html += '<tbody id="pto-body-' + gId + '" style="' + dispStyle + '">';
+        g.items.forEach(function (r, idx) {
+          var resp = findRespPuntoStock(r.puntoStock);
+          var zona = (resp && resp.zona && resp.zona.trim()) ? resp.zona.trim() : "-";
+          var cantColor = r.existencia > 0 ? "var(--green)" : "var(--red)";
+          html += '<tr style="border-bottom:1px solid var(--border);' + (idx % 2 === 0 ? "" : "background:var(--bg);") + '">'
+                + '<td style="padding:10px 14px;font-weight:600;">' + (r.nombre || "-") + '</td>'
+                + '<td style="padding:10px 14px;">' + (r.puntoStock || "-") + '</td>'
+                + '<td style="padding:10px 14px;color:var(--sub);">' + (r.categoria || "-") + '</td>'
+                + '<td style="padding:10px 14px;color:var(--sub);font-weight:600;">' + zona + '</td>'
+                + '<td style="padding:10px 14px;text-align:right;font-weight:700;color:' + cantColor + ';">' + r.existencia.toLocaleString("es-AR") + '</td>'
+                + '<td style="padding:10px 14px;color:var(--sub);">' + (r.unidad || "-") + '</td>'
+                + '</tr>';
+        });
+        html += '</tbody>';
       });
 
       html += '</tbody></table>';
       cont.innerHTML = html;
+      updateToggleAllBtn();
     }
 
     async function renderMetricasInsumos() {
