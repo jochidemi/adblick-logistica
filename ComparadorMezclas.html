@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ADBlick Granos – Comparador de Mezclas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Montserrat", "Segoe UI", sans-serif; background: #fafafa; min-height: 100vh; }
+:root {
+  --yellow:       #F5B800;
+  --yellow-dark:  #D9A300;
+  --yellow-light: #FFF3C4;
+  --green:        #007743;
+  --green-dark:   #005a30;
+  --green-light:  #e6f4ed;
+  --dark:         #1A1A1A;
+  --gray:         #595959;
+  --gray-light:   #eeeeee;
+  --border:       #e0e0e0;
+  --white:        #fff;
+  --purple:       #007743;
+  --purple-dark:  #005a30;
+  --purple-light: #e6f4ed;
+}
+.header { background: var(--green); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,119,67,0.25); position: sticky; top: 0; z-index: 100; }
+.header-logo { display: flex; align-items: center; gap: 12px; }
+.header-logo-badge { background: var(--yellow); color: var(--dark); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
+.header-title { font-size: 16px; font-weight: 700; color: var(--white); }
+.header-user  { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85); }
+.loading-screen { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 60px); background: #fffbe8; flex-direction: column; gap: 16px; }
+.spinner { width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.app { display: none; }
+.main { padding: 20px 16px; max-width: 1400px; margin: 0 auto; }
+.page-title    { font-size: 20px; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
+.page-subtitle { font-size: 12px; color: var(--gray); margin-bottom: 20px; }
+.card { background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+.card-title { font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 14px; }
+.mezclas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.mezcla-card { background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 18px; position: relative; transition: box-shadow 0.15s; }
+.mezcla-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.mezcla-card.m1 { border-top: 4px solid var(--green); }
+.mezcla-card.m2 { border-top: 4px solid var(--yellow); }
+.mezcla-card.m3 { border-top: 4px solid #4a90d9; }
+.mezcla-card.m4 { border-top: 4px solid #9b59b6; }
+.mezcla-card.m5 { border-top: 4px solid #e67e22; }
+.mezcla-card.m6 { border-top: 4px solid #e74c3c; }
+.mezcla-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px; }
+.mezcla-nombre { font-size: 15px; font-weight: 800; color: var(--dark); cursor: pointer; border: none; background: transparent; font-family: inherit; padding: 0; width: calc(100% - 40px); }
+.mezcla-nombre:focus { outline: 2px dashed var(--green); border-radius: 3px; padding: 0 4px; }
+.productos-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
+.productos-table th { background: var(--dark); color: var(--white); padding: 7px 8px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; white-space: nowrap; }
+.productos-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.productos-table tr:last-child td { border-bottom: none; }
+.productos-table tr:hover td { background: #fffbe8; }
+.costo-fila { font-weight: 700; color: var(--green-dark); white-space: nowrap; font-size: 12px; }
+.productos-table select, .productos-table input[type=number] { font-family: inherit; border: 1.5px solid var(--border); border-radius: 5px; padding: 5px 7px; font-size: 12px; background: var(--white); outline: none; transition: border 0.15s; width: 100%; }
+.productos-table select:focus, .productos-table input:focus { border-color: var(--green); }
+.productos-table input[type=number]::-webkit-outer-spin-button, .productos-table input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+.productos-table input[type=number] { -moz-appearance: textfield; }
+select, input[type=number], input[type=text], input[type=date], textarea { font-family: inherit; border: 1.5px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 13px; background: var(--white); outline: none; transition: border 0.15s; }
+select:focus, input:focus, textarea:focus { border-color: var(--green); }
+input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+input[type=number] { -moz-appearance: textfield; }
+.empty-products { text-align: center; padding: 16px; color: var(--gray); font-size: 12px; }
+.mezcla-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1.5px solid var(--border); margin-top: 6px; gap: 8px; flex-wrap: wrap; }
+.mezcla-total-label { font-size: 11px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.05em; }
+.mezcla-total-valor { font-size: 22px; font-weight: 800; color: var(--dark); }
+.mezcla-total-unidad { font-size: 11px; font-weight: 600; color: var(--gray); margin-left: 2px; }
+.comparacion-card { background: var(--dark); border-radius: 12px; padding: 20px 24px; color: var(--white); margin-bottom: 16px; }
+.comparacion-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); margin-bottom: 16px; }
+.comparacion-items { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.comparacion-item { flex: 1; min-width: 160px; background: rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; border: 1.5px solid rgba(255,255,255,0.1); transition: border-color 0.15s; }
+.comparacion-item.ganadora  { border-color: var(--yellow); background: rgba(245,184,0,0.12); }
+.comparacion-item.perdedora { opacity: 0.65; }
+.comparacion-item.sin-datos { opacity: 0.45; }
+.comp-nombre { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.comp-costo  { font-size: 24px; font-weight: 800; color: var(--white); }
+.comp-unidad { font-size: 11px; color: rgba(255,255,255,0.5); }
+.comp-badge-ganadora { display: inline-block; background: var(--yellow); color: var(--dark); font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.04em; margin-top: 4px; width: fit-content; }
+.comparacion-diferencia { background: rgba(255,255,255,0.07); border-radius: 8px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.dif-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.06em; }
+.dif-valor  { font-size: 22px; font-weight: 800; color: var(--yellow); }
+.dif-texto  { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 4px; }
+.comparacion-sin-datos { text-align: center; padding: 20px; color: rgba(255,255,255,0.5); font-size: 13px; }
+.btn { border: none; border-radius: 7px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary   { background: var(--green);       color: var(--white); }
+.btn-primary:hover   { background: var(--green-dark); }
+.btn-secondary { background: var(--yellow-light); color: #7a6000; }
+.btn-secondary:hover { background: #ffe07a; }
+.btn-danger    { background: #fdecea; color: #c0392b; }
+.btn-danger:hover    { background: #f8d0cd; }
+.btn-green     { background: var(--green-light); color: var(--green); }
+.btn-green:hover     { background: #c8e6c9; }
+.btn-sm        { padding: 5px 10px; font-size: 11px; }
+.btn:disabled  { opacity: 0.5; cursor: not-allowed; }
+.actions       { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn-remove-mezcla { position: absolute; top: 14px; right: 14px; background: transparent; border: none; cursor: pointer; color: #bbb; font-size: 18px; line-height: 1; transition: color 0.15s; padding: 2px 6px; }
+.btn-remove-mezcla:hover { color: #c0392b; }
+.sep      { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.info-box { background: var(--green-light); border: 1px solid #6dba9b; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #004d2a; margin-bottom: 14px; }
+.info-box.warn { background: var(--yellow-light); border-color: var(--yellow-dark); color: #7a6000; }
+.toast { position: fixed; bottom: 20px; right: 20px; left: 20px; max-width: 400px; margin: 0 auto; padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--white); box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 300; display: none; text-align: center; }
+.toast.show    { display: block; }
+.toast.success { background: #2d7a45; }
+.toast.error   { background: #c0392b; }
+.toast.info    { background: #1a73e8; }
+@media (max-width: 600px) {
+  .header-title { font-size: 13px; }
+  .main { padding: 12px 10px; }
+  .mezclas-grid { grid-template-columns: 1fr; }
+  .mezcla-total-valor { font-size: 18px; }
+  .comp-costo { font-size: 18px; }
+  .dif-valor  { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-logo">
+    <div class="header-logo-badge">ADBlick</div>
+    <div class="header-title">Comparador de Mezclas Agroquímicas</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="header-user" id="headerUser"></div>
+  </div>
+</div>
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <div style="font-size:14px;font-weight:600;color:#7a6000;">Conectando con SharePoint...</div>
+</div>
+<div class="app" id="appContent">
+  <div class="main">
+    <div class="page-title">Comparador de Mezclas</div>
+    <div class="page-subtitle">Construí dos o más mezclas de agroquímicos y compará su costo en $/ha en tiempo real.</div>
+    <div class="info-box warn" id="statusCarga" style="display:none;"></div>
+    <div class="comparacion-card">
+      <div class="comparacion-titulo">📊 Comparación de costos en $/ha</div>
+      <div id="comparacionContenido">
+        <div class="comparacion-sin-datos">Agregá productos a las mezclas para ver la comparación.</div>
+      </div>
+    </div>
+    <div class="mezclas-grid" id="mezclasGrid"></div>
+    <div class="actions" style="margin-bottom:20px;">
+      <button class="btn btn-secondary" onclick="agregarMezcla()">+ Agregar Mezcla</button>
+      <button class="btn btn-danger btn-sm" onclick="limpiarTodo()">Limpiar todo</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Catalogo de Insumos</div>
+      <div id="catalogoStatus" style="font-size:12px;color:var(--gray);">Cargando catalogo desde SharePoint...</div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<script>
+// ================================================================
+//  BLOQUE DE CONFIGURACION  --  EDITAR ANTES DEL DEPLOY
+//  Columnas de la lista verificadas contra Ejemplo_listaSharepoint.xlsx:
+//    "Insumo" | "Precio Cotizado" | "Existencias"
+// ================================================================
+var CONFIG = {
+  clientId:         "c3d65cc5-56d1-4ac0-9f4f-a6ab47c80563",
+  tenantId:         "576e8544-afbe-423a-94a8-94fb80aaffe3",
+  sharepointSiteId: "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
+  insumosListId:    "99298BF7-EBCE-4165-8CEE-D8A6F61EA2D4",
+  redirectUri:      "https://jochidemi.github.io/adblick-logistica/ComparadorMezclas.html"
+};
+
+var msalInstance=null, currentAccount=null, graphToken=null;
+var CATALOGO=[], MEZCLAS=[], _cnt=0;
+
+// ================================================================
+//  MSAL  --  Patron identico al Recetario_UF_original.html (4 pasos)
+// ================================================================
+async function initMsal() {
+  msalInstance = new msal.PublicClientApplication({
+    auth: { clientId: CONFIG.clientId, authority: "https://login.microsoftonline.com/"+CONFIG.tenantId, redirectUri: CONFIG.redirectUri },
+    cache: { cacheLocation: "sessionStorage" }
+  });
+  await msalInstance.initialize();
+  var response = await msalInstance.handleRedirectPromise();
+  if (response) { currentAccount=response.account; graphToken=response.accessToken; showApp(); return; }
+  var accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) { currentAccount=accounts[0]; await acquireTokenSilent(); showApp(); return; }
+  try {
+    await msalInstance.ssoSilent({ scopes:["Sites.Read.All","User.Read"] });
+    var accs = msalInstance.getAllAccounts();
+    if (accs.length > 0) { currentAccount=accs[0]; await acquireTokenSilent(); showApp(); return; }
+  } catch(e) {}
+  await msalInstance.loginRedirect({ scopes:["Sites.Read.All","User.Read"] });
+}
+
+async function acquireTokenSilent() {
+  try {
+    var r = await msalInstance.acquireTokenSilent({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+    graphToken = r.accessToken;
+  } catch(e) {
+    await msalInstance.acquireTokenRedirect({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+  }
+}
+
+async function getGraphToken() {
+  try {
+    var r = await msalInstance.acquireTokenSilent({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+    graphToken = r.accessToken;
+  } catch(e) {
+    try {
+      var r2 = await msalInstance.acquireTokenPopup({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+      graphToken = r2.accessToken;
+    } catch(e2) {
+      await msalInstance.acquireTokenRedirect({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+    }
+  }
+  return graphToken;
+}
+
+// ================================================================
+//  SHAREPOINT  --  Fetch paginado con retry en throttling (HTTP 429)
+//  Funcion identica a fetchAllFromList() del Recetario_UF_original.html
+// ================================================================
+async function fetchAllFromList(listId) {
+  var items=[], url="https://graph.microsoft.com/v1.0/sites/"+CONFIG.sharepointSiteId+"/lists/"+listId+"/items?$expand=fields&$top=500";
+  while (url) {
+    var token=await getGraphToken();
+    var res=await fetch(url,{headers:{Authorization:"Bearer "+token}});
+    if (res.status===429) {
+      var wait=parseInt(res.headers.get("Retry-After")||"5")*1000;
+      await new Promise(function(r){setTimeout(r,wait);}); continue;
+    }
+    if (!res.ok) throw new Error("HTTP "+res.status+" al leer lista "+listId);
+    var data=await res.json();
+    items=items.concat(data.value||[]);
+    url=data["@odata.nextLink"]||null;
+    if (url) await new Promise(function(r){setTimeout(r,200);});
+  }
+  return items;
+}
+
+function showApp() {
+  var nombre=currentAccount?(currentAccount.name||currentAccount.username):"Usuario";
+  document.getElementById("headerUser").textContent=nombre;
+  document.getElementById("loadingScreen").style.display="none";
+  document.getElementById("appContent").style.display="block";
+  agregarMezcla("Mezcla 1");
+  agregarMezcla("Mezcla 2");
+  cargarCatalogo();
+}
+
+// ================================================================
+//  CATALOGO DE INSUMOS
+//  Columnas exactas del Excel: "Insumo" | "Precio Cotizado" | "Existencias"
+//  spField() resuelve variaciones internas de SP
+//  (p.ej. "Precio Cotizado" -> "Precio_x0020_Cotizado")
+// ================================================================
+function spField(f,name) {
+  if (f[name]!==undefined&&f[name]!==null) return f[name];
+  var low=name.toLowerCase(), low2=name.toLowerCase().replace(/\s+/g,"_x0020_"), low3=name.toLowerCase().replace(/\s+/g,"_");
+  var keys=Object.keys(f);
+  for (var i=0;i<keys.length;i++) { var kl=keys[i].toLowerCase(); if (kl===low||kl===low2||kl===low3) return f[keys[i]]; }
+  return undefined;
+}
+
+async function cargarCatalogo() {
+  var statusEl=document.getElementById("catalogoStatus");
+  statusEl.innerHTML="Descargando insumos desde SharePoint...";
+  if (!CONFIG.insumosListId||CONFIG.insumosListId.startsWith("TODO")) {
+    CATALOGO=generarCatalogoDemo();
+    statusEl.innerHTML="MODO DEMO: "+CATALOGO.length+" insumos de ejemplo cargados. Configura CONFIG.insumosListId con el GUID real de tu lista.";
+    var aviso=document.getElementById("statusCarga");
+    aviso.style.display="block"; aviso.className="info-box warn";
+    aviso.innerHTML="<strong>Configuracion pendiente:</strong> Edita <code>CONFIG.insumosListId</code> y <code>CONFIG.redirectUri</code> antes del deploy en GitHub Pages.";
+    actualizarTodosLosSelects(); return;
+  }
+  try {
+    var items=await fetchAllFromList(CONFIG.insumosListId);
+    if (items.length>0) {
+      console.log("[Insumos SP] Columnas:",Object.keys(items[0].fields||{}));
+      console.log("[Insumos SP] Primer item:",items[0].fields);
+    }
+    CATALOGO=items.map(function(item){
+      var f=item.fields||{};
+      var insumo=((spField(f,"Insumo")??spField(f,"Nombre")??spField(f,"Producto")??spField(f,"Title")??spField(f,"Titulo")??"")+"").trim();
+      var precio=parseFloat(spField(f,"Precio Cotizado")??spField(f,"Precio_Cotizado")??spField(f,"PrecioCotizado")??spField(f,"Precio")??spField(f,"PrecioUnitario")??0)||0;
+      var existencias=parseFloat(spField(f,"Existencias")??spField(f,"Stock")??0)||0;
+      return {insumo:insumo,precio:precio,existencias:existencias};
+    }).filter(function(p){return p.insumo;});
+    CATALOGO.sort(function(a,b){return a.insumo.localeCompare(b.insumo,"es");});
+    statusEl.innerHTML="Catalogo cargado: <strong>"+CATALOGO.length+"</strong> insumo"+(CATALOGO.length!==1?"s":"")+" desde SharePoint.";
+    actualizarTodosLosSelects();
+  } catch(e) {
+    statusEl.innerHTML="Error al cargar el catalogo: "+esc(e.message);
+    console.error("[cargarCatalogo]",e);
+    showToast("Error al cargar catalogo: "+e.message,"error");
+  }
+}
+
+function generarCatalogoDemo() {
+  return [
+    {insumo:"2,4-D Amina 72% SL",precio:2100,existencias:300},
+    {insumo:"2,4-DB",precio:12413,existencias:10},
+    {insumo:"Atrazina 50% SC",precio:3200,existencias:200},
+    {insumo:"Azoxistrobina 25% SC",precio:9800,existencias:90},
+    {insumo:"Cipermetrina 25% EC",precio:3400,existencias:200},
+    {insumo:"Clorimuron etil 25% WG",precio:22000,existencias:25},
+    {insumo:"Clorpirifos 48% EC",precio:4500,existencias:150},
+    {insumo:"Dicamba 48% SL",precio:8700,existencias:120},
+    {insumo:"Epoxiconazol + Piraclostrobina",precio:12500,existencias:60},
+    {insumo:"Flumioxazin 48% SC",precio:15600,existencias:35},
+    {insumo:"Glifosato 48% SL",precio:1850,existencias:500},
+    {insumo:"Lambda-cihalotrina 5% EC",precio:6800,existencias:80},
+    {insumo:"MAP 11-52-0",precio:2200,existencias:600},
+    {insumo:"Metsulfuron 60% WG",precio:35676,existencias:13},
+    {insumo:"Sulfato de Amonio granulado",precio:950,existencias:1000},
+    {insumo:"Urea Granulada 46% N",precio:562,existencias:1660}
+  ];
+}
+
+// ================================================================
+//  GESTION DE MEZCLAS
+// ================================================================
+function agregarMezcla(nombre) {
+  _cnt++;
+  var id=("m"+_cnt), label=nombre||("Mezcla "+(MEZCLAS.length+1));
+  var colores=["m1","m2","m3","m4","m5","m6"], color=colores[MEZCLAS.length%colores.length];
+  MEZCLAS.push({id:id,nombre:label,colorClass:color,filas:[],_total:0});
+  renderizarMezcla(id); actualizarComparacion();
+}
+function eliminarMezcla(mezclaId) {
+  if (MEZCLAS.length<=1) { showToast("Debe quedar al menos una mezcla.","error"); return; }
+  MEZCLAS=MEZCLAS.filter(function(m){return m.id!==mezclaId;});
+  var card=document.getElementById("card-"+mezclaId); if (card) card.remove();
+  actualizarComparacion();
+}
+function agregarFila(mezclaId) {
+  var m=getMezcla(mezclaId); if (!m) return;
+  m.filas.push({id:mezclaId+"_f"+(++_cnt),insumoIdx:-1,dosis:0});
+  renderizarFilas(mezclaId); actualizarTotalMezcla(mezclaId); actualizarComparacion();
+}
+function eliminarFila(mezclaId,filaId) {
+  var m=getMezcla(mezclaId); if (!m) return;
+  m.filas=m.filas.filter(function(f){return f.id!==filaId;});
+  renderizarFilas(mezclaId); actualizarTotalMezcla(mezclaId); actualizarComparacion();
+}
+function onInsumoChange(mezclaId,filaId,selectEl) {
+  var fila=getFila(mezclaId,filaId); if (!fila) return;
+  fila.insumoIdx=parseInt(selectEl.value);
+  actualizarCostoFila(mezclaId,filaId); actualizarTotalMezcla(mezclaId); actualizarComparacion();
+}
+function onDosisChange(mezclaId,filaId,inputEl) {
+  var fila=getFila(mezclaId,filaId); if (!fila) return;
+  fila.dosis=parseFloat(inputEl.value)||0;
+  actualizarCostoFila(mezclaId,filaId); actualizarTotalMezcla(mezclaId); actualizarComparacion();
+}
+function onNombreChange(mezclaId,inputEl) {
+  var m=getMezcla(mezclaId);
+  if (m) { m.nombre=inputEl.value.trim()||m.nombre; actualizarComparacion(); }
+}
+function limpiarTodo() {
+  if (!confirm("Limpiar todas las mezclas? Esta accion no se puede deshacer.")) return;
+  MEZCLAS=[]; _cnt=0; document.getElementById("mezclasGrid").innerHTML="";
+  agregarMezcla("Mezcla 1"); agregarMezcla("Mezcla 2"); actualizarComparacion();
+}
+
+// ================================================================
+//  RENDERIZADO
+// ================================================================
+function renderizarMezcla(mezclaId) {
+  var m=getMezcla(mezclaId); if (!m) return;
+  var grid=document.getElementById("mezclasGrid");
+  var el=document.getElementById("card-"+mezclaId);
+  if (!el) { el=document.createElement("div"); el.id="card-"+mezclaId; el.className="mezcla-card "+m.colorClass; grid.appendChild(el); }
+  el.innerHTML=
+    '<button class="btn-remove-mezcla" title="Eliminar esta mezcla" onclick="eliminarMezcla(\''+mezclaId+'\')">x</button>'+
+    '<div class="mezcla-header">'+
+      '<input class="mezcla-nombre" type="text" value="'+esc(m.nombre)+'" title="Clic para editar el nombre" '+
+        'onchange="onNombreChange(\''+mezclaId+'\',this)" onblur="onNombreChange(\''+mezclaId+'\',this)">'+
+    '</div>'+
+    '<div id="filas-'+mezclaId+'"><div class="empty-products">Aun no hay productos. Usa el boton de abajo para agregar.</div></div>'+
+    '<div class="actions" style="margin-top:10px;">'+
+      '<button class="btn btn-green btn-sm" onclick="agregarFila(\''+mezclaId+'\')">+ Agregar Producto</button>'+
+    '</div>'+
+    '<hr class="sep">'+
+    '<div class="mezcla-footer">'+
+      '<div><div class="mezcla-total-label">Costo Total de la Mezcla</div></div>'+
+      '<div><span class="mezcla-total-valor" id="total-'+mezclaId+'">$ 0,00</span><span class="mezcla-total-unidad">/ha</span></div>'+
+    '</div>';
+}
+
+function renderizarFilas(mezclaId) {
+  var m=getMezcla(mezclaId), ct=document.getElementById("filas-"+mezclaId);
+  if (!m||!ct) return;
+  if (m.filas.length===0) { ct.innerHTML='<div class="empty-products">Aun no hay productos.</div>'; return; }
+  var opts='<option value="-1">-- Seleccionar insumo --</option>';
+  CATALOGO.forEach(function(ins,idx){
+    var sl=ins.existencias>0?" [Stock: "+ins.existencias.toLocaleString("es-AR")+"]":" [Sin stock]";
+    opts+='<option value="'+idx+'">'+esc(ins.insumo)+sl+'</option>';
+  });
+  var html='<table class="productos-table"><thead><tr>'+
+    '<th style="min-width:200px">Insumo</th>'+
+    '<th style="min-width:90px">Dosis (u/ha)</th>'+
+    '<th style="min-width:105px">Precio u.</th>'+
+    '<th style="min-width:115px">Costo $/ha</th>'+
+    '<th style="width:34px"></th>'+
+    '</tr></thead><tbody>';
+  m.filas.forEach(function(fila){
+    var ins=fila.insumoIdx>=0?CATALOGO[fila.insumoIdx]:null;
+    var costo=ins&&fila.dosis>0?ins.precio*fila.dosis:0;
+    var optsConSel=opts.replace('value="'+fila.insumoIdx+'"','value="'+fila.insumoIdx+'" selected');
+    var pc=!ins?"":ins.existencias<=0?"color:#c0392b;":ins.existencias<10?"color:#e67e22;":"color:var(--gray);";
+    html+='<tr id="fila-'+fila.id+'">'+
+      '<td><select onchange="onInsumoChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+optsConSel+'</select></td>'+
+      '<td><input type="number" min="0" step="0.001" value="'+(fila.dosis>0?fila.dosis:"")+'" placeholder="0.000" '+
+        'oninput="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)" onchange="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)"></td>'+
+      '<td style="font-size:11px;'+pc+'" id="precio-'+fila.id+'">'+(ins?formatoPeso(ins.precio):"--")+'</td>'+
+      '<td class="costo-fila" id="costo-'+fila.id+'">'+(costo>0?formatoPeso(costo):"--")+'</td>'+
+      '<td><button class="btn btn-danger btn-sm" style="padding:3px 7px;" onclick="eliminarFila(\''+mezclaId+'\',\''+fila.id+'\')">x</button></td>'+
+      '</tr>';
+  });
+  html+='</tbody></table>'; ct.innerHTML=html;
+}
+
+function actualizarCostoFila(mezclaId,filaId) {
+  var fila=getFila(mezclaId,filaId); if (!fila) return;
+  var ins=fila.insumoIdx>=0?CATALOGO[fila.insumoIdx]:null;
+  var costo=ins&&fila.dosis>0?ins.precio*fila.dosis:0;
+  var pEl=document.getElementById("precio-"+filaId), cEl=document.getElementById("costo-"+filaId);
+  if (pEl) { pEl.textContent=ins?formatoPeso(ins.precio):"--"; pEl.style.color=ins?(ins.existencias<=0?"#c0392b":ins.existencias<10?"#e67e22":"var(--gray)"):""; }
+  if (cEl) cEl.textContent=costo>0?formatoPeso(costo):"--";
+}
+
+function actualizarTotalMezcla(mezclaId) {
+  var m=getMezcla(mezclaId); if (!m) return;
+  m._total=m.filas.reduce(function(sum,f){var ins=f.insumoIdx>=0?CATALOGO[f.insumoIdx]:null;return sum+(ins&&f.dosis>0?ins.precio*f.dosis:0);},0);
+  var el=document.getElementById("total-"+mezclaId); if (el) el.textContent="$ "+formatoNum(m._total);
+}
+
+function actualizarTodosLosSelects() {
+  MEZCLAS.forEach(function(m){renderizarFilas(m.id);actualizarTotalMezcla(m.id);}); actualizarComparacion();
+}
+
+// ================================================================
+//  PANEL DE COMPARACION
+// ================================================================
+function actualizarComparacion() {
+  MEZCLAS.forEach(function(m){
+    m._total=m.filas.reduce(function(sum,f){var ins=f.insumoIdx>=0?CATALOGO[f.insumoIdx]:null;return sum+(ins&&f.dosis>0?ins.precio*f.dosis:0);},0);
+  });
+  var el=document.getElementById("comparacionContenido"); if (!el) return;
+  var conDatos=MEZCLAS.filter(function(m){return m.filas.some(function(f){return f.insumoIdx>=0&&f.dosis>0;});});
+  if (conDatos.length<1) { el.innerHTML='<div class="comparacion-sin-datos">Agrega productos con dosis a las mezclas para ver la comparacion.</div>'; return; }
+  var ordenadas=conDatos.slice().sort(function(a,b){return a._total-b._total;});
+  var minTotal=ordenadas[0]._total, maxTotal=ordenadas[ordenadas.length-1]._total;
+  var empate=(minTotal===maxTotal&&conDatos.length>1);
+  var itemsHtml='<div class="comparacion-items">';
+  MEZCLAS.forEach(function(m){
+    var tieneData=m.filas.some(function(f){return f.insumoIdx>=0&&f.dosis>0;});
+    var esGanadora=tieneData&&!empate&&m._total===minTotal;
+    var esPerdedora=tieneData&&!empate&&conDatos.length>1&&m._total===maxTotal&&m._total!==minTotal;
+    itemsHtml+='<div class="comparacion-item'+(esGanadora?' ganadora':'')+(esPerdedora?' perdedora':'')+(!tieneData?' sin-datos':'')+'">';
+    itemsHtml+='<div class="comp-nombre">'+esc(m.nombre)+'</div>';
+    itemsHtml+='<div class="comp-costo">$ '+formatoNum(m._total)+'</div>';
+    itemsHtml+='<div class="comp-unidad">por hectarea</div>';
+    if (esGanadora)  itemsHtml+='<div class="comp-badge-ganadora">+ Mas economica</div>';
+    if (empate&&tieneData) itemsHtml+='<div style="font-size:10px;color:rgba(255,255,255,0.55);margin-top:4px;">= Empate</div>';
+    if (!tieneData)  itemsHtml+='<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;">Sin productos</div>';
+    itemsHtml+='</div>';
+  });
+  itemsHtml+='</div>';
+  var difHtml="";
+  if (conDatos.length>=2&&!empate) {
+    var ganadora=ordenadas[0], perdedora=ordenadas[ordenadas.length-1];
+    var dif=perdedora._total-ganadora._total;
+    var pct=perdedora._total>0?((dif/perdedora._total)*100).toFixed(1):"0.0";
+    difHtml='<div class="comparacion-diferencia">'+
+      '<div><div class="dif-label">Diferencia de costo</div>'+
+      '<div class="dif-texto"><strong>'+esc(ganadora.nombre)+'</strong> es <strong>$ '+formatoNum(dif)+'/ha</strong> mas economica (<strong>'+pct+'% de ahorro</strong> respecto a '+esc(perdedora.nombre)+').</div></div>'+
+      '<div class="dif-valor">- $ '+formatoNum(dif)+'<span style="font-size:13px;color:rgba(255,255,255,0.5)">/ha</span></div></div>';
+  } else if (empate) {
+    difHtml='<div class="comparacion-diferencia"><div><div class="dif-label">Diferencia de costo</div><div class="dif-texto">Las mezclas tienen el <strong>mismo costo exacto</strong>.</div></div><div class="dif-valor">$ 0,00</div></div>';
+  }
+  el.innerHTML=itemsHtml+difHtml;
+}
+
+// ================================================================
+//  UTILIDADES
+// ================================================================
+function getMezcla(id){return MEZCLAS.find(function(m){return m.id===id;})||null;}
+function getFila(mid,fid){var m=getMezcla(mid);return m?(m.filas.find(function(f){return f.id===fid;})||null):null;}
+function formatoNum(n){return(parseFloat(n)||0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function formatoPeso(n){return"$ "+formatoNum(n);}
+function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function showToast(msg,type){var t=document.getElementById("toast");t.textContent=msg;t.className="toast show "+(type||"success");setTimeout(function(){t.className="toast";},3500);}
+
+window.addEventListener("load",function(){
+  if (typeof msal==="undefined") {
+    document.getElementById("loadingScreen").innerHTML="<p style='color:red;padding:30px;font-family:Montserrat,sans-serif;font-size:14px;'>Error: no se pudo cargar Microsoft Authentication Library (MSAL). Verifica tu conexion a internet e intenta recargar la pagina.</p>";
+    return;
+  }
+  initMsal();
+});
+</script>
+</body>
+</html>
