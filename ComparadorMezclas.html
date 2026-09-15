@@ -136,10 +136,10 @@ input[type=number] { -moz-appearance: textfield; }
 <div class="app" id="appContent">
   <div class="main">
     <div class="page-title">Comparador de Mezclas</div>
-    <div class="page-subtitle">Construí dos o más mezclas de agroquímicos y compará su costo en $/ha en tiempo real.</div>
+    <div class="page-subtitle">Construí dos o más mezclas de agroquímicos y compará su costo en USD/ha en tiempo real.</div>
     <div class="info-box warn" id="statusCarga" style="display:none;"></div>
     <div class="comparacion-card">
-      <div class="comparacion-titulo">📊 Comparación de costos en $/ha</div>
+      <div class="comparacion-titulo">📊 Comparación de costos en USD/ha</div>
       <div id="comparacionContenido">
         <div class="comparacion-sin-datos">Agregá productos a las mezclas para ver la comparación.</div>
       </div>
@@ -163,21 +163,32 @@ input[type=number] { -moz-appearance: textfield; }
 //    "Insumo" | "Precio Cotizado" | "Existencias"
 // ================================================================
 var CONFIG = {
-  clientId:            "c3d65cc5-56d1-4ac0-9f4f-a6ab47c80563",
-  tenantId:            "576e8544-afbe-423a-94a8-94fb80aaffe3",
-  sharepointSiteId:    "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
-  insumosListId:       "99298BF7-EBCE-4165-8CEE-D8A6F61EA2D4",
-  padronInsumosListId: "3FD32D83-446D-4BD8-BDE1-AF87E0FD95D6",
-  redirectUri:         "https://jochidemi.github.io/adblick-logistica/ComparadorMezclas.html"
+  clientId:         "c3d65cc5-56d1-4ac0-9f4f-a6ab47c80563",
+  tenantId:         "576e8544-afbe-423a-94a8-94fb80aaffe3",
+  sharepointSiteId: "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
+  insumosListId:    "99298BF7-EBCE-4165-8CEE-D8A6F61EA2D4",
+  redirectUri:      "https://jochidemi.github.io/adblick-logistica/ComparadorMezclas.html"
 };
 
 var msalInstance=null, currentAccount=null, graphToken=null;
 var CATALOGO=[], MEZCLAS=[], _cnt=0;
 
 // ================================================================
-//  MSAL  --  Patron identico al Recetario_UF_original.html (4 pasos)
+//  MSAL CON BYPASS PARA ENTORNO LOCAL / DEMO
 // ================================================================
 async function initMsal() {
+  var isLocal = window.location.hostname === "localhost" || 
+                window.location.hostname === "127.0.0.1" || 
+                window.location.protocol === "file:" ||
+                window.location.search.includes("demo=1");
+
+  if (isLocal) {
+    console.log("[Dev Mode] Ejecutando en entorno local/demo.");
+    currentAccount = { name: "Usuario Local (Demo)", username: "local@adblickgranos.com" };
+    showApp();
+    return;
+  }
+
   msalInstance = new msal.PublicClientApplication({
     auth: { clientId: CONFIG.clientId, authority: "https://login.microsoftonline.com/"+CONFIG.tenantId, redirectUri: CONFIG.redirectUri },
     cache: { cacheLocation: "sessionStorage" }
@@ -267,42 +278,23 @@ function spField(f,name) {
 
 async function cargarCatalogo() {
   var statusEl=document.getElementById("catalogoStatus");
-  statusEl.innerHTML="Descargando catálogo de costos y padrón de insumos...";
+  statusEl.innerHTML="Descargando insumos desde SharePoint...";
 
-  if (!CONFIG.insumosListId||CONFIG.insumosListId.startsWith("TODO")) {
+  var isLocal = window.location.hostname === "localhost" || 
+                window.location.hostname === "127.0.0.1" || 
+                window.location.protocol === "file:" ||
+                window.location.search.includes("demo=1");
+
+  if (isLocal || !CONFIG.insumosListId || CONFIG.insumosListId.startsWith("TODO")) {
     CATALOGO=generarCatalogoDemo();
-    statusEl.innerHTML="MODO DEMO: "+CATALOGO.length+" insumos de ejemplo cargados.";
+    statusEl.innerHTML="💻 <strong>Modo local / demo:</strong> "+CATALOGO.length+" insumos con precios en USD y existencias cargados.";
     actualizarTodosLosSelects(); return;
   }
 
   try {
-    var promesas = [fetchAllFromList(CONFIG.insumosListId)];
-    if (CONFIG.padronInsumosListId && !CONFIG.padronInsumosListId.startsWith("TODO")) {
-      promesas.push(fetchAllFromList(CONFIG.padronInsumosListId).catch(function(e){
-        console.warn("[PadronInsumos] No se pudo descargar padrón:", e);
-        return [];
-      }));
-    } else {
-      promesas.push(Promise.resolve([]));
-    }
-
-    var resultados = await Promise.all(promesas);
-    var itemsCostos = resultados[0];
-    var itemsPadron = resultados[1];
-
-    var padronMap = {};
-    itemsPadron.forEach(function(item) {
-      var f = item.fields || {};
-      var nom = ((spField(f, "Title") ?? spField(f, "Titulo") ?? spField(f, "Nombre") ?? "") + "").trim().toLowerCase();
-      if (nom) {
-        padronMap[nom] = {
-          presentacion: ((spField(f, "Presentacion") ?? "") + "").trim(),
-          unidad: ((spField(f, "Unidad") ?? "") + "").trim()
-        };
-      }
-    });
-
+    var itemsCostos = await fetchAllFromList(CONFIG.insumosListId);
     var agrupado = {};
+
     itemsCostos.forEach(function(item) {
       var f = item.fields || {};
       var insumo = ((spField(f, "Insumo") ?? spField(f, "Nombre") ?? spField(f, "Producto") ?? spField(f, "Title") ?? spField(f, "Titulo") ?? "") + "").trim();
@@ -318,33 +310,18 @@ async function cargarCatalogo() {
           insumo: insumo,
           precio: precio,
           existencias: existencias,
-          unidad: unidad,
-          presentacion: ""
+          unidad: unidad || "L"
         };
       } else {
         agrupado[key].existencias += existencias;
         if (!agrupado[key].precio && precio) agrupado[key].precio = precio;
-        if (!agrupado[key].unidad && unidad) agrupado[key].unidad = unidad;
+        if ((!agrupado[key].unidad || agrupado[key].unidad==="L") && unidad) agrupado[key].unidad = unidad;
       }
     });
 
-    CATALOGO = Object.keys(agrupado).map(function(k) {
-      var obj = agrupado[k];
-      var pInfo = padronMap[k];
-      if (!pInfo) {
-        var matchKey = Object.keys(padronMap).find(function(pk){ return pk.includes(k) || k.includes(pk); });
-        if (matchKey) pInfo = padronMap[matchKey];
-      }
-      if (pInfo) {
-        obj.presentacion = pInfo.presentacion || "";
-        if (!obj.unidad && pInfo.unidad) obj.unidad = pInfo.unidad;
-      }
-      if (!obj.unidad) obj.unidad = "L";
-      return obj;
-    });
-
+    CATALOGO = Object.values(agrupado);
     CATALOGO.sort(function(a,b){return a.insumo.localeCompare(b.insumo,"es");});
-    statusEl.innerHTML="✅ Catálogo consolidado: <strong>"+CATALOGO.length+"</strong> insumos disponibles con precios, stock y presentaciones.";
+    statusEl.innerHTML="✅ Catálogo cargado: <strong>"+CATALOGO.length+"</strong> insumos disponibles con precios en USD y existencias.";
     actualizarTodosLosSelects();
   } catch(e) {
     statusEl.innerHTML="Error al cargar el catálogo: "+esc(e.message);
@@ -355,16 +332,16 @@ async function cargarCatalogo() {
 
 function generarCatalogoDemo() {
   return [
-    {insumo:"2,4-D Amina 72% SL", precio:2100,  existencias:300,  unidad:"L",  presentacion:"Bidón 20L"},
-    {insumo:"2,4-DB",             precio:12.41, existencias:10,   unidad:"L",  presentacion:"Bidón 20L"},
-    {insumo:"Atrazina 50% SC",     precio:3.20,  existencias:200,  unidad:"L",  presentacion:"Bidón 20L"},
-    {insumo:"Azoxistrobina 25% SC",precio:9.80,  existencias:90,   unidad:"L",  presentacion:"Bidón 5L"},
-    {insumo:"Cipermetrina 25% EC", precio:3.40,  existencias:200,  unidad:"L",  presentacion:"Bidón 5L"},
-    {insumo:"Clorimuron etil 25%", precio:22.00, existencias:25,   unidad:"kg", presentacion:"Pouch 250g"},
-    {insumo:"Dicamba - Banvel",    precio:7.00,  existencias:120,  unidad:"L",  presentacion:"Bidón 5L"},
-    {insumo:"Glifosato 48% SL",    precio:1.85,  existencias:500,  unidad:"L",  presentacion:"Bidón 20L"},
-    {insumo:"Metsulfuron 60% WG",  precio:35.68, existencias:13,   unidad:"kg", presentacion:"Pack 100g"},
-    {insumo:"Urea Granulada 46% N",precio:0.562, existencias:1660, unidad:"kg", presentacion:"Big Bag 1000kg"}
+    {insumo:"2,4-D Amina 72% SL", precio:2.10,  existencias:300,  unidad:"L"},
+    {insumo:"2,4-DB",             precio:12.41, existencias:10,   unidad:"L"},
+    {insumo:"Atrazina 50% SC",     precio:3.20,  existencias:200,  unidad:"L"},
+    {insumo:"Azoxistrobina 25% SC",precio:9.80,  existencias:90,   unidad:"L"},
+    {insumo:"Cipermetrina 25% EC", precio:3.40,  existencias:200,  unidad:"L"},
+    {insumo:"Clorimuron etil 25%", precio:22.00, existencias:25,   unidad:"kg"},
+    {insumo:"Dicamba - Banvel",    precio:7.00,  existencias:120,  unidad:"L"},
+    {insumo:"Glifosato 48% SL",    precio:1.85,  existencias:500,  unidad:"L"},
+    {insumo:"Metsulfuron 60% WG",  precio:35.68, existencias:13,   unidad:"kg"},
+    {insumo:"Urea Granulada 46% N",precio:0.562, existencias:1660, unidad:"kg"}
   ];
 }
 
@@ -464,7 +441,7 @@ function renderizarMezcla(mezclaId) {
     '<hr class="sep">'+
     '<div class="mezcla-footer">'+
       '<div><div class="mezcla-total-label">Costo Total de la Mezcla</div></div>'+
-      '<div><span class="mezcla-total-valor" id="total-'+mezclaId+'">$ 0,00</span><span class="mezcla-total-unidad">/ha</span></div>'+
+      '<div><span class="mezcla-total-valor" id="total-'+mezclaId+'">USD 0,00</span><span class="mezcla-total-unidad">/ha</span></div>'+
     '</div>';
 }
 
@@ -475,16 +452,15 @@ function renderizarFilas(mezclaId) {
 
   var opts='<option value="-1">-- Seleccionar insumo --</option>';
   CATALOGO.forEach(function(ins,idx){
-    var presTxt = ins.presentacion ? (" [" + ins.presentacion + "]") : "";
     var stockTxt = ins.existencias > 0 ? (" [Stock: " + formatoNum(ins.existencias) + " " + ins.unidad + "]") : " [Sin stock]";
-    opts += '<option value="'+idx+'">'+esc(ins.insumo) + presTxt + stockTxt + '</option>';
+    opts += '<option value="'+idx+'">'+esc(ins.insumo) + stockTxt + '</option>';
   });
 
   var html='<table class="productos-table"><thead><tr>'+
-    '<th style="min-width:180px">Insumo</th>'+
+    '<th style="min-width:190px">Insumo</th>'+
     '<th style="min-width:140px">Dosis</th>'+
-    '<th style="min-width:95px">Precio u.</th>'+
-    '<th style="min-width:105px">Costo $/ha</th>'+
+    '<th style="min-width:105px">Precio u. (USD)</th>'+
+    '<th style="min-width:115px">Costo USD/ha</th>'+
     '<th style="width:30px"></th>'+
     '</tr></thead><tbody>';
 
@@ -513,12 +489,9 @@ function renderizarFilas(mezclaId) {
       selectUnidadHtml += '</select>';
     }
 
-    var presHtml = (ins && ins.presentacion) ? '<div class="pres-tag">Pres: '+esc(ins.presentacion)+'</div>' : '';
-
     html+='<tr id="fila-'+fila.id+'">'+
       '<td>'+
         '<select onchange="onInsumoChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+optsConSel+'</select>'+
-        presHtml+
       '</td>'+
       '<td>'+
         '<div style="display:flex;gap:4px;align-items:center;">'+
@@ -527,8 +500,8 @@ function renderizarFilas(mezclaId) {
           selectUnidadHtml+
         '</div>'+
       '</td>'+
-      '<td style="font-size:11px;'+pc+'" id="precio-'+fila.id+'">'+(ins ? (formatoPeso(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--")+'</td>'+
-      '<td class="costo-fila" id="costo-'+fila.id+'">'+(costo>0 ? formatoPeso(costo) : "--")+'</td>'+
+      '<td style="font-size:11px;'+pc+'" id="precio-'+fila.id+'">'+(ins ? (formatoUsd(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--")+'</td>'+
+      '<td class="costo-fila" id="costo-'+fila.id+'">'+(costo>0 ? formatoUsd(costo) : "--")+'</td>'+
       '<td><button class="btn btn-danger btn-sm" style="padding:3px 7px;" onclick="eliminarFila(\''+mezclaId+'\',\''+fila.id+'\')">x</button></td>'+
       '</tr>';
   });
@@ -542,10 +515,10 @@ function actualizarCostoFila(mezclaId,filaId) {
   var costo = ins && fila.dosis > 0 ? (ins.precio * fila.dosis * factor) : 0;
   var pEl=document.getElementById("precio-"+filaId), cEl=document.getElementById("costo-"+filaId);
   if (pEl) {
-    pEl.innerHTML = ins ? (formatoPeso(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--";
+    pEl.innerHTML = ins ? (formatoUsd(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--";
     pEl.style.color = ins ? (ins.existencias<=0 ? "#c0392b" : (ins.existencias<10 ? "#e67e22" : "var(--gray)")) : "";
   }
-  if (cEl) cEl.textContent = costo > 0 ? formatoPeso(costo) : "--";
+  if (cEl) cEl.textContent = costo > 0 ? formatoUsd(costo) : "--";
 }
 
 function actualizarTotalMezcla(mezclaId) {
@@ -555,7 +528,7 @@ function actualizarTotalMezcla(mezclaId) {
     var factor = ins ? getFactorConversion(f.unidadDosis, ins.unidad) : 1;
     return sum + (ins && f.dosis > 0 ? (ins.precio * f.dosis * factor) : 0);
   }, 0);
-  var el=document.getElementById("total-"+mezclaId); if (el) el.textContent="$ "+formatoNum(m._total);
+  var el=document.getElementById("total-"+mezclaId); if (el) el.textContent="USD "+formatoNum(m._total);
 }
 
 function actualizarTodosLosSelects() {
@@ -563,7 +536,7 @@ function actualizarTodosLosSelects() {
 }
 
 // ================================================================
-//  PANEL DE COMPARACION
+//  PANEL DE COMPARACION EN USD/HA
 // ================================================================
 function actualizarComparacion() {
   MEZCLAS.forEach(function(m){
@@ -573,12 +546,15 @@ function actualizarComparacion() {
       return sum + (ins && f.dosis > 0 ? (ins.precio * f.dosis * factor) : 0);
     }, 0);
   });
+
   var el=document.getElementById("comparacionContenido"); if (!el) return;
   var conDatos=MEZCLAS.filter(function(m){return m.filas.some(function(f){return f.insumoIdx>=0&&f.dosis>0;});});
-  if (conDatos.length<1) { el.innerHTML='<div class="comparacion-sin-datos">Agrega productos con dosis a las mezclas para ver la comparacion.</div>'; return; }
+  if (conDatos.length<1) { el.innerHTML='<div class="comparacion-sin-datos">Agregá productos con dosis a las mezclas para ver la comparación.</div>'; return; }
+
   var ordenadas=conDatos.slice().sort(function(a,b){return a._total-b._total;});
   var minTotal=ordenadas[0]._total, maxTotal=ordenadas[ordenadas.length-1]._total;
   var empate=(minTotal===maxTotal&&conDatos.length>1);
+
   var itemsHtml='<div class="comparacion-items">';
   MEZCLAS.forEach(function(m){
     var tieneData=m.filas.some(function(f){return f.insumoIdx>=0&&f.dosis>0;});
@@ -586,14 +562,15 @@ function actualizarComparacion() {
     var esPerdedora=tieneData&&!empate&&conDatos.length>1&&m._total===maxTotal&&m._total!==minTotal;
     itemsHtml+='<div class="comparacion-item'+(esGanadora?' ganadora':'')+(esPerdedora?' perdedora':'')+(!tieneData?' sin-datos':'')+'">';
     itemsHtml+='<div class="comp-nombre">'+esc(m.nombre)+'</div>';
-    itemsHtml+='<div class="comp-costo">$ '+formatoNum(m._total)+'</div>';
-    itemsHtml+='<div class="comp-unidad">por hectarea</div>';
-    if (esGanadora)  itemsHtml+='<div class="comp-badge-ganadora">+ Mas economica</div>';
+    itemsHtml+='<div class="comp-costo">USD '+formatoNum(m._total)+'</div>';
+    itemsHtml+='<div class="comp-unidad">por hectárea</div>';
+    if (esGanadora)  itemsHtml+='<div class="comp-badge-ganadora">✓ Más económica</div>';
     if (empate&&tieneData) itemsHtml+='<div style="font-size:10px;color:rgba(255,255,255,0.55);margin-top:4px;">= Empate</div>';
     if (!tieneData)  itemsHtml+='<div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;">Sin productos</div>';
     itemsHtml+='</div>';
   });
   itemsHtml+='</div>';
+
   var difHtml="";
   if (conDatos.length>=2&&!empate) {
     var ganadora=ordenadas[0], perdedora=ordenadas[ordenadas.length-1];
@@ -601,10 +578,10 @@ function actualizarComparacion() {
     var pct=perdedora._total>0?((dif/perdedora._total)*100).toFixed(1):"0.0";
     difHtml='<div class="comparacion-diferencia">'+
       '<div><div class="dif-label">Diferencia de costo</div>'+
-      '<div class="dif-texto"><strong>'+esc(ganadora.nombre)+'</strong> es <strong>$ '+formatoNum(dif)+'/ha</strong> mas economica (<strong>'+pct+'% de ahorro</strong> respecto a '+esc(perdedora.nombre)+').</div></div>'+
-      '<div class="dif-valor">- $ '+formatoNum(dif)+'<span style="font-size:13px;color:rgba(255,255,255,0.5)">/ha</span></div></div>';
+      '<div class="dif-texto"><strong>'+esc(ganadora.nombre)+'</strong> es <strong>USD '+formatoNum(dif)+'/ha</strong> más económica (<strong>'+pct+'% de ahorro</strong> respecto a '+esc(perdedora.nombre)+').</div></div>'+
+      '<div class="dif-valor">- USD '+formatoNum(dif)+'<span style="font-size:13px;color:rgba(255,255,255,0.5)">/ha</span></div></div>';
   } else if (empate) {
-    difHtml='<div class="comparacion-diferencia"><div><div class="dif-label">Diferencia de costo</div><div class="dif-texto">Las mezclas tienen el <strong>mismo costo exacto</strong>.</div></div><div class="dif-valor">$ 0,00</div></div>';
+    difHtml='<div class="comparacion-diferencia"><div><div class="dif-label">Diferencia de costo</div><div class="dif-texto">Las mezclas tienen el <strong>mismo costo exacto</strong>.</div></div><div class="dif-valor">USD 0,00</div></div>';
   }
   el.innerHTML=itemsHtml+difHtml;
 }
@@ -615,7 +592,7 @@ function actualizarComparacion() {
 function getMezcla(id){return MEZCLAS.find(function(m){return m.id===id;})||null;}
 function getFila(mid,fid){var m=getMezcla(mid);return m?(m.filas.find(function(f){return f.id===fid;})||null):null;}
 function formatoNum(n){return(parseFloat(n)||0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});}
-function formatoPeso(n){return"$ "+formatoNum(n);}
+function formatoUsd(n){return"USD "+formatoNum(n);}
 function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 function showToast(msg,type){var t=document.getElementById("toast");t.textContent=msg;t.className="toast show "+(type||"success");setTimeout(function(){t.className="toast";},3500);}
 
