@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>ADBlick Granos – Comparador de Mezclas</title>
+<title>ADBlick Granos – App de comparación de costos en mezclas de agroquímicos</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
 <style>
@@ -39,8 +39,8 @@ body { font-family: "Montserrat", "Segoe UI", sans-serif; background: #fafafa; m
 .page-subtitle { font-size: 12px; color: var(--gray); margin-bottom: 20px; }
 .card { background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
 .card-title { font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 14px; }
-.mezclas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-bottom: 16px; }
-.mezcla-card { background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 18px; position: relative; transition: box-shadow 0.15s; }
+.mezclas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; margin-bottom: 16px; }
+.mezcla-card { background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 18px; position: relative; transition: box-shadow 0.15s; overflow: hidden; }
 .mezcla-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 .mezcla-card.m1 { border-top: 4px solid var(--green); }
 .mezcla-card.m2 { border-top: 4px solid var(--yellow); }
@@ -51,13 +51,14 @@ body { font-family: "Montserrat", "Segoe UI", sans-serif; background: #fafafa; m
 .mezcla-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px; }
 .mezcla-nombre { font-size: 15px; font-weight: 800; color: var(--dark); cursor: pointer; border: none; background: transparent; font-family: inherit; padding: 0; width: calc(100% - 40px); }
 .mezcla-nombre:focus { outline: 2px dashed var(--green); border-radius: 3px; padding: 0 4px; }
-.productos-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
-.productos-table th { background: var(--dark); color: var(--white); padding: 7px 8px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.05em; white-space: nowrap; }
-.productos-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.tabla-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 8px; }
+.productos-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.productos-table th { background: var(--dark); color: var(--white); padding: 7px 6px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap; }
+.productos-table td { padding: 6px 6px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
 .productos-table tr:last-child td { border-bottom: none; }
 .productos-table tr:hover td { background: #fffbe8; }
-.costo-fila { font-weight: 700; color: var(--green-dark); white-space: nowrap; font-size: 12px; }
-.productos-table select, .productos-table input[type=number] { font-family: inherit; border: 1.5px solid var(--border); border-radius: 5px; padding: 5px 7px; font-size: 12px; background: var(--white); outline: none; transition: border 0.15s; width: 100%; }
+.costo-fila { font-weight: 700; color: var(--green-dark); white-space: nowrap; font-size: 11px; }
+.productos-table select, .productos-table input[type=number] { font-family: inherit; border: 1.5px solid var(--border); border-radius: 5px; padding: 5px 6px; font-size: 11px; background: var(--white); outline: none; transition: border 0.15s; }
 .productos-table select:focus, .productos-table input:focus { border-color: var(--green); }
 .productos-table input[type=number]::-webkit-outer-spin-button, .productos-table input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .productos-table input[type=number] { -moz-appearance: textfield; }
@@ -69,7 +70,7 @@ input[type=number] { -moz-appearance: textfield; }
 .empty-products { text-align: center; padding: 16px; color: var(--gray); font-size: 12px; }
 .mezcla-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1.5px solid var(--border); margin-top: 6px; gap: 8px; flex-wrap: wrap; }
 .mezcla-total-label { font-size: 11px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.05em; }
-.mezcla-total-valor { font-size: 22px; font-weight: 800; color: var(--dark); }
+.mezcla-total-valor { font-size: 20px; font-weight: 800; color: var(--dark); }
 .mezcla-total-unidad { font-size: 11px; font-weight: 600; color: var(--gray); margin-left: 2px; }
 .comparacion-card { background: var(--dark); border-radius: 12px; padding: 20px 24px; color: var(--white); margin-bottom: 16px; }
 .comparacion-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); margin-bottom: 16px; }
@@ -123,7 +124,7 @@ input[type=number] { -moz-appearance: textfield; }
 <div class="header">
   <div class="header-logo">
     <div class="header-logo-badge">ADBlick</div>
-    <div class="header-title">Comparador de Mezclas Agroquímicas</div>
+    <div class="header-title">App de comparación de costos en mezclas de agroquímicos</div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="header-user" id="headerUser"></div>
@@ -135,7 +136,7 @@ input[type=number] { -moz-appearance: textfield; }
 </div>
 <div class="app" id="appContent">
   <div class="main">
-    <div class="page-title">Comparador de Mezclas</div>
+    <div class="page-title">App de comparación de costos en mezclas de agroquímicos</div>
     <div class="page-subtitle">Construí dos o más mezclas de agroquímicos y compará su costo en USD/ha en tiempo real.</div>
     <div class="info-box warn" id="statusCarga" style="display:none;"></div>
     <div class="comparacion-card">
@@ -452,16 +453,15 @@ function renderizarFilas(mezclaId) {
 
   var opts='<option value="-1">-- Seleccionar insumo --</option>';
   CATALOGO.forEach(function(ins,idx){
-    var stockTxt = ins.existencias > 0 ? (" [Stock: " + formatoNum(ins.existencias) + " " + ins.unidad + "]") : " [Sin stock]";
-    opts += '<option value="'+idx+'">'+esc(ins.insumo) + stockTxt + '</option>';
+    opts += '<option value="'+idx+'">'+esc(ins.insumo)+'</option>';
   });
 
-  var html='<table class="productos-table"><thead><tr>'+
-    '<th style="min-width:190px">Insumo</th>'+
-    '<th style="min-width:140px">Dosis</th>'+
-    '<th style="min-width:105px">Precio u. (USD)</th>'+
-    '<th style="min-width:115px">Costo USD/ha</th>'+
-    '<th style="width:30px"></th>'+
+  var html='<div class="tabla-scroll"><table class="productos-table"><thead><tr>'+
+    '<th style="min-width:140px">Insumo</th>'+
+    '<th style="min-width:125px">Dosis</th>'+
+    '<th style="min-width:85px">Precio u.</th>'+
+    '<th style="min-width:90px">Costo USD/ha</th>'+
+    '<th style="width:26px"></th>'+
     '</tr></thead><tbody>';
 
   m.filas.forEach(function(fila){
@@ -476,7 +476,7 @@ function renderizarFilas(mezclaId) {
       var uDosisActual = fila.unidadDosis || (esLiquido(ins.unidad) ? "L/ha" : (esSolido(ins.unidad) ? "kg/ha" : ins.unidad+"/ha"));
       fila.unidadDosis = uDosisActual;
 
-      selectUnidadHtml = '<select style="width:75px;padding:5px 4px;font-size:11px;" onchange="onUnidadDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">';
+      selectUnidadHtml = '<select style="width:62px;padding:4px 2px;font-size:11px;" onchange="onUnidadDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">';
       if (esLiquido(ins.unidad)) {
         selectUnidadHtml += '<option value="L/ha"'+(uDosisActual==="L/ha"?' selected':'')+'>L/ha</option>';
         selectUnidadHtml += '<option value="cc/ha"'+(uDosisActual==="cc/ha"?' selected':'')+'>cc/ha</option>';
@@ -491,21 +491,21 @@ function renderizarFilas(mezclaId) {
 
     html+='<tr id="fila-'+fila.id+'">'+
       '<td>'+
-        '<select onchange="onInsumoChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+optsConSel+'</select>'+
+        '<select style="font-size:11px;padding:4px 6px;" onchange="onInsumoChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+optsConSel+'</select>'+
       '</td>'+
       '<td>'+
-        '<div style="display:flex;gap:4px;align-items:center;">'+
+        '<div style="display:flex;gap:3px;align-items:center;">'+
           '<input type="number" min="0" step="0.001" value="'+(fila.dosis>0?fila.dosis:"")+'" placeholder="0.00" '+
-            'style="flex:1;min-width:60px;" oninput="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)" onchange="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+
+            'style="flex:1;min-width:50px;padding:4px 5px;font-size:11px;" oninput="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)" onchange="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+
           selectUnidadHtml+
         '</div>'+
       '</td>'+
       '<td style="font-size:11px;'+pc+'" id="precio-'+fila.id+'">'+(ins ? (formatoUsd(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--")+'</td>'+
       '<td class="costo-fila" id="costo-'+fila.id+'">'+(costo>0 ? formatoUsd(costo) : "--")+'</td>'+
-      '<td><button class="btn btn-danger btn-sm" style="padding:3px 7px;" onclick="eliminarFila(\''+mezclaId+'\',\''+fila.id+'\')">x</button></td>'+
+      '<td><button class="btn btn-danger btn-sm" style="padding:2px 6px;font-size:10px;" onclick="eliminarFila(\''+mezclaId+'\',\''+fila.id+'\')">x</button></td>'+
       '</tr>';
   });
-  html+='</tbody></table>'; ct.innerHTML=html;
+  html+='</tbody></table></div>'; ct.innerHTML=html;
 }
 
 function actualizarCostoFila(mezclaId,filaId) {
