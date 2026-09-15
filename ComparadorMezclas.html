@@ -186,32 +186,32 @@ async function initMsal() {
   var accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) { currentAccount=accounts[0]; await acquireTokenSilent(); showApp(); return; }
   try {
-    await msalInstance.ssoSilent({ scopes:["Sites.Read.All","User.Read"] });
+    await msalInstance.ssoSilent({ scopes:["Sites.ReadWrite.All","User.Read"] });
     var accs = msalInstance.getAllAccounts();
     if (accs.length > 0) { currentAccount=accs[0]; await acquireTokenSilent(); showApp(); return; }
   } catch(e) {}
-  await msalInstance.loginRedirect({ scopes:["Sites.Read.All","User.Read"] });
+  await msalInstance.loginRedirect({ scopes:["Sites.ReadWrite.All","User.Read"] });
 }
 
 async function acquireTokenSilent() {
   try {
-    var r = await msalInstance.acquireTokenSilent({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+    var r = await msalInstance.acquireTokenSilent({ account:currentAccount, scopes:["Sites.ReadWrite.All","User.Read"] });
     graphToken = r.accessToken;
   } catch(e) {
-    await msalInstance.acquireTokenRedirect({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+    await msalInstance.acquireTokenRedirect({ account:currentAccount, scopes:["Sites.ReadWrite.All","User.Read"] });
   }
 }
 
 async function getGraphToken() {
   try {
-    var r = await msalInstance.acquireTokenSilent({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+    var r = await msalInstance.acquireTokenSilent({ account:currentAccount, scopes:["Sites.ReadWrite.All","User.Read"] });
     graphToken = r.accessToken;
   } catch(e) {
     try {
-      var r2 = await msalInstance.acquireTokenPopup({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+      var r2 = await msalInstance.acquireTokenPopup({ account:currentAccount, scopes:["Sites.ReadWrite.All","User.Read"] });
       graphToken = r2.accessToken;
     } catch(e2) {
-      await msalInstance.acquireTokenRedirect({ account:currentAccount, scopes:["Sites.Read.All","User.Read"] });
+      await msalInstance.acquireTokenRedirect({ account:currentAccount, scopes:["Sites.ReadWrite.All","User.Read"] });
     }
   }
   return graphToken;
