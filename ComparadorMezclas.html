@@ -39,8 +39,8 @@ body { font-family: "Montserrat", "Segoe UI", sans-serif; background: #fafafa; m
 .page-subtitle { font-size: 12px; color: var(--gray); margin-bottom: 20px; }
 .card { background: var(--white); border: 1.5px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
 .card-title { font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 14px; }
-.mezclas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; margin-bottom: 16px; }
-.mezcla-card { background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 18px; position: relative; transition: box-shadow 0.15s; overflow: hidden; }
+.mezclas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.mezcla-card { background: var(--white); border: 2px solid var(--border); border-radius: 12px; padding: 14px; position: relative; transition: box-shadow 0.15s; }
 .mezcla-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 .mezcla-card.m1 { border-top: 4px solid var(--green); }
 .mezcla-card.m2 { border-top: 4px solid var(--yellow); }
@@ -48,17 +48,17 @@ body { font-family: "Montserrat", "Segoe UI", sans-serif; background: #fafafa; m
 .mezcla-card.m4 { border-top: 4px solid #9b59b6; }
 .mezcla-card.m5 { border-top: 4px solid #e67e22; }
 .mezcla-card.m6 { border-top: 4px solid #e74c3c; }
-.mezcla-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px; }
+.mezcla-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
 .mezcla-nombre { font-size: 15px; font-weight: 800; color: var(--dark); cursor: pointer; border: none; background: transparent; font-family: inherit; padding: 0; width: calc(100% - 40px); }
 .mezcla-nombre:focus { outline: 2px dashed var(--green); border-radius: 3px; padding: 0 4px; }
-.tabla-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 8px; }
-.productos-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-.productos-table th { background: var(--dark); color: var(--white); padding: 7px 6px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap; }
-.productos-table td { padding: 6px 6px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.productos-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; }
+.productos-table th { background: var(--dark); color: var(--white); padding: 6px 4px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.productos-table th.th-num { text-align: right; }
+.productos-table td { padding: 5px 3px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
 .productos-table tr:last-child td { border-bottom: none; }
 .productos-table tr:hover td { background: #fffbe8; }
-.costo-fila { font-weight: 700; color: var(--green-dark); white-space: nowrap; font-size: 11px; }
-.productos-table select, .productos-table input[type=number] { font-family: inherit; border: 1.5px solid var(--border); border-radius: 5px; padding: 5px 6px; font-size: 11px; background: var(--white); outline: none; transition: border 0.15s; }
+.costo-fila { font-weight: 700; color: var(--green-dark); white-space: nowrap; font-size: 11px; text-align: right; }
+.productos-table select, .productos-table input[type=number] { font-family: inherit; border: 1.5px solid var(--border); border-radius: 4px; padding: 4px 4px; font-size: 11px; background: var(--white); outline: none; transition: border 0.15s; }
 .productos-table select:focus, .productos-table input:focus { border-color: var(--green); }
 .productos-table input[type=number]::-webkit-outer-spin-button, .productos-table input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .productos-table input[type=number] { -moz-appearance: textfield; }
@@ -456,12 +456,20 @@ function renderizarFilas(mezclaId) {
     opts += '<option value="'+idx+'">'+esc(ins.insumo)+'</option>';
   });
 
-  var html='<div class="tabla-scroll"><table class="productos-table"><thead><tr>'+
-    '<th style="min-width:140px">Insumo</th>'+
-    '<th style="min-width:125px">Dosis</th>'+
-    '<th style="min-width:85px">Precio u.</th>'+
-    '<th style="min-width:90px">Costo USD/ha</th>'+
-    '<th style="width:26px"></th>'+
+  var html='<table class="productos-table">'+
+    '<colgroup>'+
+      '<col style="width:38%;">'+
+      '<col style="width:25%;">'+
+      '<col style="width:17%;">'+
+      '<col style="width:15%;">'+
+      '<col style="width:5%;">'+
+    '</colgroup>'+
+    '<thead><tr>'+
+      '<th>Insumo</th>'+
+      '<th>Dosis</th>'+
+      '<th class="th-num">Precio u.</th>'+
+      '<th class="th-num">Costo/ha</th>'+
+      '<th></th>'+
     '</tr></thead><tbody>';
 
   m.filas.forEach(function(fila){
@@ -476,7 +484,7 @@ function renderizarFilas(mezclaId) {
       var uDosisActual = fila.unidadDosis || (esLiquido(ins.unidad) ? "L/ha" : (esSolido(ins.unidad) ? "kg/ha" : ins.unidad+"/ha"));
       fila.unidadDosis = uDosisActual;
 
-      selectUnidadHtml = '<select style="width:62px;padding:4px 2px;font-size:11px;" onchange="onUnidadDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">';
+      selectUnidadHtml = '<select style="width:46px;flex-shrink:0;padding:3px 1px;font-size:10px;" onchange="onUnidadDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">';
       if (esLiquido(ins.unidad)) {
         selectUnidadHtml += '<option value="L/ha"'+(uDosisActual==="L/ha"?' selected':'')+'>L/ha</option>';
         selectUnidadHtml += '<option value="cc/ha"'+(uDosisActual==="cc/ha"?' selected':'')+'>cc/ha</option>';
@@ -491,21 +499,21 @@ function renderizarFilas(mezclaId) {
 
     html+='<tr id="fila-'+fila.id+'">'+
       '<td>'+
-        '<select style="font-size:11px;padding:4px 6px;" onchange="onInsumoChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+optsConSel+'</select>'+
+        '<select style="width:100%;padding:4px 3px;font-size:11px;" onchange="onInsumoChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+optsConSel+'</select>'+
       '</td>'+
       '<td>'+
-        '<div style="display:flex;gap:3px;align-items:center;">'+
-          '<input type="number" min="0" step="0.001" value="'+(fila.dosis>0?fila.dosis:"")+'" placeholder="0.00" '+
-            'style="flex:1;min-width:50px;padding:4px 5px;font-size:11px;" oninput="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)" onchange="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+
+        '<div style="display:flex;gap:2px;align-items:center;width:100%;">'+
+          '<input type="number" min="0" step="0.001" value="'+(fila.dosis>0?fila.dosis:"")+'" placeholder="0" '+
+            'style="flex:1;min-width:0;width:38px;padding:3px 3px;font-size:11px;text-align:right;" oninput="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)" onchange="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+
           selectUnidadHtml+
         '</div>'+
       '</td>'+
-      '<td style="font-size:11px;'+pc+'" id="precio-'+fila.id+'">'+(ins ? (formatoUsd(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--")+'</td>'+
-      '<td class="costo-fila" id="costo-'+fila.id+'">'+(costo>0 ? formatoUsd(costo) : "--")+'</td>'+
-      '<td><button class="btn btn-danger btn-sm" style="padding:2px 6px;font-size:10px;" onclick="eliminarFila(\''+mezclaId+'\',\''+fila.id+'\')">x</button></td>'+
+      '<td style="font-size:10px;text-align:right;padding:5px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'+pc+'" id="precio-'+fila.id+'">'+(ins ? (formatoUsd(ins.precio) + ' <span style="font-size:8px;">/' + esc(ins.unidad) + '</span>') : "--")+'</td>'+
+      '<td class="costo-fila" style="font-size:11px;text-align:right;padding:5px 2px;" id="costo-'+fila.id+'">'+(costo>0 ? formatoUsd(costo) : "--")+'</td>'+
+      '<td style="text-align:center;padding:5px 1px;"><button class="btn btn-danger btn-sm" style="padding:1px 4px;font-size:10px;line-height:1;" onclick="eliminarFila(\''+mezclaId+'\',\''+fila.id+'\')">×</button></td>'+
       '</tr>';
   });
-  html+='</tbody></table></div>'; ct.innerHTML=html;
+  html+='</tbody></table>'; ct.innerHTML=html;
 }
 
 function actualizarCostoFila(mezclaId,filaId) {
@@ -515,7 +523,7 @@ function actualizarCostoFila(mezclaId,filaId) {
   var costo = ins && fila.dosis > 0 ? (ins.precio * fila.dosis * factor) : 0;
   var pEl=document.getElementById("precio-"+filaId), cEl=document.getElementById("costo-"+filaId);
   if (pEl) {
-    pEl.innerHTML = ins ? (formatoUsd(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--";
+    pEl.innerHTML = ins ? (formatoUsd(ins.precio) + ' <span style="font-size:8px;">/' + esc(ins.unidad) + '</span>') : "--";
     pEl.style.color = ins ? (ins.existencias<=0 ? "#c0392b" : (ins.existencias<10 ? "#e67e22" : "var(--gray)")) : "";
   }
   if (cEl) cEl.textContent = costo > 0 ? formatoUsd(costo) : "--";
