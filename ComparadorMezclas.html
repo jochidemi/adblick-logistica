@@ -61,6 +61,7 @@ body { font-family: "Montserrat", "Segoe UI", sans-serif; background: #fafafa; m
 .productos-table select:focus, .productos-table input:focus { border-color: var(--green); }
 .productos-table input[type=number]::-webkit-outer-spin-button, .productos-table input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .productos-table input[type=number] { -moz-appearance: textfield; }
+.pres-tag { display: inline-block; font-size: 10px; color: #1e7e34; background: #e6f4ed; padding: 1px 5px; border-radius: 4px; margin-top: 3px; font-weight: 600; }
 select, input[type=number], input[type=text], input[type=date], textarea { font-family: inherit; border: 1.5px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 13px; background: var(--white); outline: none; transition: border 0.15s; }
 select:focus, input:focus, textarea:focus { border-color: var(--green); }
 input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
@@ -162,11 +163,12 @@ input[type=number] { -moz-appearance: textfield; }
 //    "Insumo" | "Precio Cotizado" | "Existencias"
 // ================================================================
 var CONFIG = {
-  clientId:         "c3d65cc5-56d1-4ac0-9f4f-a6ab47c80563",
-  tenantId:         "576e8544-afbe-423a-94a8-94fb80aaffe3",
-  sharepointSiteId: "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
-  insumosListId:    "99298BF7-EBCE-4165-8CEE-D8A6F61EA2D4",
-  redirectUri:      "https://jochidemi.github.io/adblick-logistica/ComparadorMezclas.html"
+  clientId:            "c3d65cc5-56d1-4ac0-9f4f-a6ab47c80563",
+  tenantId:            "576e8544-afbe-423a-94a8-94fb80aaffe3",
+  sharepointSiteId:    "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
+  insumosListId:       "99298BF7-EBCE-4165-8CEE-D8A6F61EA2D4",
+  padronInsumosListId: "3FD32D83-446D-4BD8-BDE1-AF87E0FD95D6",
+  redirectUri:         "https://jochidemi.github.io/adblick-logistica/ComparadorMezclas.html"
 };
 
 var msalInstance=null, currentAccount=null, graphToken=null;
@@ -265,57 +267,123 @@ function spField(f,name) {
 
 async function cargarCatalogo() {
   var statusEl=document.getElementById("catalogoStatus");
-  statusEl.innerHTML="Descargando insumos desde SharePoint...";
+  statusEl.innerHTML="Descargando catálogo de costos y padrón de insumos...";
+
   if (!CONFIG.insumosListId||CONFIG.insumosListId.startsWith("TODO")) {
     CATALOGO=generarCatalogoDemo();
-    statusEl.innerHTML="MODO DEMO: "+CATALOGO.length+" insumos de ejemplo cargados. Configura CONFIG.insumosListId con el GUID real de tu lista.";
-    var aviso=document.getElementById("statusCarga");
-    aviso.style.display="block"; aviso.className="info-box warn";
-    aviso.innerHTML="<strong>Configuracion pendiente:</strong> Edita <code>CONFIG.insumosListId</code> y <code>CONFIG.redirectUri</code> antes del deploy en GitHub Pages.";
+    statusEl.innerHTML="MODO DEMO: "+CATALOGO.length+" insumos de ejemplo cargados.";
     actualizarTodosLosSelects(); return;
   }
+
   try {
-    var items=await fetchAllFromList(CONFIG.insumosListId);
-    if (items.length>0) {
-      console.log("[Insumos SP] Columnas:",Object.keys(items[0].fields||{}));
-      console.log("[Insumos SP] Primer item:",items[0].fields);
+    var promesas = [fetchAllFromList(CONFIG.insumosListId)];
+    if (CONFIG.padronInsumosListId && !CONFIG.padronInsumosListId.startsWith("TODO")) {
+      promesas.push(fetchAllFromList(CONFIG.padronInsumosListId).catch(function(e){
+        console.warn("[PadronInsumos] No se pudo descargar padrón:", e);
+        return [];
+      }));
+    } else {
+      promesas.push(Promise.resolve([]));
     }
-    CATALOGO=items.map(function(item){
-      var f=item.fields||{};
-      var insumo=((spField(f,"Insumo")??spField(f,"Nombre")??spField(f,"Producto")??spField(f,"Title")??spField(f,"Titulo")??"")+"").trim();
-      var precio=parseFloat(spField(f,"Precio Cotizado")??spField(f,"Precio_Cotizado")??spField(f,"PrecioCotizado")??spField(f,"Precio")??spField(f,"PrecioUnitario")??0)||0;
-      var existencias=parseFloat(spField(f,"Existencias")??spField(f,"Stock")??0)||0;
-      return {insumo:insumo,precio:precio,existencias:existencias};
-    }).filter(function(p){return p.insumo;});
+
+    var resultados = await Promise.all(promesas);
+    var itemsCostos = resultados[0];
+    var itemsPadron = resultados[1];
+
+    var padronMap = {};
+    itemsPadron.forEach(function(item) {
+      var f = item.fields || {};
+      var nom = ((spField(f, "Title") ?? spField(f, "Titulo") ?? spField(f, "Nombre") ?? "") + "").trim().toLowerCase();
+      if (nom) {
+        padronMap[nom] = {
+          presentacion: ((spField(f, "Presentacion") ?? "") + "").trim(),
+          unidad: ((spField(f, "Unidad") ?? "") + "").trim()
+        };
+      }
+    });
+
+    var agrupado = {};
+    itemsCostos.forEach(function(item) {
+      var f = item.fields || {};
+      var insumo = ((spField(f, "Insumo") ?? spField(f, "Nombre") ?? spField(f, "Producto") ?? spField(f, "Title") ?? spField(f, "Titulo") ?? "") + "").trim();
+      if (!insumo) return;
+
+      var precio = parseFloat(spField(f, "Precio Cotizado") ?? spField(f, "Precio_Cotizado") ?? spField(f, "PrecioCotizado") ?? spField(f, "Precio") ?? spField(f, "PrecioUnitario") ?? 0) || 0;
+      var existencias = parseFloat(spField(f, "Existencias") ?? spField(f, "Stock") ?? 0) || 0;
+      var unidad = ((spField(f, "Unidad") ?? spField(f, "UnidadMedida") ?? spField(f, "Unidad_x0020_Medida") ?? "") + "").trim();
+
+      var key = insumo.toLowerCase();
+      if (!agrupado[key]) {
+        agrupado[key] = {
+          insumo: insumo,
+          precio: precio,
+          existencias: existencias,
+          unidad: unidad,
+          presentacion: ""
+        };
+      } else {
+        agrupado[key].existencias += existencias;
+        if (!agrupado[key].precio && precio) agrupado[key].precio = precio;
+        if (!agrupado[key].unidad && unidad) agrupado[key].unidad = unidad;
+      }
+    });
+
+    CATALOGO = Object.keys(agrupado).map(function(k) {
+      var obj = agrupado[k];
+      var pInfo = padronMap[k];
+      if (!pInfo) {
+        var matchKey = Object.keys(padronMap).find(function(pk){ return pk.includes(k) || k.includes(pk); });
+        if (matchKey) pInfo = padronMap[matchKey];
+      }
+      if (pInfo) {
+        obj.presentacion = pInfo.presentacion || "";
+        if (!obj.unidad && pInfo.unidad) obj.unidad = pInfo.unidad;
+      }
+      if (!obj.unidad) obj.unidad = "L";
+      return obj;
+    });
+
     CATALOGO.sort(function(a,b){return a.insumo.localeCompare(b.insumo,"es");});
-    statusEl.innerHTML="Catalogo cargado: <strong>"+CATALOGO.length+"</strong> insumo"+(CATALOGO.length!==1?"s":"")+" desde SharePoint.";
+    statusEl.innerHTML="✅ Catálogo consolidado: <strong>"+CATALOGO.length+"</strong> insumos disponibles con precios, stock y presentaciones.";
     actualizarTodosLosSelects();
   } catch(e) {
-    statusEl.innerHTML="Error al cargar el catalogo: "+esc(e.message);
-    console.error("[cargarCatalogo]",e);
-    showToast("Error al cargar catalogo: "+e.message,"error");
+    statusEl.innerHTML="Error al cargar el catálogo: "+esc(e.message);
+    console.error("[cargarCatalogo]", e);
+    showToast("Error al cargar catálogo: "+e.message, "error");
   }
 }
 
 function generarCatalogoDemo() {
   return [
-    {insumo:"2,4-D Amina 72% SL",precio:2100,existencias:300},
-    {insumo:"2,4-DB",precio:12413,existencias:10},
-    {insumo:"Atrazina 50% SC",precio:3200,existencias:200},
-    {insumo:"Azoxistrobina 25% SC",precio:9800,existencias:90},
-    {insumo:"Cipermetrina 25% EC",precio:3400,existencias:200},
-    {insumo:"Clorimuron etil 25% WG",precio:22000,existencias:25},
-    {insumo:"Clorpirifos 48% EC",precio:4500,existencias:150},
-    {insumo:"Dicamba 48% SL",precio:8700,existencias:120},
-    {insumo:"Epoxiconazol + Piraclostrobina",precio:12500,existencias:60},
-    {insumo:"Flumioxazin 48% SC",precio:15600,existencias:35},
-    {insumo:"Glifosato 48% SL",precio:1850,existencias:500},
-    {insumo:"Lambda-cihalotrina 5% EC",precio:6800,existencias:80},
-    {insumo:"MAP 11-52-0",precio:2200,existencias:600},
-    {insumo:"Metsulfuron 60% WG",precio:35676,existencias:13},
-    {insumo:"Sulfato de Amonio granulado",precio:950,existencias:1000},
-    {insumo:"Urea Granulada 46% N",precio:562,existencias:1660}
+    {insumo:"2,4-D Amina 72% SL", precio:2100,  existencias:300,  unidad:"L",  presentacion:"Bidón 20L"},
+    {insumo:"2,4-DB",             precio:12.41, existencias:10,   unidad:"L",  presentacion:"Bidón 20L"},
+    {insumo:"Atrazina 50% SC",     precio:3.20,  existencias:200,  unidad:"L",  presentacion:"Bidón 20L"},
+    {insumo:"Azoxistrobina 25% SC",precio:9.80,  existencias:90,   unidad:"L",  presentacion:"Bidón 5L"},
+    {insumo:"Cipermetrina 25% EC", precio:3.40,  existencias:200,  unidad:"L",  presentacion:"Bidón 5L"},
+    {insumo:"Clorimuron etil 25%", precio:22.00, existencias:25,   unidad:"kg", presentacion:"Pouch 250g"},
+    {insumo:"Dicamba - Banvel",    precio:7.00,  existencias:120,  unidad:"L",  presentacion:"Bidón 5L"},
+    {insumo:"Glifosato 48% SL",    precio:1.85,  existencias:500,  unidad:"L",  presentacion:"Bidón 20L"},
+    {insumo:"Metsulfuron 60% WG",  precio:35.68, existencias:13,   unidad:"kg", presentacion:"Pack 100g"},
+    {insumo:"Urea Granulada 46% N",precio:0.562, existencias:1660, unidad:"kg", presentacion:"Big Bag 1000kg"}
   ];
+}
+
+function esLiquido(unidad) {
+  var u = (unidad||"").toLowerCase().trim();
+  return u === "l" || u === "lt" || u === "lts" || u === "litro" || u === "litros";
+}
+
+function esSolido(unidad) {
+  var u = (unidad||"").toLowerCase().trim();
+  return u === "kg" || u === "kgs" || u === "kilo" || u === "kilos";
+}
+
+function getFactorConversion(unidadDosis, unidadBase) {
+  var ud = (unidadDosis||"").toLowerCase().trim();
+  if (ud === "cc/ha" || ud === "ml/ha" || ud === "g/ha" || ud === "gr/ha") {
+    return 0.001;
+  }
+  return 1;
 }
 
 // ================================================================
@@ -336,7 +404,7 @@ function eliminarMezcla(mezclaId) {
 }
 function agregarFila(mezclaId) {
   var m=getMezcla(mezclaId); if (!m) return;
-  m.filas.push({id:mezclaId+"_f"+(++_cnt),insumoIdx:-1,dosis:0});
+  m.filas.push({id:mezclaId+"_f"+(++_cnt), insumoIdx:-1, dosis:0, unidadDosis:""});
   renderizarFilas(mezclaId); actualizarTotalMezcla(mezclaId); actualizarComparacion();
 }
 function eliminarFila(mezclaId,filaId) {
@@ -347,11 +415,22 @@ function eliminarFila(mezclaId,filaId) {
 function onInsumoChange(mezclaId,filaId,selectEl) {
   var fila=getFila(mezclaId,filaId); if (!fila) return;
   fila.insumoIdx=parseInt(selectEl.value);
-  actualizarCostoFila(mezclaId,filaId); actualizarTotalMezcla(mezclaId); actualizarComparacion();
+  var ins = fila.insumoIdx >= 0 ? CATALOGO[fila.insumoIdx] : null;
+  if (ins) {
+    fila.unidadDosis = esLiquido(ins.unidad) ? "L/ha" : (esSolido(ins.unidad) ? "kg/ha" : (ins.unidad + "/ha"));
+  }
+  renderizarFilas(mezclaId);
+  actualizarTotalMezcla(mezclaId);
+  actualizarComparacion();
 }
 function onDosisChange(mezclaId,filaId,inputEl) {
   var fila=getFila(mezclaId,filaId); if (!fila) return;
   fila.dosis=parseFloat(inputEl.value)||0;
+  actualizarCostoFila(mezclaId,filaId); actualizarTotalMezcla(mezclaId); actualizarComparacion();
+}
+function onUnidadDosisChange(mezclaId,filaId,selectEl) {
+  var fila=getFila(mezclaId,filaId); if (!fila) return;
+  fila.unidadDosis=selectEl.value;
   actualizarCostoFila(mezclaId,filaId); actualizarTotalMezcla(mezclaId); actualizarComparacion();
 }
 function onNombreChange(mezclaId,inputEl) {
@@ -392,30 +471,64 @@ function renderizarMezcla(mezclaId) {
 function renderizarFilas(mezclaId) {
   var m=getMezcla(mezclaId), ct=document.getElementById("filas-"+mezclaId);
   if (!m||!ct) return;
-  if (m.filas.length===0) { ct.innerHTML='<div class="empty-products">Aun no hay productos.</div>'; return; }
+  if (m.filas.length===0) { ct.innerHTML='<div class="empty-products">Aún no hay productos.</div>'; return; }
+
   var opts='<option value="-1">-- Seleccionar insumo --</option>';
   CATALOGO.forEach(function(ins,idx){
-    var sl=ins.existencias>0?" [Stock: "+ins.existencias.toLocaleString("es-AR")+"]":" [Sin stock]";
-    opts+='<option value="'+idx+'">'+esc(ins.insumo)+sl+'</option>';
+    var presTxt = ins.presentacion ? (" [" + ins.presentacion + "]") : "";
+    var stockTxt = ins.existencias > 0 ? (" [Stock: " + formatoNum(ins.existencias) + " " + ins.unidad + "]") : " [Sin stock]";
+    opts += '<option value="'+idx+'">'+esc(ins.insumo) + presTxt + stockTxt + '</option>';
   });
+
   var html='<table class="productos-table"><thead><tr>'+
-    '<th style="min-width:200px">Insumo</th>'+
-    '<th style="min-width:90px">Dosis (u/ha)</th>'+
-    '<th style="min-width:105px">Precio u.</th>'+
-    '<th style="min-width:115px">Costo $/ha</th>'+
-    '<th style="width:34px"></th>'+
+    '<th style="min-width:180px">Insumo</th>'+
+    '<th style="min-width:140px">Dosis</th>'+
+    '<th style="min-width:95px">Precio u.</th>'+
+    '<th style="min-width:105px">Costo $/ha</th>'+
+    '<th style="width:30px"></th>'+
     '</tr></thead><tbody>';
+
   m.filas.forEach(function(fila){
-    var ins=fila.insumoIdx>=0?CATALOGO[fila.insumoIdx]:null;
-    var costo=ins&&fila.dosis>0?ins.precio*fila.dosis:0;
-    var optsConSel=opts.replace('value="'+fila.insumoIdx+'"','value="'+fila.insumoIdx+'" selected');
-    var pc=!ins?"":ins.existencias<=0?"color:#c0392b;":ins.existencias<10?"color:#e67e22;":"color:var(--gray);";
+    var ins = fila.insumoIdx>=0 ? CATALOGO[fila.insumoIdx] : null;
+    var factor = ins ? getFactorConversion(fila.unidadDosis, ins.unidad) : 1;
+    var costo = ins && fila.dosis > 0 ? (ins.precio * fila.dosis * factor) : 0;
+    var optsConSel = opts.replace('value="'+fila.insumoIdx+'"', 'value="'+fila.insumoIdx+'" selected');
+    var pc = !ins ? "" : (ins.existencias<=0 ? "color:#c0392b;" : (ins.existencias<10 ? "#e67e22;" : "color:var(--gray);"));
+
+    var selectUnidadHtml = '';
+    if (ins) {
+      var uDosisActual = fila.unidadDosis || (esLiquido(ins.unidad) ? "L/ha" : (esSolido(ins.unidad) ? "kg/ha" : ins.unidad+"/ha"));
+      fila.unidadDosis = uDosisActual;
+
+      selectUnidadHtml = '<select style="width:75px;padding:5px 4px;font-size:11px;" onchange="onUnidadDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">';
+      if (esLiquido(ins.unidad)) {
+        selectUnidadHtml += '<option value="L/ha"'+(uDosisActual==="L/ha"?' selected':'')+'>L/ha</option>';
+        selectUnidadHtml += '<option value="cc/ha"'+(uDosisActual==="cc/ha"?' selected':'')+'>cc/ha</option>';
+      } else if (esSolido(ins.unidad)) {
+        selectUnidadHtml += '<option value="kg/ha"'+(uDosisActual==="kg/ha"?' selected':'')+'>kg/ha</option>';
+        selectUnidadHtml += '<option value="g/ha"'+(uDosisActual==="g/ha"?' selected':'')+'>g/ha</option>';
+      } else {
+        selectUnidadHtml += '<option value="'+ins.unidad+'/ha" selected>'+ins.unidad+'/ha</option>';
+      }
+      selectUnidadHtml += '</select>';
+    }
+
+    var presHtml = (ins && ins.presentacion) ? '<div class="pres-tag">Pres: '+esc(ins.presentacion)+'</div>' : '';
+
     html+='<tr id="fila-'+fila.id+'">'+
-      '<td><select onchange="onInsumoChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+optsConSel+'</select></td>'+
-      '<td><input type="number" min="0" step="0.001" value="'+(fila.dosis>0?fila.dosis:"")+'" placeholder="0.000" '+
-        'oninput="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)" onchange="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)"></td>'+
-      '<td style="font-size:11px;'+pc+'" id="precio-'+fila.id+'">'+(ins?formatoPeso(ins.precio):"--")+'</td>'+
-      '<td class="costo-fila" id="costo-'+fila.id+'">'+(costo>0?formatoPeso(costo):"--")+'</td>'+
+      '<td>'+
+        '<select onchange="onInsumoChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+optsConSel+'</select>'+
+        presHtml+
+      '</td>'+
+      '<td>'+
+        '<div style="display:flex;gap:4px;align-items:center;">'+
+          '<input type="number" min="0" step="0.001" value="'+(fila.dosis>0?fila.dosis:"")+'" placeholder="0.00" '+
+            'style="flex:1;min-width:60px;" oninput="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)" onchange="onDosisChange(\''+mezclaId+'\',\''+fila.id+'\',this)">'+
+          selectUnidadHtml+
+        '</div>'+
+      '</td>'+
+      '<td style="font-size:11px;'+pc+'" id="precio-'+fila.id+'">'+(ins ? (formatoPeso(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--")+'</td>'+
+      '<td class="costo-fila" id="costo-'+fila.id+'">'+(costo>0 ? formatoPeso(costo) : "--")+'</td>'+
       '<td><button class="btn btn-danger btn-sm" style="padding:3px 7px;" onclick="eliminarFila(\''+mezclaId+'\',\''+fila.id+'\')">x</button></td>'+
       '</tr>';
   });
@@ -424,16 +537,24 @@ function renderizarFilas(mezclaId) {
 
 function actualizarCostoFila(mezclaId,filaId) {
   var fila=getFila(mezclaId,filaId); if (!fila) return;
-  var ins=fila.insumoIdx>=0?CATALOGO[fila.insumoIdx]:null;
-  var costo=ins&&fila.dosis>0?ins.precio*fila.dosis:0;
+  var ins=fila.insumoIdx>=0 ? CATALOGO[fila.insumoIdx] : null;
+  var factor = ins ? getFactorConversion(fila.unidadDosis, ins.unidad) : 1;
+  var costo = ins && fila.dosis > 0 ? (ins.precio * fila.dosis * factor) : 0;
   var pEl=document.getElementById("precio-"+filaId), cEl=document.getElementById("costo-"+filaId);
-  if (pEl) { pEl.textContent=ins?formatoPeso(ins.precio):"--"; pEl.style.color=ins?(ins.existencias<=0?"#c0392b":ins.existencias<10?"#e67e22":"var(--gray)"):""; }
-  if (cEl) cEl.textContent=costo>0?formatoPeso(costo):"--";
+  if (pEl) {
+    pEl.innerHTML = ins ? (formatoPeso(ins.precio) + ' <span style="font-size:9px;">/' + esc(ins.unidad) + '</span>') : "--";
+    pEl.style.color = ins ? (ins.existencias<=0 ? "#c0392b" : (ins.existencias<10 ? "#e67e22" : "var(--gray)")) : "";
+  }
+  if (cEl) cEl.textContent = costo > 0 ? formatoPeso(costo) : "--";
 }
 
 function actualizarTotalMezcla(mezclaId) {
   var m=getMezcla(mezclaId); if (!m) return;
-  m._total=m.filas.reduce(function(sum,f){var ins=f.insumoIdx>=0?CATALOGO[f.insumoIdx]:null;return sum+(ins&&f.dosis>0?ins.precio*f.dosis:0);},0);
+  m._total = m.filas.reduce(function(sum,f){
+    var ins = f.insumoIdx>=0 ? CATALOGO[f.insumoIdx] : null;
+    var factor = ins ? getFactorConversion(f.unidadDosis, ins.unidad) : 1;
+    return sum + (ins && f.dosis > 0 ? (ins.precio * f.dosis * factor) : 0);
+  }, 0);
   var el=document.getElementById("total-"+mezclaId); if (el) el.textContent="$ "+formatoNum(m._total);
 }
 
@@ -446,7 +567,11 @@ function actualizarTodosLosSelects() {
 // ================================================================
 function actualizarComparacion() {
   MEZCLAS.forEach(function(m){
-    m._total=m.filas.reduce(function(sum,f){var ins=f.insumoIdx>=0?CATALOGO[f.insumoIdx]:null;return sum+(ins&&f.dosis>0?ins.precio*f.dosis:0);},0);
+    m._total = m.filas.reduce(function(sum,f){
+      var ins = f.insumoIdx>=0 ? CATALOGO[f.insumoIdx] : null;
+      var factor = ins ? getFactorConversion(f.unidadDosis, ins.unidad) : 1;
+      return sum + (ins && f.dosis > 0 ? (ins.precio * f.dosis * factor) : 0);
+    }, 0);
   });
   var el=document.getElementById("comparacionContenido"); if (!el) return;
   var conDatos=MEZCLAS.filter(function(m){return m.filas.some(function(f){return f.insumoIdx>=0&&f.dosis>0;});});
