@@ -2092,7 +2092,16 @@
 
       await loadAllMasterData();
       var opEntry = padronOperadores.find(function (o) { return o.email && o.email.toLowerCase() === currentUserEmail.toLowerCase(); });
-      currentUserRol = (opEntry && opEntry.rol) ? opEntry.rol.toLowerCase() : "operador";
+      if (opEntry) {
+        currentUserRol = (opEntry.rol || "operador").toLowerCase();
+        if (opEntry.iniciales) currentUserInitials = opEntry.iniciales;
+        if (opEntry.nombre) {
+          currentUser = opEntry.nombre;
+          document.getElementById("headerUser").textContent = currentUser;
+          var opDisp = document.getElementById("op-nombre-display");
+          if (opDisp) opDisp.textContent = currentUser;
+        }
+      }
 
       // Normalizar: "Administrador" → "administrador", etc.
       if (!ROL_TABS[currentUserRol]) currentUserRol = "operador";
@@ -2305,10 +2314,13 @@
           return { nombre: nombreVal, iniciales: inicialesVal, email: emailVal, rol: rolVal };
         });
 
-        // Buscar iniciales del usuario actual en el padrón
+        // Buscar iniciales y nombre del usuario actual en el padrón
         var opEntry = padronOperadores.find(function (o) { return o.email && o.email.toLowerCase() === currentUserEmail.toLowerCase(); });
 
-        if (opEntry && opEntry.iniciales) currentUserInitials = opEntry.iniciales;
+        if (opEntry) {
+          if (opEntry.iniciales) currentUserInitials = opEntry.iniciales;
+          if (opEntry.nombre) currentUser = opEntry.nombre;
+        }
         // Stock snapshot — reconstruir stockPropio y stockPendiente para persistencia entre sesiones
         if (snap && snap.length) {
           var snapSorted = snap.slice().sort(function (a, b) { return (b.fields.Modified || "").localeCompare(a.fields.Modified || ""); });
@@ -2838,31 +2850,94 @@
     // ═══════════════════════════════════════════════════════════════
     // MIS PEDIDOS (Operador)
     // ═══════════════════════════════════════════════════════════════
+    function findOpEntry(nombreOrEmail) {
+      if (!nombreOrEmail || !padronOperadores || !padronOperadores.length) return null;
+      var target = normStr(nombreOrEmail);
+      if (!target) return null;
+      return padronOperadores.find(function (o) {
+        return (o.nombre && normStr(o.nombre) === target) ||
+          (o.email && normStr(o.email) === target) ||
+          (o.iniciales && o.iniciales.toUpperCase() === String(nombreOrEmail).trim().toUpperCase());
+      }) || null;
+    }
+
+    function isItemDeOperador(item, filtroOp) {
+      if (!item || !item.fields || !filtroOp) return false;
+      var f = item.fields;
+      var opField = (f.Operador || "").trim();
+
+      // 1. Coincidencia directa exacta
+      if (opField === filtroOp) return true;
+
+      var normFiltro = normStr(filtroOp);
+      var normOp = normStr(opField);
+
+      // 2. Coincidencia normalizada (sin tildes, mayúsculas ni espacios)
+      if (normOp && normFiltro && normOp === normFiltro) return true;
+
+      // 3. Coincidencia por inclusión de nombres compuestos
+      if (normOp && normFiltro && normFiltro.length >= 5 && (normOp.includes(normFiltro) || normFiltro.includes(normOp))) return true;
+
+      // 4. Coincidencia cruzada con el padrón (por email, iniciales o nombre canónico)
+      var opEntry = findOpEntry(filtroOp);
+      if (opEntry) {
+        if (opEntry.email && normOp === normStr(opEntry.email)) return true;
+        if (opEntry.nombre && normOp === normStr(opEntry.nombre)) return true;
+        if (opEntry.iniciales) {
+          var nroPed = String(f.NumeroPedido || f.Title || "").trim().toUpperCase();
+          var inis = opEntry.iniciales.trim().toUpperCase() + "-";
+          if (nroPed.startsWith(inis)) return true;
+        }
+      }
+
+      // 5. Coincidencia si filtroOp son las iniciales (ej: "HR" o "AP")
+      var nro = String(f.NumeroPedido || f.Title || "").trim().toUpperCase();
+      if (String(filtroOp).trim().length <= 4 && nro.startsWith(String(filtroOp).trim().toUpperCase() + "-")) return true;
+
+      return false;
+    }
+
+    function actualizarSelectSuperadmin(pedidosItems) {
+      var sel = document.getElementById("sel-operador-view");
+      if (!sel) return;
+      var existentes = new Set();
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value) existentes.add(normStr(sel.options[i].value));
+      }
+      if (pedidosItems && pedidosItems.length) {
+        var unicos = [...new Set(pedidosItems.map(function (p) { return (p.fields && p.fields.Operador || "").trim(); }).filter(Boolean))].sort();
+        unicos.forEach(function (op) {
+          if (!existentes.has(normStr(op))) {
+            existentes.add(normStr(op));
+            var opt = document.createElement("option");
+            opt.value = op;
+            opt.textContent = op;
+            sel.appendChild(opt);
+          }
+        });
+      }
+      if (superadminViewUser) sel.value = superadminViewUser;
+    }
+
     async function cargarMisPedidos() {
       ["mpp-encamino", "mpp-pendinsumos", "mpp-pendlog", "mpp-cerrados"].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--light);">Cargando...</div>';
       });
       try {
-        // [PERF Fix B] Filtrado en servidor: solo trae pedidos del operador actual.
-        // Antes: spGet sin params → trae TODOS los pedidos → filtra en cliente.
-        // Con $filter, el servidor devuelve solo los registros relevantes.
-        // Si el nombre tiene comillas simples, se escapan duplicándolas (estándar OData).
-        // Fallback silencioso: si el $filter falla, se recae al filtrado cliente.
         var filtroOp = (currentUserRol === "superadmin" && superadminViewUser) ? superadminViewUser : currentUser;
-        var filtroOData = "&$filter=fields/Operador eq '" + filtroOp.replace(/'/g, "''") + "'";
-        var items;
-        try {
-          items = await spGet(CONFIG.lists.pedidos, filtroOData);
-        } catch (e) {
-          // Fallback: fetch completo + filtrado cliente (comportamiento anterior)
-          console.warn("[PERF] $filter no soportado, cayendo a filtrado cliente:", e.message);
-          var allItems = await spGet(CONFIG.lists.pedidos, "");
-          items = allItems.filter(function (i) { return i.fields.Operador === filtroOp; });
-        }
+
+        // Cargar todos los pedidos y filtrar en cliente de forma resiliente contra discrepancias de tildes, mayúsculas o iniciales
+        var allItems = await spGet(CONFIG.lists.pedidos, "");
+        var items = allItems.filter(function (i) { return isItemDeOperador(i, filtroOp); });
+
         misPedidosData = items;
         misPedidosData.sort(function (a, b) { return (b.fields.FechaPedido || "").localeCompare(a.fields.FechaPedido || ""); });
         document.getElementById("mis-count").textContent = misPedidosData.length ? "(" + misPedidosData.length + ")" : "";
+
+        if (currentUserRol === "superadmin") {
+          actualizarSelectSuperadmin(allItems);
+        }
 
         // Agrupar por NumeroPedido
         var grupos = {}, ordenGrupos = [];
