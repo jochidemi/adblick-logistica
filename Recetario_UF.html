@@ -1504,20 +1504,32 @@ function agregarProducto() {
   if (yaExiste) { showToast("Este producto ya está en la lista", "info"); return; }
 
   // Buscar datos completos del producto MDA si fue seleccionado
-  var prodMDA = MDA_PRODUCTOS.find(function(p) { return p.id_mda === mdaId || p.nombre === nombreMdaInput; });
+  var prodMDA = MDA_PRODUCTOS.find(function(p) {
+    return (mdaId && p.id_mda === mdaId) || (nombreMdaInput && normalizarTexto(p.nombre) === normalizarTexto(nombreMdaInput));
+  });
+
+  if (!prodMDA || !prodMDA.registro_senasa) {
+    showToast("Debés seleccionar un agroquímico oficial con registro SENASA válido del listado desplegable", "error");
+    var inputMda = document.getElementById("inputBuscarProducto");
+    if (inputMda) {
+      inputMda.focus();
+      buscarProductoMDA(nombreMdaInput || nombreFinal, true);
+    }
+    return;
+  }
 
   productosReceta.push({
     nombre:          nombreFinal,
     nombre_adblick:  nombreAdblick,
-    id_mda:          prodMDA ? prodMDA.id_mda : (mdaId || "5316"),
-    nombre_mda:      prodMDA ? prodMDA.nombre : (nombreMdaInput || nombreFinal),
-    registro_senasa: prodMDA ? prodMDA.registro_senasa : "",
+    id_mda:          prodMDA.id_mda,
+    nombre_mda:      prodMDA.nombre,
+    registro_senasa: prodMDA.registro_senasa,
     dosis:           dosis,
     unidad:          unidad !== "-" ? unidad.replace(/\/ha/gi, "") : "litros",
     categoria:       categoria !== "-" ? categoria : "",
     diagnostico_id:  dxProdId || "9",
     diagnostico:     dxProdNombre || "Malezas",
-    marca:           nombreFinal
+    marca:           prodMDA.nombre || nombreFinal
   });
 
   if (prodAdblickSel) prodAdblickSel.value = "";
@@ -1567,8 +1579,12 @@ async function generarReceta() {
   // Validaciones
   if (lotesSeleccionados.length === 0) { showToast("Seleccioná al menos un lote", "error"); return; }
   if (!document.getElementById("selEstadio").value)     { showToast("Seleccioná el estadío", "error"); return; }
-  if (!document.getElementById("selDx").value)          { showToast("Seleccioná el diagnóstico", "error"); return; }
   if (productosReceta.length === 0) { showToast("Agregá al menos un producto", "error"); return; }
+  var sinSenasa = productosReceta.filter(function(p) { return !p.registro_senasa || p.id_mda === "5316"; });
+  if (sinSenasa.length > 0) {
+    showToast("Hay productos sin registro oficial de SENASA (" + sinSenasa.map(function(p){ return p.nombre; }).join(", ") + "). Por favor eliminalos y seleccionalos de la lista oficial.", "error");
+    return;
+  }
 
   var btn = document.getElementById("btnGenerar");
   btn.disabled = true; btn.textContent = "Guardando...";
