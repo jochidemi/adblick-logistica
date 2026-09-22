@@ -1104,42 +1104,60 @@ function buscarProductoMDA(query, immediate) {
     var qNorm = normalizarTexto(query);
     var terms = qNorm.split(" ").filter(function(t){ return t.length >= 2; });
 
-    var results = MDA_PRODUCTOS.filter(function(p) {
+    var matched = MDA_PRODUCTOS.filter(function(p) {
       var pText = p._norm || (p._norm = normalizarTexto(p.nombre + " " + (p.registro_senasa || "") + " " + (p.texto_completo || "")));
       if (pText.indexOf(qNorm) !== -1) return true;
       return terms.length > 0 && terms.every(function(t){ return pText.indexOf(t) !== -1; });
-    }).slice(0, 35);
+    });
 
-    if (results.length === 0) {
+    if (matched.length === 0) {
       dropdown.innerHTML = "<div style='padding:10px;color:var(--gray);font-size:12px;'>Sin equivalencia exacta en MDA para \"" + esc(query) + "\". Podés escribir el nombre o N° SENASA arriba.</div>";
       dropdown.style.display = "block";
       return;
     }
 
-    // Si hay un match exacto, pre-asignar el ID de MDA y la banda toxicológica
-    var exactMatch = results.find(function(p){
-      return normalizarTexto(p.nombre) === qNorm || p.registro_senasa === query.trim();
+    // Evaluar stock y prioridad de ordenamiento: 3 = Directo, 2 = Equivalente, 1 = Sin stock
+    var mapped = matched.map(function(p) {
+      var s = consultarStockMDA(p);
+      var prio = 1;
+      if (s.tieneStock && s.tipo === "directo") {
+        prio = 3;
+      } else if (s.tieneEquivalente) {
+        prio = 2;
+      }
+      var isExact = (normalizarTexto(p.nombre) === qNorm || p.registro_senasa === query.trim());
+      return { p: p, stock: s, prio: prio, isExact: isExact };
     });
+
+    // Ordenar: 1º Prioridad de stock, 2º Coincidencia exacta, 3º Alfabético
+    mapped.sort(function(a, b) {
+      if (b.prio !== a.prio) return b.prio - a.prio;
+      if (b.isExact !== a.isExact) return b.isExact ? 1 : -1;
+      return a.p.nombre.localeCompare(b.p.nombre);
+    });
+
+    var results = mapped.slice(0, 40);
+
+    // Si hay un match exacto, pre-asignar el ID de MDA y la banda toxicológica
+    var exactMatch = results.find(function(r){ return r.isExact; });
     if (exactMatch) {
-      document.getElementById("inputProductoMdaId").value = exactMatch.id_mda;
-      actualizarBandaTox(exactMatch);
+      document.getElementById("inputProductoMdaId").value = exactMatch.p.id_mda;
+      actualizarBandaTox(exactMatch.p);
     }
 
     var html = "";
-    results.forEach(function(p) {
-      var isExact = exactMatch && exactMatch.id_mda === p.id_mda;
-      var stockInfo = consultarStockMDA(p);
+    results.forEach(function(item) {
+      var p = item.p;
+      var stockInfo = item.stock;
+      var isExact = item.isExact;
       var badgeStock = "";
       if (stockInfo.tieneStock && stockInfo.tipo === "directo") {
-        badgeStock = "<span style='font-size:10px;font-weight:600;background:#d4edda;color:#155724;border:1px solid #c3e6cb;border-radius:3px;padding:1px 5px;margin-left:6px;'>🟢 Stock: " + stockInfo.cantidad.toLocaleString("es-AR") + "</span>";
+        badgeStock = "<span style='font-size:10px;font-weight:600;background:#d4edda;color:#155724;border:1px solid #c3e6cb;border-radius:3px;padding:1px 6px;margin-left:6px;'>🟢 Stock: " + stockInfo.cantidad.toLocaleString("es-AR") + "</span>";
       } else if (stockInfo.tieneEquivalente) {
-        badgeStock = "<span style='font-size:10px;font-weight:600;background:#fff3cd;color:#856404;border:1px solid #ffeeba;border-radius:3px;padding:1px 5px;margin-left:6px;' title='Hay stock disponible de otro producto con este principio activo'>🟡 Stock equiv. (" + esc(stockInfo.sustancia) + ")</span>";
+        badgeStock = "<span style='font-size:10px;font-weight:600;background:#fff3cd;color:#856404;border:1px solid #ffeeba;border-radius:3px;padding:1px 6px;margin-left:6px;' title='Hay stock disponible de otro producto con este principio activo'>🟡 Stock equiv. (" + esc(stockInfo.sustancia) + ")</span>";
       } else {
-        badgeStock = "<span style='font-size:10px;font-weight:500;background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;border-radius:3px;padding:1px 5px;margin-left:6px;'>🔴 Sin stock MDA</span>";
+        badgeStock = "<span style='font-size:10px;font-weight:500;background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;border-radius:3px;padding:1px 6px;margin-left:6px;'>🔴 Sin stock MDA</span>";
       }
-
-      var ctP = resolverClaseToxicologica(p);
-      var badgeCt = ctP ? " " + getBadgeBandaTox(ctP) : "";
 
       html += "<div style='padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:12px;" + (isExact ? "background:#e6f4ed;font-weight:700;" : "") + "' " +
               "onmouseover='this.style.background=\"#d5ecd9\"' onmouseout='this.style.background=\"" + (isExact ? "#e6f4ed" : "#fff") + "\"' " +
@@ -1148,9 +1166,8 @@ function buscarProductoMDA(query, immediate) {
               "<div><strong>" + esc(p.nombre) + "</strong> " + (isExact ? "<span style='font-size:10px;background:#007743;color:#fff;border-radius:3px;padding:1px 4px;'>Coincidencia exacta</span>" : "") + "</div>" +
               "<div>" + badgeStock + "</div>" +
               "</div>" +
-              "<div style='color:var(--gray);font-size:11px;display:flex;align-items:center;justify-content:space-between;margin-top:2px;'>" +
-              "<span>SENASA: " + esc(p.registro_senasa || "s/d") + (p.principio_activo ? " · " + esc(p.principio_activo) : "") + "</span>" +
-              "<div>" + badgeCt + "</div>" +
+              "<div style='color:var(--gray);font-size:11px;margin-top:2px;'>" +
+              "SENASA: " + esc(p.registro_senasa || "s/d") + (p.principio_activo ? " · " + esc(p.principio_activo) : "") +
               "</div>" +
               "</div>";
     });
