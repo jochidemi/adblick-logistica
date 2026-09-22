@@ -1,8 +1,22 @@
 {
   "_descripcion": "Stock oficial vivo de MDA SIGIRAO para ADBLICK GRANOS S.A. (30710939345)",
-  "fecha_actualizacion": "2026-09-22 14:16:03",
-  "total_ids_con_stock": 235,
+  "fecha_actualizacion": "2026-09-22 14:37:27",
+  "total_ids_con_stock": 239,
   "stock_por_id": {
+    "6401": {
+      "cantidad": 0.1,
+      "nombre": "METSULFURON  SURCOS",
+      "senasa": "34839",
+      "sustancia": "METSULFURON METIL",
+      "ct": "III"
+    },
+    "15790": {
+      "cantidad": 3.35,
+      "nombre": "REVITON",
+      "senasa": "41632",
+      "sustancia": "TIAFENACIL",
+      "ct": "III"
+    },
     "5669": {
       "cantidad": 15.5,
       "nombre": "SPIDER",
@@ -199,13 +213,6 @@
       "sustancia": "METSULFURON METIL",
       "ct": "IV"
     },
-    "15790": {
-      "cantidad": 3.0,
-      "nombre": "REVITON",
-      "senasa": "41632",
-      "sustancia": "TIAFENACIL",
-      "ct": "III"
-    },
     "6999": {
       "cantidad": 476.0,
       "nombre": "DAARGUS LAMBDA",
@@ -219,6 +226,13 @@
       "senasa": "35355",
       "sustancia": "LAMBDACIALOTRINA",
       "ct": "III"
+    },
+    "14314": {
+      "cantidad": 3.0,
+      "nombre": "RILEGUM",
+      "senasa": "20006",
+      "sustancia": "FERTILIZANTE - BIOLOGICO - LEGUMINOSAS",
+      "ct": "FT"
     },
     "8381": {
       "cantidad": 3.2,
@@ -375,7 +389,7 @@
       "ct": "III"
     },
     "9402": {
-      "cantidad": 3485.0,
+      "cantidad": 3625.0,
       "nombre": "CORRECTOR DE PH AKTIV",
       "senasa": "39031",
       "sustancia": "ACIDO FOSFORICO",
@@ -501,7 +515,7 @@
       "ct": "II"
     },
     "5825": {
-      "cantidad": 930.0,
+      "cantidad": 950.0,
       "nombre": "LONTREL",
       "senasa": "33572",
       "sustancia": "CLOPIRALID",
@@ -548,6 +562,13 @@
       "senasa": "41488",
       "sustancia": "BENAZOLIN ETIL",
       "ct": "IV"
+    },
+    "7587": {
+      "cantidad": 10.0,
+      "nombre": "GIZMO",
+      "senasa": "36882",
+      "sustancia": "CLODINAFOP PROPARGIL + CLOQUINTOCET MEXIL",
+      "ct": "II"
     },
     "10257": {
       "cantidad": 10.5,
@@ -599,7 +620,7 @@
       "ct": "III"
     },
     "5535": {
-      "cantidad": 3265.0,
+      "cantidad": 3355.0,
       "nombre": "BRODAL 50 SC",
       "senasa": "32478",
       "sustancia": "DIFLUFENICAN",
@@ -1026,7 +1047,7 @@
       "ct": "IV"
     },
     "7541": {
-      "cantidad": 3960.0,
+      "cantidad": 4600.0,
       "nombre": "PARAQUAT 27,6",
       "senasa": "36815",
       "sustancia": "PARAQUAT DICLORURO",
@@ -1114,6 +1135,13 @@
       "nombre": "MCPA 28",
       "senasa": "34567",
       "sustancia": "M.C.P.A.",
+      "ct": "III"
+    },
+    "5577": {
+      "cantidad": 260.0,
+      "nombre": "TRIFLURALINA ATANOR 44,5",
+      "senasa": "32630",
+      "sustancia": "TRIFLURALINA",
       "ct": "III"
     },
     "16553": {
@@ -1431,13 +1459,6 @@
       "sustancia": "GLIFOSATO + IMAZETAPIR",
       "ct": "III"
     },
-    "5577": {
-      "cantidad": 200.0,
-      "nombre": "TRIFLURALINA ATANOR 44,5",
-      "senasa": "32630",
-      "sustancia": "TRIFLURALINA",
-      "ct": "III"
-    },
     "7464": {
       "cantidad": 640.0,
       "nombre": "XCALIBUR",
@@ -1641,6 +1662,13 @@
       "sustancia": "MANCOZEB",
       "ct": "III"
     },
+    "10056": {
+      "cantidad": 6000.0,
+      "nombre": "WEIZEN NT",
+      "senasa": "39693",
+      "sustancia": "2,4-D",
+      "ct": "II"
+    },
     "6010": {
       "cantidad": 10860.0,
       "nombre": "FLORANE ACA 25",
@@ -1650,6 +1678,20 @@
     }
   },
   "stock_por_senasa": {
+    "34839": {
+      "cantidad": 0.1,
+      "id_mda": "6401",
+      "nombre": "METSULFURON  SURCOS",
+      "sustancia": "METSULFURON METIL",
+      "ct": "III"
+    },
+    "41632": {
+      "cantidad": 3.35,
+      "id_mda": "15790",
+      "nombre": "REVITON",
+      "sustancia": "TIAFENACIL",
+      "ct": "III"
+    },
     "33101": {
       "cantidad": 15.5,
       "id_mda": "5669",
@@ -1846,13 +1888,6 @@
       "sustancia": "METSULFURON METIL",
       "ct": "IV"
     },
-    "41632": {
-      "cantidad": 3.0,
-      "id_mda": "15790",
-      "nombre": "REVITON",
-      "sustancia": "TIAFENACIL",
-      "ct": "III"
-    },
     "35987": {
       "cantidad": 476.0,
       "id_mda": "6999",
@@ -1866,6 +1901,13 @@
       "nombre": "AIKIDO",
       "sustancia": "LAMBDACIALOTRINA",
       "ct": "III"
+    },
+    "20006": {
+      "cantidad": 3.0,
+      "id_mda": "14314",
+      "nombre": "RILEGUM",
+      "sustancia": "FERTILIZANTE - BIOLOGICO - LEGUMINOSAS",
+      "ct": "FT"
     },
     "37919": {
       "cantidad": 3.2,
@@ -2022,7 +2064,7 @@
       "ct": "III"
     },
     "39031": {
-      "cantidad": 3485.0,
+      "cantidad": 3625.0,
       "id_mda": "9402",
       "nombre": "CORRECTOR DE PH AKTIV",
       "sustancia": "ACIDO FOSFORICO",
@@ -2148,7 +2190,7 @@
       "ct": "II"
     },
     "33572": {
-      "cantidad": 930.0,
+      "cantidad": 950.0,
       "id_mda": "5825",
       "nombre": "LONTREL",
       "sustancia": "CLOPIRALID",
@@ -2195,6 +2237,13 @@
       "nombre": "BENAZOLIN 50 DELTA AGRO",
       "sustancia": "BENAZOLIN ETIL",
       "ct": "IV"
+    },
+    "36882": {
+      "cantidad": 10.0,
+      "id_mda": "7587",
+      "nombre": "GIZMO",
+      "sustancia": "CLODINAFOP PROPARGIL + CLOQUINTOCET MEXIL",
+      "ct": "II"
     },
     "39894": {
       "cantidad": 10.5,
@@ -2246,7 +2295,7 @@
       "ct": "III"
     },
     "32478": {
-      "cantidad": 3265.0,
+      "cantidad": 3355.0,
       "id_mda": "5535",
       "nombre": "BRODAL 50 SC",
       "sustancia": "DIFLUFENICAN",
@@ -2673,7 +2722,7 @@
       "ct": "IV"
     },
     "36815": {
-      "cantidad": 3960.0,
+      "cantidad": 4600.0,
       "id_mda": "7541",
       "nombre": "PARAQUAT 27,6",
       "sustancia": "PARAQUAT DICLORURO",
@@ -2761,6 +2810,13 @@
       "id_mda": "6272",
       "nombre": "MCPA 28",
       "sustancia": "M.C.P.A.",
+      "ct": "III"
+    },
+    "32630": {
+      "cantidad": 260.0,
+      "id_mda": "5577",
+      "nombre": "TRIFLURALINA ATANOR 44,5",
+      "sustancia": "TRIFLURALINA",
       "ct": "III"
     },
     "40879": {
@@ -3078,13 +3134,6 @@
       "sustancia": "GLIFOSATO + IMAZETAPIR",
       "ct": "III"
     },
-    "32630": {
-      "cantidad": 200.0,
-      "id_mda": "5577",
-      "nombre": "TRIFLURALINA ATANOR 44,5",
-      "sustancia": "TRIFLURALINA",
-      "ct": "III"
-    },
     "36705": {
       "cantidad": 640.0,
       "id_mda": "7464",
@@ -3288,6 +3337,13 @@
       "sustancia": "MANCOZEB",
       "ct": "III"
     },
+    "39693": {
+      "cantidad": 6000.0,
+      "id_mda": "10056",
+      "nombre": "WEIZEN NT",
+      "sustancia": "2,4-D",
+      "ct": "II"
+    },
     "34010": {
       "cantidad": 10860.0,
       "id_mda": "6010",
@@ -3297,6 +3353,20 @@
     }
   },
   "stock_por_marca": {
+    "metsulfuron surcos": {
+      "cantidad": 0.1,
+      "id_mda": "6401",
+      "nombre": "METSULFURON  SURCOS",
+      "senasa": "34839",
+      "sustancia": "METSULFURON METIL"
+    },
+    "reviton": {
+      "cantidad": 3.35,
+      "id_mda": "15790",
+      "nombre": "REVITON",
+      "senasa": "41632",
+      "sustancia": "TIAFENACIL"
+    },
     "spider": {
       "cantidad": 15.5,
       "id_mda": "5669",
@@ -3493,13 +3563,6 @@
       "senasa": "38939",
       "sustancia": "METSULFURON METIL"
     },
-    "reviton": {
-      "cantidad": 3.0,
-      "id_mda": "15790",
-      "nombre": "REVITON",
-      "senasa": "41632",
-      "sustancia": "TIAFENACIL"
-    },
     "daargus lambda": {
       "cantidad": 476.0,
       "id_mda": "6999",
@@ -3513,6 +3576,13 @@
       "nombre": "AIKIDO",
       "senasa": "35355",
       "sustancia": "LAMBDACIALOTRINA"
+    },
+    "rilegum": {
+      "cantidad": 3.0,
+      "id_mda": "14314",
+      "nombre": "RILEGUM",
+      "senasa": "20006",
+      "sustancia": "FERTILIZANTE - BIOLOGICO - LEGUMINOSAS"
     },
     "sheridan": {
       "cantidad": 3.2,
@@ -3669,7 +3739,7 @@
       "sustancia": "ALCOHOL LINEAL ETOXILADO"
     },
     "corrector de ph aktiv": {
-      "cantidad": 3485.0,
+      "cantidad": 3625.0,
       "id_mda": "9402",
       "nombre": "CORRECTOR DE PH AKTIV",
       "senasa": "39031",
@@ -3795,7 +3865,7 @@
       "sustancia": "BIFENTRIN"
     },
     "lontrel": {
-      "cantidad": 930.0,
+      "cantidad": 950.0,
       "id_mda": "5825",
       "nombre": "LONTREL",
       "senasa": "33572",
@@ -3842,6 +3912,13 @@
       "nombre": "BENAZOLIN 50 DELTA AGRO",
       "senasa": "41488",
       "sustancia": "BENAZOLIN ETIL"
+    },
+    "gizmo": {
+      "cantidad": 10.0,
+      "id_mda": "7587",
+      "nombre": "GIZMO",
+      "senasa": "36882",
+      "sustancia": "CLODINAFOP PROPARGIL + CLOQUINTOCET MEXIL"
     },
     "veltroma": {
       "cantidad": 10.5,
@@ -3893,7 +3970,7 @@
       "sustancia": "FLUMIOXAZIN"
     },
     "brodal 50 sc": {
-      "cantidad": 3265.0,
+      "cantidad": 3355.0,
       "id_mda": "5535",
       "nombre": "BRODAL 50 SC",
       "senasa": "32478",
@@ -4320,7 +4397,7 @@
       "sustancia": "ACEITE VEGETAL DE SOJA"
     },
     "paraquat 27 6": {
-      "cantidad": 3960.0,
+      "cantidad": 4600.0,
       "id_mda": "7541",
       "nombre": "PARAQUAT 27,6",
       "senasa": "36815",
@@ -4416,6 +4493,13 @@
       "nombre": "MCPA 28",
       "senasa": "34567",
       "sustancia": "M.C.P.A."
+    },
+    "trifluralina atanor 44 5": {
+      "cantidad": 260.0,
+      "id_mda": "5577",
+      "nombre": "TRIFLURALINA ATANOR 44,5",
+      "senasa": "32630",
+      "sustancia": "TRIFLURALINA"
     },
     "olimpo maxx": {
       "cantidad": 65.0,
@@ -4746,13 +4830,6 @@
       "senasa": "37522",
       "sustancia": "GLIFOSATO + IMAZETAPIR"
     },
-    "trifluralina atanor 44 5": {
-      "cantidad": 200.0,
-      "id_mda": "5577",
-      "nombre": "TRIFLURALINA ATANOR 44,5",
-      "senasa": "32630",
-      "sustancia": "TRIFLURALINA"
-    },
     "xcalibur": {
       "cantidad": 640.0,
       "id_mda": "7464",
@@ -4956,6 +5033,13 @@
       "senasa": "31120",
       "sustancia": "MANCOZEB"
     },
+    "weizen nt": {
+      "cantidad": 6000.0,
+      "id_mda": "10056",
+      "nombre": "WEIZEN NT",
+      "senasa": "39693",
+      "sustancia": "2,4-D"
+    },
     "florane aca 25": {
       "cantidad": 10860.0,
       "id_mda": "6010",
@@ -4965,6 +5049,23 @@
     }
   },
   "stock_por_sustancia": {
+    "METSULFURON METIL": {
+      "cantidad": 51.4,
+      "marcas": {
+        "METSULFURON  SURCOS": 0.1,
+        "ESCORT": 35.1,
+        "METT": 2.0,
+        "ERRASIN WDG": 2.2,
+        "ERRASIN WP": 8.0,
+        "METSULFURON 60 WG INSUAGRO": 4.0
+      }
+    },
+    "TIAFENACIL": {
+      "cantidad": 3.35,
+      "marcas": {
+        "REVITON": 3.35
+      }
+    },
     "DICLOSULAM": {
       "cantidad": 15.5,
       "marcas": {
@@ -5069,16 +5170,6 @@
         "STARANE XTRA": 380.0
       }
     },
-    "METSULFURON METIL": {
-      "cantidad": 51.3,
-      "marcas": {
-        "ESCORT": 35.1,
-        "METT": 2.0,
-        "ERRASIN WDG": 2.2,
-        "ERRASIN WP": 8.0,
-        "METSULFURON 60 WG INSUAGRO": 4.0
-      }
-    },
     "MEZCLA DE ACIDOS FOSFONICOS (DTMP + ATMP)": {
       "cantidad": 29.0,
       "marcas": {
@@ -5123,10 +5214,10 @@
         "CADRE 70 DG": 39.0
       }
     },
-    "TIAFENACIL": {
+    "FERTILIZANTE - BIOLOGICO - LEGUMINOSAS": {
       "cantidad": 3.0,
       "marcas": {
-        "REVITON": 3.0
+        "RILEGUM": 3.0
       }
     },
     "CLORIMURON ETIL": {
@@ -5242,9 +5333,9 @@
       }
     },
     "ACIDO FOSFORICO": {
-      "cantidad": 3485.0,
+      "cantidad": 3625.0,
       "marcas": {
-        "CORRECTOR DE PH AKTIV": 3485.0
+        "CORRECTOR DE PH AKTIV": 3625.0
       }
     },
     "ACEITE MINERAL PARAFINICO": {
@@ -5355,9 +5446,9 @@
       }
     },
     "CLOPIRALID": {
-      "cantidad": 950.0,
+      "cantidad": 970.0,
       "marcas": {
-        "LONTREL": 930.0,
+        "LONTREL": 950.0,
         "CLOPYRALID NOVA": 20.0
       }
     },
@@ -5374,6 +5465,12 @@
         "ATANOR IMAZETAPIR 10,6 SL": 3000.0,
         "IMAZE AGROTERRUM": 300.0,
         "XCALIBUR": 640.0
+      }
+    },
+    "CLODINAFOP PROPARGIL + CLOQUINTOCET MEXIL": {
+      "cantidad": 10.0,
+      "marcas": {
+        "GIZMO": 10.0
       }
     },
     "KASUGAMICINA": {
@@ -5416,9 +5513,9 @@
       }
     },
     "DIFLUFENICAN": {
-      "cantidad": 3265.0,
+      "cantidad": 3355.0,
       "marcas": {
-        "BRODAL 50 SC": 3265.0
+        "BRODAL 50 SC": 3355.0
       }
     },
     "BICICLOPIRONA": {
@@ -5428,7 +5525,7 @@
       }
     },
     "2,4-D": {
-      "cantidad": 170076.0,
+      "cantidad": 176076.0,
       "marcas": {
         "NOVOLESTER 97": 1656.0,
         "HERBIFEN ADVANCE": 83880.0,
@@ -5441,7 +5538,8 @@
         "2,4D AMINA": 880.0,
         "2,4 D LV 89 SIGMA": 1120.0,
         "ALLGRAM 2,4 D 89 ESTER": 3420.0,
-        "2,4D- EHE AGROTERRUM": 1000.0
+        "2,4D- EHE AGROTERRUM": 1000.0,
+        "WEIZEN NT": 6000.0
       }
     },
     "ACIDO CITRICO": {
@@ -5594,11 +5692,11 @@
       }
     },
     "PARAQUAT DICLORURO": {
-      "cantidad": 26780.0,
+      "cantidad": 27420.0,
       "marcas": {
         "BARON": 4620.0,
         "PARAQUAT NOVA -": 4660.0,
-        "PARAQUAT 27,6": 3960.0,
+        "PARAQUAT 27,6": 4600.0,
         "PARAQUAT XIAN": 1440.0,
         "PARAQUAT SIGMA": 7360.0,
         "PARAQUAT 27,6 ARN EBC": 100.0,
@@ -5630,6 +5728,13 @@
       "cantidad": 60.0,
       "marcas": {
         "MACROSORB INICIUM ORGANIC": 60.0
+      }
+    },
+    "TRIFLURALINA": {
+      "cantidad": 1080.0,
+      "marcas": {
+        "TRIFLURALINA ATANOR 44,5": 260.0,
+        "ADAMA ESSENTIALS PREMERGE": 820.0
       }
     },
     "ALCOHOL GRASO ETOXILADO": {
@@ -5692,13 +5797,6 @@
       "cantidad": 100.0,
       "marcas": {
         "SOLOMON O-TEQ": 100.0
-      }
-    },
-    "TRIFLURALINA": {
-      "cantidad": 1020.0,
-      "marcas": {
-        "ADAMA ESSENTIALS PREMERGE": 820.0,
-        "TRIFLURALINA ATANOR 44,5": 200.0
       }
     },
     "AZOXISTROBINA + CYPROCONAZOLE": {
