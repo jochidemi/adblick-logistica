@@ -461,6 +461,10 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
             <label>Categoría</label>
             <div class="field-value" id="lblCategoria" style="min-width:100px;">-</div>
           </div>
+          <div class="field">
+            <label>Banda Toxicológica</label>
+            <div class="field-value" id="lblBandaTox" style="min-width:160px;display:flex;align-items:center;">-</div>
+          </div>
           <div style="display:flex;align-items:flex-end;">
             <button class="btn btn-green" onclick="agregarProducto()">+ Agregar</button>
           </div>
@@ -1021,6 +1025,68 @@ function consultarStockMDA(prod) {
   return { tieneStock: false, tieneEquivalente: false };
 }
 
+// ════════════════════════════════════════════════════════════
+//  BANDAS TOXICOLÓGICAS (SENASA / MDA)
+// ════════════════════════════════════════════════════════════
+function obtenerTextoBandaTox(ct) {
+  if (!ct) return "-";
+  var c = ct.toString().trim().toUpperCase();
+  if (c === "IA") return "🔴 Banda Roja – Clase Ia";
+  if (c === "IB") return "🔴 Banda Roja – Clase Ib";
+  if (c === "I")  return "🔴 Banda Roja – Clase I";
+  if (c === "II") return "🟡 Banda Amarilla – Clase II";
+  if (c === "III") return "🔵 Banda Azul – Clase III";
+  if (c === "IV" || c === "FT") return "🟢 Banda Verde – Clase IV";
+  return "-";
+}
+
+function getBadgeBandaTox(ct) {
+  var txt = obtenerTextoBandaTox(ct);
+  if (txt === "-") return "-";
+  var c = (ct || "").toString().trim().toUpperCase();
+  var bg = "#f5f5f5", col = "#333", border = "#ccc";
+  if (c === "IA" || c === "IB" || c === "I") {
+    bg = "#ffebee"; col = "#c62828"; border = "#ffcdd2";
+  } else if (c === "II") {
+    bg = "#fffde7"; col = "#f57f17"; border = "#fff59d";
+  } else if (c === "III") {
+    bg = "#e3f2fd"; col = "#1565c0"; border = "#bbdefb";
+  } else if (c === "IV" || c === "FT") {
+    bg = "#e8f5e9"; col = "#2e7d32"; border = "#c8e6c9";
+  }
+  return "<span style='display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600;background:" + bg + ";color:" + col + ";border:1px solid " + border + ";white-space:nowrap;'>" + esc(txt) + "</span>";
+}
+
+function resolverClaseToxicologica(prod) {
+  if (!prod) return "";
+  if (prod.ct) return prod.ct;
+  var idMda = (prod.id_mda || "").toString().trim();
+  if (idMda && MDA_STOCK) {
+    if (MDA_STOCK.bandas_toxicologicas && MDA_STOCK.bandas_toxicologicas[idMda]) {
+      return MDA_STOCK.bandas_toxicologicas[idMda];
+    }
+    if (MDA_STOCK.stock_por_id && MDA_STOCK.stock_por_id[idMda] && MDA_STOCK.stock_por_id[idMda].ct) {
+      return MDA_STOCK.stock_por_id[idMda].ct;
+    }
+  }
+  var senasa = (prod.registro_senasa || "").toString().trim();
+  if (senasa && MDA_STOCK && MDA_STOCK.stock_por_senasa && MDA_STOCK.stock_por_senasa[senasa] && MDA_STOCK.stock_por_senasa[senasa].ct) {
+    return MDA_STOCK.stock_por_senasa[senasa].ct;
+  }
+  return "";
+}
+
+function actualizarBandaTox(prod) {
+  var lbl = document.getElementById("lblBandaTox");
+  if (!lbl) return;
+  if (!prod) {
+    lbl.innerHTML = "-";
+    return;
+  }
+  var ct = resolverClaseToxicologica(prod);
+  lbl.innerHTML = getBadgeBandaTox(ct);
+}
+
 var _buscarTimeout = null;
 function normalizarTexto(t) {
   return (t || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[,.\/\-_]/g, " ").replace(/\s+/g, " ").trim();
@@ -1050,12 +1116,13 @@ function buscarProductoMDA(query, immediate) {
       return;
     }
 
-    // Si hay un match exacto, pre-asignar el ID de MDA
+    // Si hay un match exacto, pre-asignar el ID de MDA y la banda toxicológica
     var exactMatch = results.find(function(p){
       return normalizarTexto(p.nombre) === qNorm || p.registro_senasa === query.trim();
     });
     if (exactMatch) {
       document.getElementById("inputProductoMdaId").value = exactMatch.id_mda;
+      actualizarBandaTox(exactMatch);
     }
 
     var html = "";
@@ -1071,6 +1138,9 @@ function buscarProductoMDA(query, immediate) {
         badgeStock = "<span style='font-size:10px;font-weight:500;background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;border-radius:3px;padding:1px 5px;margin-left:6px;'>🔴 Sin stock MDA</span>";
       }
 
+      var ctP = resolverClaseToxicologica(p);
+      var badgeCt = ctP ? " " + getBadgeBandaTox(ctP) : "";
+
       html += "<div style='padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:12px;" + (isExact ? "background:#e6f4ed;font-weight:700;" : "") + "' " +
               "onmouseover='this.style.background=\"#d5ecd9\"' onmouseout='this.style.background=\"" + (isExact ? "#e6f4ed" : "#fff") + "\"' " +
               "onclick='seleccionarProductoMDA(\"" + p.id_mda + "\")'>" +
@@ -1078,7 +1148,10 @@ function buscarProductoMDA(query, immediate) {
               "<div><strong>" + esc(p.nombre) + "</strong> " + (isExact ? "<span style='font-size:10px;background:#007743;color:#fff;border-radius:3px;padding:1px 4px;'>Coincidencia exacta</span>" : "") + "</div>" +
               "<div>" + badgeStock + "</div>" +
               "</div>" +
-              "<div style='color:var(--gray);font-size:11px;'>SENASA: " + esc(p.registro_senasa || "s/d") + (p.principio_activo ? " · " + esc(p.principio_activo) : "") + "</div>" +
+              "<div style='color:var(--gray);font-size:11px;display:flex;align-items:center;justify-content:space-between;margin-top:2px;'>" +
+              "<span>SENASA: " + esc(p.registro_senasa || "s/d") + (p.principio_activo ? " · " + esc(p.principio_activo) : "") + "</span>" +
+              "<div>" + badgeCt + "</div>" +
+              "</div>" +
               "</div>";
     });
     dropdown.innerHTML = html;
@@ -1098,6 +1171,7 @@ function seleccionarProductoMDA(idMda) {
   document.getElementById("inputBuscarProducto").value = prod.nombre;
   document.getElementById("inputProductoMdaId").value = prod.id_mda;
   document.getElementById("dropdownProductos").style.display = "none";
+  actualizarBandaTox(prod);
 }
 
 // Close dropdown when clicking outside
@@ -1589,6 +1663,7 @@ function onProductoAdblickChange() {
   if (!opt || !opt.value) {
     document.getElementById("lblUnidad").textContent   = "-";
     document.getElementById("lblCategoria").textContent = "-";
+    actualizarBandaTox(null);
     document.getElementById("inputBuscarProducto").value = "";
     document.getElementById("inputProductoMdaId").value = "";
     var dd = document.getElementById("dropdownProductos");
@@ -1599,6 +1674,7 @@ function onProductoAdblickChange() {
   var cat    = opt.dataset.categoria || "-";
   document.getElementById("lblUnidad").textContent   = unidad;
   document.getElementById("lblCategoria").textContent = cat;
+  actualizarBandaTox(null);
 
   // Actualizar SIEMPRE el campo de búsqueda MDA con el nuevo insumo seleccionado
   var nombreInsumo = opt.value;
@@ -1664,6 +1740,9 @@ function _ejecutarAgregarProducto(prodMDA, nombreFinal, nombreAdblick, dosis, un
   var prodAdblickSel = document.getElementById("selProductoAdblick");
   var dxProdSel      = document.getElementById("selDxProducto");
 
+  var ctProd     = resolverClaseToxicologica(prodMDA);
+  var textoBanda = obtenerTextoBandaTox(ctProd);
+
   productosReceta.push({
     nombre:          nombreFinal,
     nombre_adblick:  nombreAdblick,
@@ -1676,7 +1755,9 @@ function _ejecutarAgregarProducto(prodMDA, nombreFinal, nombreAdblick, dosis, un
     diagnostico_id:  dxProdId || "9",
     diagnostico:     dxProdNombre || "Malezas",
     marca:           prodMDA.nombre || nombreFinal,
-    sin_stock_mda:   !!sinStock
+    sin_stock_mda:   !!sinStock,
+    ct:              ctProd,
+    banda_tox:       textoBanda !== "-" ? textoBanda : ""
   });
 
   if (prodAdblickSel) prodAdblickSel.value = "";
@@ -1685,6 +1766,7 @@ function _ejecutarAgregarProducto(prodMDA, nombreFinal, nombreAdblick, dosis, un
   document.getElementById("inputDosis").value          = "";
   document.getElementById("lblUnidad").textContent    = "-";
   document.getElementById("lblCategoria").textContent = "-";
+  actualizarBandaTox(null);
   if (dxProdSel) dxProdSel.value = "";
 
   renderProductos();
@@ -1754,8 +1836,9 @@ function renderProductos() {
     var consumo = totalHa > 0 ? (p.dosis * totalHa).toLocaleString("es-AR", {maximumFractionDigits:1}) : "—";
     var senasaTag = p.registro_senasa ? " <span style='color:var(--gray);font-size:11px;font-weight:400;'>(SENASA: " + esc(p.registro_senasa) + ")</span>" : "";
     var stockTag = p.sin_stock_mda ? " <span style='font-size:10px;background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;border-radius:3px;padding:1px 5px;font-weight:600;' title='Sin stock MDA: la receta quedará En proceso'>⚠️ Sin stock MDA</span>" : "";
+    var bandaBadge = p.ct ? " " + getBadgeBandaTox(p.ct) : (p.banda_tox ? " " + getBadgeBandaTox(p.banda_tox) : "");
     html += "<div class=\"producto-row\">" +
-            "<div class=\"p-nombre\">" + esc(p.nombre) + senasaTag + stockTag + "</div>" +
+            "<div class=\"p-nombre\">" + esc(p.nombre) + senasaTag + stockTag + bandaBadge + "</div>" +
             "<div class=\"p-dosis\">" + p.dosis + " " + esc(p.unidad) + "/ha" +
             (totalHa > 0 ? " &nbsp;→&nbsp; <span class=\"consumo-info\">" + consumo + " " + esc(p.unidad) + " total</span>" : "") +
             "</div>" +
@@ -2124,6 +2207,7 @@ function limpiarFormulario() {
   document.getElementById("inputDosis").value          = "";
   if (document.getElementById("lblUnidad")) document.getElementById("lblUnidad").textContent    = "-";
   if (document.getElementById("lblCategoria")) document.getElementById("lblCategoria").textContent    = "-";
+  if (document.getElementById("lblBandaTox")) document.getElementById("lblBandaTox").innerHTML        = "-";
   if (document.getElementById("selDxProducto")) document.getElementById("selDxProducto").value       = "";
   renderSeleccion();
   renderProductos();
