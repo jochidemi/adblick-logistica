@@ -1463,6 +1463,62 @@
               <input type="text" id="inp-ins-search" placeholder="🔍 Buscar por N° pedido, insumo, campo, operador..."
                 style="font-size:13px;width:100%;box-sizing:border-box;" oninput="filtrarPedidosInsumos(this.value)">
             </div>
+            <!-- Toolbar de agrupar/ordenar/filtrar — solo visible en Pend. asignación -->
+            <div id="pendasig-toolbar" style="padding:10px 18px 2px 18px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <span
+                  style="font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.05em;margin-right:2px;">Agrupar
+                  por:</span>
+                <button class="sub-pill on" id="pgb-none" onclick="setPendAsigGroupBy('none')"
+                  style="padding:5px 12px;font-size:11px;">Sin agrupar</button>
+                <button class="sub-pill off" id="pgb-zona" onclick="setPendAsigGroupBy('zona')"
+                  style="padding:5px 12px;font-size:11px;">📍 Zona</button>
+                <button class="sub-pill off" id="pgb-operador" onclick="setPendAsigGroupBy('operador')"
+                  style="padding:5px 12px;font-size:11px;">👤 Operador</button>
+                <button class="sub-pill off" id="pgb-insumo" onclick="setPendAsigGroupBy('insumo')"
+                  style="padding:5px 12px;font-size:11px;">🧪 Insumo</button>
+                <button class="sub-pill off" id="pgb-vencimiento" onclick="setPendAsigGroupBy('vencimiento')"
+                  style="padding:5px 12px;font-size:11px;">🗓 Vencimiento</button>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <select id="pa-sort" onchange="pendAsigSortBy=this.value;renderPendAsignacion();"
+                  style="font-size:12px;min-width:220px;">
+                  <option value="venc-asc">↕ Vencimiento (próximo → lejano)</option>
+                  <option value="venc-desc">↕ Vencimiento (lejano → próximo)</option>
+                  <option value="numero">↕ N° de pedido</option>
+                  <option value="operador">↕ Operador (A-Z)</option>
+                  <option value="campo">↕ Campo (A-Z)</option>
+                  <option value="insumo">↕ Insumo (A-Z)</option>
+                  <option value="cantidad-desc">↕ Cantidad (mayor → menor)</option>
+                </select>
+                <div style="display:flex;align-items:center;gap:2px;">
+                  <select id="pa-filtro-campo" onchange="pendAsigFiltros.campo=this.value;renderPendAsignacion();"
+                    style="font-size:12px;min-width:130px;">
+                    <option value="">Todos los campos</option>
+                  </select>
+                  <button onclick="limpiarPendAsigFiltro('campo')" title="Limpiar"
+                    style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:2px;">
+                  <select id="pa-filtro-operador" onchange="pendAsigFiltros.operador=this.value;renderPendAsignacion();"
+                    style="font-size:12px;min-width:130px;">
+                    <option value="">Todos los operadores</option>
+                  </select>
+                  <button onclick="limpiarPendAsigFiltro('operador')" title="Limpiar"
+                    style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:2px;">
+                  <select id="pa-filtro-insumo" onchange="pendAsigFiltros.insumo=this.value;renderPendAsignacion();"
+                    style="font-size:12px;min-width:130px;">
+                    <option value="">Todos los insumos</option>
+                  </select>
+                  <button onclick="limpiarPendAsigFiltro('insumo')" title="Limpiar"
+                    style="border:none;background:none;cursor:pointer;color:var(--sub);font-size:16px;line-height:1;padding:0 3px;">×</button>
+                </div>
+                <button class="btn btn-outline btn-sm" style="margin-left:auto;"
+                  onclick="exportarPendAsignacionExcel()">⬇ Exportar XLSX</button>
+              </div>
+            </div>
             <div id="ins-pedidos-list">
               <div style="padding:40px;text-align:center;color:var(--light);">Cargando...</div>
             </div>
@@ -1973,6 +2029,7 @@
       return result;
     }
     var camposLocalidad = {}; // { nombreCampo: localidad }
+    var camposZona = {}; // { nombreCampo: zona } — desde PadronCampos.Zona
 
     // Helper: enriquecer unidad / presentacion / codigo de un pedido desde el padrón
     // Usa búsqueda case-insensitive; fallback a stockPropio (datos del CSV de existencias)
@@ -2238,7 +2295,13 @@
         var snap = await spGet(CONFIG.lists.stockSnapshot, "");
         padronCampos = campos.map(function (i) { return (i.fields.NombreCampo || i.fields.Title || "").trim(); }).filter(Boolean).sort();
         camposLocalidad = {};
-        campos.forEach(function (i) { var n = (i.fields.NombreCampo || i.fields.Title || "").trim(); if (n) camposLocalidad[n] = (i.fields.Localidad || "").trim(); });
+        camposZona = {};
+        campos.forEach(function (i) {
+          var n = (i.fields.NombreCampo || i.fields.Title || "").trim();
+          if (!n) return;
+          camposLocalidad[n] = (i.fields.Localidad || "").trim();
+          camposZona[n] = (i.fields.Zona || "").trim();
+        });
         padronDestinos = dests.map(function (i) { return (i.fields.Title || "").trim(); }).filter(Boolean).sort();
         padronPuntosStock = puntosStockSP.map(function (i) {
           return { nombre: (i.fields.Title || "").trim(), tipo: (i.fields.TipoPuntoStock || "").trim() };
@@ -3615,6 +3678,195 @@
       // Mostrar botón export solo en cerrados
       var expBtn = document.getElementById("btn-ins-export-cer");
       if (expBtn) expBtn.style.display = (tab === "cer") ? "" : "none";
+      // Toolbar de agrupar/ordenar/filtrar solo en Pend. asignación
+      var toolbar = document.getElementById("pendasig-toolbar");
+      if (toolbar) toolbar.style.display = (tab === "asig") ? "" : "none";
+    }
+
+    // ── Pend. asignación: agrupar / ordenar / filtrar ──────────────────
+    var pendAsigGroupBy = "none"; // "none" | "zona" | "operador" | "insumo" | "vencimiento"
+    var pendAsigSortBy = "venc-asc";
+    var pendAsigFiltros = { campo: "", operador: "", insumo: "" };
+
+    function setPendAsigGroupBy(g) {
+      pendAsigGroupBy = g;
+      ["none", "zona", "operador", "insumo", "vencimiento"].forEach(function (k) {
+        var btn = document.getElementById("pgb-" + k);
+        if (btn) btn.className = "sub-pill " + (k === g ? "on" : "off");
+      });
+      renderPendAsignacion();
+    }
+
+    function limpiarPendAsigFiltro(campo) {
+      pendAsigFiltros[campo] = "";
+      var sel = document.getElementById("pa-filtro-" + campo);
+      if (sel) sel.value = "";
+      renderPendAsignacion();
+    }
+
+    // Repuebla los <select> de filtro conservando la selección vigente si sigue existiendo
+    function poblarFiltrosPendAsig() {
+      var defs = [
+        { id: "pa-filtro-campo", campo: "campo", getKey: function (f) { return f.Campo || ""; }, placeholder: "Todos los campos" },
+        { id: "pa-filtro-operador", campo: "operador", getKey: function (f) { return f.Operador || ""; }, placeholder: "Todos los operadores" },
+        { id: "pa-filtro-insumo", campo: "insumo", getKey: function (f) { return f.Insumo || ""; }, placeholder: "Todos los insumos" },
+      ];
+      defs.forEach(function (d) {
+        var sel = document.getElementById(d.id);
+        if (!sel) return;
+        var valores = [...new Set(pedidosInsumos.map(function (i) { return d.getKey(i.fields); }).filter(Boolean))].sort(function (a, b) { return a.localeCompare(b, "es"); });
+        var actual = pendAsigFiltros[d.campo];
+        sel.innerHTML = '<option value="">' + d.placeholder + '</option>' + valores.map(function (v) { return '<option value="' + esc(v) + '">' + v + '</option>'; }).join("");
+        if (actual && valores.indexOf(actual) !== -1) sel.value = actual;
+        else pendAsigFiltros[d.campo] = "";
+      });
+    }
+
+    function pendAsigComparator(sortBy) {
+      return function (a, b) {
+        var fa = a.fields, fb = b.fields;
+        switch (sortBy) {
+          case "venc-desc": return (fb.FechaEntrega || "").localeCompare(fa.FechaEntrega || "");
+          case "numero": return String(fa.NumeroPedido || "").localeCompare(String(fb.NumeroPedido || ""), "es", { numeric: true });
+          case "operador": return String(fa.Operador || "").localeCompare(String(fb.Operador || ""), "es");
+          case "campo": return String(fa.Campo || "").localeCompare(String(fb.Campo || ""), "es");
+          case "insumo": return String(fa.Insumo || "").localeCompare(String(fb.Insumo || ""), "es");
+          case "cantidad-desc": return (parseFloat(fb.Cantidad) || 0) - (parseFloat(fa.Cantidad) || 0);
+          case "venc-asc":
+          default:
+            // Sin fecha de entrega → al final
+            if (!fa.FechaEntrega && !fb.FechaEntrega) return 0;
+            if (!fa.FechaEntrega) return 1;
+            if (!fb.FechaEntrega) return -1;
+            return fa.FechaEntrega.localeCompare(fb.FechaEntrega);
+        }
+      };
+    }
+
+    // Agrupa el array ya filtrado/ordenado según el criterio elegido
+    function agruparPendAsig(data, groupBy) {
+      if (groupBy === "vencimiento") {
+        var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        var buckets = [
+          { key: "vencido", label: "⚠ Vencidos", items: [] },
+          { key: "hoy7", label: "🗓 Próximos 7 días", items: [] },
+          { key: "hoy30", label: "📅 8 a 30 días", items: [] },
+          { key: "lejos", label: "🕐 Más de 30 días", items: [] },
+          { key: "sinfecha", label: "— Sin fecha de entrega", items: [] },
+        ];
+        data.forEach(function (item) {
+          var fe = item.fields.FechaEntrega;
+          if (!fe) { buckets[4].items.push(item); return; }
+          var d = new Date(fe + "T00:00:00");
+          var dias = Math.round((d - hoy) / 86400000);
+          if (dias < 0) buckets[0].items.push(item);
+          else if (dias <= 7) buckets[1].items.push(item);
+          else if (dias <= 30) buckets[2].items.push(item);
+          else buckets[3].items.push(item);
+        });
+        return buckets.filter(function (b) { return b.items.length; });
+      }
+
+      var getKey = groupBy === "zona"
+        ? function (f) { return (camposZona[f.Campo] || "").trim(); }
+        : groupBy === "operador"
+          ? function (f) { return (f.Operador || "").trim(); }
+          : function (f) { return (f.Insumo || "").trim(); };
+      var mapa = {}, orden = [];
+      data.forEach(function (item) {
+        var k = getKey(item.fields) || "— Sin dato";
+        if (!mapa[k]) { mapa[k] = []; orden.push(k); }
+        mapa[k].push(item);
+      });
+      orden.sort(function (a, b) { return a.localeCompare(b, "es"); });
+      return orden.map(function (k) { return { key: k, label: k, items: mapa[k] }; });
+    }
+
+    function renderPendAsigRow(item) {
+      var f = item.fields; var spId = item.id;
+      var _rp = f.RetiroPersonal;
+      var retiroFlag = (_rp === true || String(_rp || "").toUpperCase() === "SI") ? "SI" : "";
+      var _ia = getInsumoInfo(f.Insumo);
+      var _uniA = f.Unidad || _ia.unidad || "";
+      var _presA = f.Presentacion || _ia.presentacion || "";
+      var html = '<div data-search="' + (f.NumeroPedido + ' ' + f.Insumo + ' ' + f.Campo + ' ' + f.Operador).toLowerCase().replace(/"/g, '&quot;') + '" style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:2px;letter-spacing:0.02em;">N° ' + f.NumeroPedido + '</div>';
+      html += '<div style="font-weight:700;font-size:14px;">' + f.Insumo + '<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">' + f.Cantidad + ' ' + _uniA + '</span>' + (_presA ? ' <span style="color:var(--light);">(' + _presA + ')</span>' : '') + ' </div>';
+      html += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">' +
+        '<span>📍 ' + f.Campo + (f.Localidad ? ' <b style="color:var(--blue);">' + f.Localidad + '</b>' : '') + ' </span><span>👤 ' + f.Operador + '</span></div>' +
+        (f.FechaEntrega ? '<div style="margin-top:4px;"><span style="display:inline-block;background:var(--orange-light);color:var(--orange);font-weight:700;font-size:12px;border-radius:6px;padding:2px 8px;">🗓 Entrega: ' + fmtFecha(f.FechaEntrega) + '</span></div>' : '');
+      if (f.Observaciones) html += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 ' + esc(f.Observaciones) + '</div>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
+      html += '<span class="badge badge-pending">Pendiente</span>';
+      html += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\'' + spId + '\',\'' + esc(f.Insumo) + '\',\'' + f.Cantidad + ' ' + _uniA + ' (' + esc(_presA) + ')' + '\',\'' + esc(f.Campo) + '\',' + parseFloat(f.Cantidad || 0) + ',\'' + retiroFlag + '\',\'' + esc(f.FechaEntrega || '') + '\',\'Pendiente insumos\')">Asignar origen' + (retiroFlag ? ' 🏃' : '') + '</button>';
+      html += '<button class="btn btn-danger btn-sm" title="Eliminar pedido" onclick="eliminarPedido(\'' + spId + '\')">🗑</button>';
+      html += '</div></div>';
+      return html;
+    }
+
+    function pendAsigDatosFiltrados() {
+      var q = ((document.getElementById("inp-ins-search") || {}).value || "").toLowerCase().trim();
+      var data = pedidosInsumos.slice();
+      if (pendAsigFiltros.campo) data = data.filter(function (i) { return (i.fields.Campo || "") === pendAsigFiltros.campo; });
+      if (pendAsigFiltros.operador) data = data.filter(function (i) { return (i.fields.Operador || "") === pendAsigFiltros.operador; });
+      if (pendAsigFiltros.insumo) data = data.filter(function (i) { return (i.fields.Insumo || "") === pendAsigFiltros.insumo; });
+      if (q) {
+        data = data.filter(function (i) {
+          var f = i.fields;
+          return (String(f.NumeroPedido || "") + " " + String(f.Insumo || "") + " " + String(f.Campo || "") + " " + String(f.Operador || "") + " " + String(f.Localidad || "")).toLowerCase().indexOf(q) >= 0;
+        });
+      }
+      data.sort(pendAsigComparator(pendAsigSortBy));
+      return data;
+    }
+
+    function renderPendAsignacion() {
+      var cA = document.getElementById("ins-pedidos-list");
+      if (!cA) return;
+      poblarFiltrosPendAsig();
+      var data = pendAsigDatosFiltrados();
+
+      if (!data.length) {
+        cA.innerHTML = '<div style="padding:48px;text-align:center;color:var(--light);">' +
+          (pedidosInsumos.length ? "Sin resultados para estos filtros" : "No hay pedidos pendientes de asignación ✓") + '</div>';
+        return;
+      }
+
+      var html;
+      if (pendAsigGroupBy === "none") {
+        html = data.map(renderPendAsigRow).join("");
+      } else {
+        var grupos = agruparPendAsig(data, pendAsigGroupBy);
+        html = grupos.map(function (g) {
+          return '<div style="background:var(--bg);padding:8px 18px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);border-bottom:1px solid var(--border);border-top:1px solid var(--border);">' +
+            esc(g.label) + ' <span style="color:var(--orange);">(' + g.items.length + ')</span></div>' +
+            g.items.map(renderPendAsigRow).join("");
+        }).join("");
+      }
+      cA.innerHTML = '<div style="overflow:hidden;">' + html + '</div>';
+    }
+
+    function exportarPendAsignacionExcel() {
+      var data = pendAsigDatosFiltrados();
+      if (!data.length) { showToast("No hay pedidos pendientes de asignación para exportar", "error"); return; }
+      var headers = ["N° Pedido", "Operador", "Campo", "Localidad", "Insumo", "Cantidad", "Unidad", "Presentación", "Retiro Personal", "Observaciones", "F. Entrega", "F. Pedido"];
+      var rows = data.map(function (item) {
+        var f = item.fields;
+        var _inf = getInsumoInfo(f.Insumo);
+        return [
+          f.NumeroPedido || "", f.Operador || "", f.Campo || "", f.Localidad || "",
+          f.Insumo || "", f.Cantidad || "", f.Unidad || _inf.unidad || "", f.Presentacion || _inf.presentacion || "",
+          (f.RetiroPersonal === true || String(f.RetiroPersonal || "").toUpperCase() === "SI") ? "Sí" : "",
+          f.Observaciones || "", f.FechaEntrega || "",
+          f.FechaPedido ? new Date(f.FechaPedido).toLocaleDateString("es-AR") : ""
+        ];
+      });
+      var ws = XLSX.utils.aoa_to_sheet([headers].concat(rows));
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pend. asignación");
+      XLSX.writeFile(wb, "PendientesAsignacion_" + new Date().toISOString().slice(0, 10) + ".xlsx");
     }
 
     async function cargarPedidosInsumos() {
@@ -3634,36 +3886,7 @@
         var cntA = pedidosInsumos.length;
         document.getElementById("ins-asig-count").textContent = cntA ? "(" + cntA + ")" : "";
         document.getElementById("ins-pend-count").textContent = cntA ? "(" + cntA + ")" : "";
-
-        var htmlA = "";
-        if (!cntA) {
-          htmlA = '<div style="padding:48px;text-align:center;color:var(--light);">No hay pedidos pendientes de asignación ✓</div>';
-        } else {
-          pedidosInsumos.forEach(function (item) {
-            var f = item.fields; var spId = item.id;
-            var _rp = f.RetiroPersonal;
-            var retiroFlag = (_rp === true || String(_rp || "").toUpperCase() === "SI") ? "SI" : "";
-            console.log("[retiro] Pedido", f.NumeroPedido, "| RetiroPersonal raw =", JSON.stringify(_rp), "| flag =", retiroFlag || "(vacío)");
-            var _ia = getInsumoInfo(f.Insumo);
-            var _uniA = f.Unidad || _ia.unidad || "";
-            var _presA = f.Presentacion || _ia.presentacion || "";
-            htmlA += '<div data-search="' + (f.NumeroPedido + ' ' + f.Insumo + ' ' + f.Campo + ' ' + f.Operador).toLowerCase().replace(/"/g, '&quot;') + '" style="display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);gap:12px;">';
-            htmlA += '<div style="flex:1;min-width:0;">';
-            htmlA += '<div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:2px;letter-spacing:0.02em;">N° ' + f.NumeroPedido + '</div>';
-            htmlA += '<div style="font-weight:700;font-size:14px;">' + f.Insumo + '<span style="font-weight:400;color:var(--sub);margin-left:8px;font-size:12px;">' + f.Cantidad + ' ' + _uniA + '</span>' + (_presA ? ' <span style="color:var(--light);">(' + _presA + ')</span>' : '') + ' </div>';
-            htmlA += '<div style="font-size:12px;color:var(--sub);display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px;">' +
-              '<span>📍 ' + f.Campo + (f.Localidad ? ' <b style="color:var(--blue);">' + f.Localidad + '</b>' : '') + ' </span><span>👤 ' + f.Operador + '</span></div>' +
-              (f.FechaEntrega ? '<div style="margin-top:4px;"><span style="display:inline-block;background:var(--orange-light);color:var(--orange);font-weight:700;font-size:12px;border-radius:6px;padding:2px 8px;">🗓 Entrega: ' + fmtFecha(f.FechaEntrega) + '</span></div>' : '');
-            if (f.Observaciones) htmlA += '<div style="font-size:12px;font-weight:600;color:var(--orange);margin-top:3px;">📝 ' + esc(f.Observaciones) + '</div>';
-            htmlA += '</div>';
-            htmlA += '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
-            htmlA += '<span class="badge badge-pending">Pendiente</span>';
-            htmlA += '<button class="btn btn-brand btn-sm" onclick="abrirModalOrigen(\'' + spId + '\',\'' + esc(f.Insumo) + '\',\'' + f.Cantidad + ' ' + _uniA + ' (' + esc(_presA) + ')' + '\',\'' + esc(f.Campo) + '\',' + parseFloat(f.Cantidad || 0) + ',\'' + retiroFlag + '\',\'' + esc(f.FechaEntrega || '') + '\',\'Pendiente insumos\')">Asignar origen' + (retiroFlag ? ' 🏃' : '') + '</button>';
-            htmlA += '<button class="btn btn-danger btn-sm" title="Eliminar pedido" onclick="eliminarPedido(\'' + spId + '\')">🗑</button>';
-            htmlA += '</div></div>';
-          });
-        }
-        cA.innerHTML = '<div style="overflow:hidden;">' + htmlA + '</div>';
+        renderPendAsignacion();
 
         // ── Tab 2: pendientes logística (editables por insumos, con o sin camión) ─────
         var pedidosLog = items.filter(function (i) {
@@ -5713,8 +5936,10 @@
     }
 
     function filtrarPedidosInsumos(q) {
+      // Pend. asignación tiene su propio pipeline de filtro/orden/agrupado
+      renderPendAsignacion();
       var ql = (q || "").toLowerCase().trim();
-      var containers = ["ins-pedidos-list", "ins-logistica-list", "ins-encamino-list", "ins-cerrados-list"];
+      var containers = ["ins-logistica-list", "ins-encamino-list", "ins-cerrados-list"];
       containers.forEach(function (cid) {
         var c = document.getElementById(cid);
         if (!c) return;
