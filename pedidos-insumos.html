@@ -3851,12 +3851,12 @@
     function exportarPendAsignacionExcel() {
       var data = pendAsigDatosFiltrados();
       if (!data.length) { showToast("No hay pedidos pendientes de asignación para exportar", "error"); return; }
-      var headers = ["N° Pedido", "Operador", "Campo", "Localidad", "Insumo", "Cantidad", "Unidad", "Presentación", "Retiro Personal", "Observaciones", "F. Entrega", "F. Pedido"];
+      var headers = ["N° Pedido", "Operador", "Campo", "Zona", "Localidad", "Insumo", "Cantidad", "Unidad", "Presentación", "Retiro Personal", "Observaciones", "F. Entrega", "F. Pedido"];
       var rows = data.map(function (item) {
         var f = item.fields;
         var _inf = getInsumoInfo(f.Insumo);
         return [
-          f.NumeroPedido || "", f.Operador || "", f.Campo || "", f.Localidad || "",
+          f.NumeroPedido || "", f.Operador || "", f.Campo || "", camposZona[f.Campo] || "", f.Localidad || "",
           f.Insumo || "", f.Cantidad || "", f.Unidad || _inf.unidad || "", f.Presentacion || _inf.presentacion || "",
           (f.RetiroPersonal === true || String(f.RetiroPersonal || "").toUpperCase() === "SI") ? "Sí" : "",
           f.Observaciones || "", f.FechaEntrega || "",
