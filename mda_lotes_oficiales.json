@@ -306,15 +306,27 @@
   "EL CAMPITO - ANA MARIA ELICECHE": [
     {
       "lote": "EC1",
-      "descripcion_mda": "EL CAMPITO - ANA MARIA ELICECHE_EC1",
-      "has": 99.0,
-      "partido": "LOBERIA",
-      "localidad": "LOBERIA",
-      "zona": "MyS Serrano",
+      "descripcion_mda": "Eliceche1",
+      "has": 100.0,
+      "partido": "NECOCHEA",
+      "localidad": "",
+      "zona": "Costa Sur",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "4384"
+    },
+    {
+      "lote": "Eliceche1",
+      "descripcion_mda": "Eliceche1",
+      "has": 100.0,
+      "partido": "NECOCHEA",
+      "localidad": "",
+      "zona": "Costa Sur",
+      "cuit": "30710939345",
+      "cultivo": "Girasol Alto Oleico",
+      "encontrado_en_mda": true,
+      "id_mda": "4384"
     }
   ],
   "EL CARRILERO-JUAN CARLOS FRANGELLA": [
@@ -396,15 +408,15 @@
     },
     {
       "lote": "EC3",
-      "descripcion_mda": "EL CEIBO-NORMA GARRIDO Y OTRA EC3",
+      "descripcion_mda": "El Ceibo-Norma Garrido Y Otra Ec1 (Mapeo directo EC3 -> EC1)",
       "has": 15.4,
       "partido": "",
       "localidad": "",
       "zona": "Cuenca Media",
       "cuit": "30710939345",
       "cultivo": "Trigo + Soja de 2da",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5772"
     },
     {
       "lote": "EC4",
@@ -535,40 +547,52 @@
   ],
   "EL GUALEGUAY-SUC. DE NIELSEN MIRIAM ESTHER": [
     {
-      "lote": "EG3",
-      "descripcion_mda": "EL GUALEGUAY-SUC. DE NIELSEN MIRIAM ESTHER EG3",
-      "has": 47.32,
-      "partido": "",
+      "lote": "El Gualeguay 3-4-5",
+      "descripcion_mda": "El Gualeguay 3-4-5",
+      "has": 140.0,
+      "partido": "NECOCHEA",
       "localidad": "",
-      "zona": "MyS Serrano",
+      "zona": "Costa Sur",
       "cuit": "30710939345",
-      "cultivo": "Cebada + Soja de 2da",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "cultivo": "Cebada",
+      "encontrado_en_mda": true,
+      "id_mda": "4382"
+    },
+    {
+      "lote": "EG3",
+      "descripcion_mda": "El Gualeguay 3-4-5",
+      "has": 45.0,
+      "partido": "NECOCHEA",
+      "localidad": "",
+      "zona": "Costa Sur",
+      "cuit": "30710939345",
+      "cultivo": "Cebada",
+      "encontrado_en_mda": true,
+      "id_mda": "4382"
     },
     {
       "lote": "EG4",
-      "descripcion_mda": "EL GUALEGUAY-SUC. DE NIELSEN MIRIAM ESTHER EG4",
-      "has": 45.5,
-      "partido": "",
+      "descripcion_mda": "El Gualeguay 3-4-5",
+      "has": 45.0,
+      "partido": "NECOCHEA",
       "localidad": "",
-      "zona": "MyS Serrano",
+      "zona": "Costa Sur",
       "cuit": "30710939345",
-      "cultivo": "Cebada + Soja de 2da",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "cultivo": "Cebada",
+      "encontrado_en_mda": true,
+      "id_mda": "4382"
     },
     {
       "lote": "EG5",
-      "descripcion_mda": "EL GUALEGUAY-SUC. DE NIELSEN MIRIAM ESTHER EG5",
-      "has": 46.72,
-      "partido": "",
+      "descripcion_mda": "El Gualeguay 3-4-5",
+      "has": 50.0,
+      "partido": "NECOCHEA",
       "localidad": "",
-      "zona": "MyS Serrano",
+      "zona": "Costa Sur",
       "cuit": "30710939345",
-      "cultivo": "Cebada + Soja de 2da",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "cultivo": "Cebada",
+      "encontrado_en_mda": true,
+      "id_mda": "4382"
     }
   ],
   "EL MADRIGAL-EL MADRIGAL SRL": [
@@ -1068,15 +1092,39 @@
   "HELLESTED - HELLESTED LIA ANA Y OTROS": [
     {
       "lote": "H1",
-      "descripcion_mda": "HELLESTED - HELLESTED LIA ANA Y OTROS_H1",
-      "has": 96.5,
-      "partido": "LOBERIA",
-      "localidad": "LOBERIA",
-      "zona": "MyS Serrano",
+      "descripcion_mda": "Hellested1",
+      "has": 97.0,
+      "partido": "NECOCHEA",
+      "localidad": "",
+      "zona": "Costa Sur",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "4383"
+    },
+    {
+      "lote": "Helleste1",
+      "descripcion_mda": "Hellested1",
+      "has": 97.0,
+      "partido": "NECOCHEA",
+      "localidad": "",
+      "zona": "Costa Sur",
+      "cuit": "30710939345",
+      "cultivo": "Girasol Alto Oleico",
+      "encontrado_en_mda": true,
+      "id_mda": "4383"
+    },
+    {
+      "lote": "Hellested1",
+      "descripcion_mda": "Hellested1",
+      "has": 97.0,
+      "partido": "NECOCHEA",
+      "localidad": "",
+      "zona": "Costa Sur",
+      "cuit": "30710939345",
+      "cultivo": "Girasol Alto Oleico",
+      "encontrado_en_mda": true,
+      "id_mda": "4383"
     }
   ],
   "LA ALBORADA-ESTANCIA LA ALBORADA S.R.L.": [
@@ -2448,111 +2496,171 @@
   "LA PLEGARIA-DOMINGUEZ MANUEL ABEL": [
     {
       "lote": "P Lote 1y2a",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P Lote 1y2a",
-      "has": 111.0,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp1Y2A",
+      "has": 109.53,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Colza + Soja de 2da",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5907"
+    },
+    {
+      "lote": "Lp1Y2A",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp1Y2A",
+      "has": 109.53,
+      "partido": "CNEL. PRINGLES",
+      "localidad": "",
+      "zona": "Sudoeste",
+      "cuit": "30710939345",
+      "cultivo": "Colza + Soja de 2da",
+      "encontrado_en_mda": true,
+      "id_mda": "5907"
     },
     {
       "lote": "P Lote 1y2b",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P Lote 1y2b",
-      "has": 111.0,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp1Y2B",
+      "has": 109.52,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Cebada + Soja de 2da",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5908"
+    },
+    {
+      "lote": "Lp1Y2B",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp1Y2B",
+      "has": 109.52,
+      "partido": "CNEL. PRINGLES",
+      "localidad": "",
+      "zona": "Sudoeste",
+      "cuit": "30710939345",
+      "cultivo": "Cebada + Soja de 2da",
+      "encontrado_en_mda": true,
+      "id_mda": "5908"
     },
     {
       "lote": "P lote3",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P lote3",
-      "has": 98.0,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lplote3",
+      "has": 96.42,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Cebada + Soja de 2da",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5915"
+    },
+    {
+      "lote": "Lplote3",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lplote3",
+      "has": 96.42,
+      "partido": "CNEL. PRINGLES",
+      "localidad": "",
+      "zona": "Sudoeste",
+      "cuit": "30710939345",
+      "cultivo": "Cebada + Soja de 2da",
+      "encontrado_en_mda": true,
+      "id_mda": "5915"
+    },
+    {
+      "lote": "Lp3",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp3",
+      "has": 86.75,
+      "partido": "CNEL. PRINGLES",
+      "localidad": "",
+      "zona": "Sudoeste",
+      "cuit": "30710939345",
+      "cultivo": "Cebada + Soja de 2da",
+      "encontrado_en_mda": true,
+      "id_mda": "5910"
     },
     {
       "lote": "P1",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P1",
-      "has": 90.0,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp1",
+      "has": 88.34,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5906"
+    },
+    {
+      "lote": "Lp1",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp1",
+      "has": 88.34,
+      "partido": "CNEL. PRINGLES",
+      "localidad": "",
+      "zona": "Sudoeste",
+      "cuit": "30710939345",
+      "cultivo": "Girasol Alto Oleico",
+      "encontrado_en_mda": true,
+      "id_mda": "5906"
     },
     {
       "lote": "P2",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P2",
-      "has": 95.0,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp2",
+      "has": 84.25,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5909"
     },
     {
       "lote": "P3",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P3",
-      "has": 86.95,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp3",
+      "has": 86.75,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5910"
     },
     {
       "lote": "P4",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P4",
-      "has": 75.17,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp4",
+      "has": 75.7,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5911"
     },
     {
       "lote": "P5",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P5",
-      "has": 52.88,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp5",
+      "has": 52.34,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5913"
     },
     {
       "lote": "P6",
-      "descripcion_mda": "LA PLEGARIA-DOMINGUEZ MANUEL ABEL P6",
-      "has": 61.0,
-      "partido": "",
+      "descripcion_mda": "La Plegaria-Dominguez Manuel Abel Lp6",
+      "has": 60.07,
+      "partido": "CNEL. PRINGLES",
       "localidad": "",
       "zona": "Sudoeste",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "5914"
     }
   ],
   "LA QUERENCIA-ESTABLECIMIENTO LA QUERENCIA S.A.": [
@@ -3041,6 +3149,44 @@
       "cultivo": "Girasol Alto Oleico",
       "encontrado_en_mda": true,
       "id_mda": "5967"
+    }
+  ],
+  "LAS VIZCACHERAS": [
+    {
+      "lote": "LV13",
+      "descripcion_mda": "LAS VIZCACHERAS LV13",
+      "has": 39.44,
+      "partido": "FLORENTINO AMEGHINO",
+      "localidad": "AMEGHINO",
+      "zona": "Noroeste",
+      "cuit": "30710939345",
+      "cultivo": "Soja",
+      "encontrado_en_mda": true,
+      "id_mda": "9474"
+    },
+    {
+      "lote": "LV14",
+      "descripcion_mda": "LAS VIZCACHERAS LV14",
+      "has": 70.72,
+      "partido": "FLORENTINO AMEGHINO",
+      "localidad": "AMEGHINO",
+      "zona": "Noroeste",
+      "cuit": "30710939345",
+      "cultivo": "Maiz Tardio",
+      "encontrado_en_mda": true,
+      "id_mda": "9475"
+    },
+    {
+      "lote": "LV16",
+      "descripcion_mda": "LAS VIZCACHERAS LV16",
+      "has": 76.63,
+      "partido": "FLORENTINO AMEGHINO",
+      "localidad": "AMEGHINO",
+      "zona": "Noroeste",
+      "cuit": "30710939345",
+      "cultivo": "Girasol",
+      "encontrado_en_mda": true,
+      "id_mda": "9476"
     }
   ],
   "LOS CIERVOS-SUC. DE MORET LUCILA SARA": [
