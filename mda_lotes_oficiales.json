@@ -459,6 +459,32 @@
       "id_mda": "7947"
     }
   ],
+  "EL ESTRIBO": [
+    {
+      "lote": "EE1",
+      "descripcion_mda": "EL ESTRIBO EE1",
+      "has": 38.67,
+      "partido": "AZUL",
+      "localidad": "AZUL",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9798"
+    },
+    {
+      "lote": "EE5",
+      "descripcion_mda": "EL ESTRIBO EE5",
+      "has": 44.69,
+      "partido": "AZUL",
+      "localidad": "AZUL",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9799"
+    }
+  ],
   "EL GAVILAN-DOMINGUEZ MANUEL ABEL": [
     {
       "lote": "EG1",
@@ -5521,6 +5547,80 @@
       "id_mda": "7819"
     }
   ],
+  "SANTA MARTA": [
+    {
+      "lote": "SM3",
+      "descripcion_mda": "SANTA MARTA SM3",
+      "has": 94.46,
+      "partido": "LOBERIA",
+      "localidad": "MATIENZO",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9803"
+    },
+    {
+      "lote": "SM4",
+      "descripcion_mda": "SANTA MARTA SM4",
+      "has": 94.01,
+      "partido": "LOBERIA",
+      "localidad": "MATIENZO",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9804"
+    },
+    {
+      "lote": "SM5",
+      "descripcion_mda": "SANTA MARTA SM5",
+      "has": 58.92,
+      "partido": "LOBERIA",
+      "localidad": "MATIENZO",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9805"
+    },
+    {
+      "lote": "SM6",
+      "descripcion_mda": "SANTA MARTA SM6",
+      "has": 71.9,
+      "partido": "LOBERIA",
+      "localidad": "MATIENZO",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9806"
+    },
+    {
+      "lote": "SM7",
+      "descripcion_mda": "SANTA MARTA SM7",
+      "has": 45.01,
+      "partido": "LOBERIA",
+      "localidad": "MATIENZO",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9807"
+    },
+    {
+      "lote": "SM8",
+      "descripcion_mda": "SANTA MARTA SM8",
+      "has": 72.89,
+      "partido": "LOBERIA",
+      "localidad": "MATIENZO",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9808"
+    }
+  ],
   "SANTIAGO ITURRIAGA - PISANO ALFREDO ROQUE": [
     {
       "lote": "SI1",
@@ -5789,6 +5889,44 @@
       "cultivo": "Girasol Alto Oleico",
       "encontrado_en_mda": false,
       "id_mda": null
+    }
+  ],
+  "TRES LOMAS - NAFI S A": [
+    {
+      "lote": "L25",
+      "descripcion_mda": "TRES LOMAS - NAFI S A L25",
+      "has": 204.17,
+      "partido": "BENITO JUAREZ",
+      "localidad": "BENITO JUAREZ",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9800"
+    },
+    {
+      "lote": "L9a",
+      "descripcion_mda": "TRES LOMAS - NAFI S A L9a",
+      "has": 210.67,
+      "partido": "BENITO JUAREZ",
+      "localidad": "BENITO JUAREZ",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9801"
+    },
+    {
+      "lote": "L9cAgricola",
+      "descripcion_mda": "TRES LOMAS - NAFI S A L9cAgricola",
+      "has": 14.78,
+      "partido": "BENITO JUAREZ",
+      "localidad": "BENITO JUAREZ",
+      "zona": "Mar y Sierras Serrano",
+      "cuit": "30710939345",
+      "cultivo": "",
+      "encontrado_en_mda": true,
+      "id_mda": "9802"
     }
   ]
 }
