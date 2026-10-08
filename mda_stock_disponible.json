@@ -1,7 +1,7 @@
 {
   "_descripcion": "Stock oficial vivo de MDA SIGIRAO para ADBLICK GRANOS S.A. (30710939345)",
-  "fecha_actualizacion": "2026-10-06 08:53:33",
-  "total_ids_con_stock": 246,
+  "fecha_actualizacion": "2026-10-08 15:56:55",
+  "total_ids_con_stock": 247,
   "stock_por_id": {
     "6401": {
       "cantidad": 0.1,
@@ -836,6 +836,13 @@
       "sustancia": "PROTHIOCONAZOLE + TRIFLOXISTROBIN",
       "ct": "IV"
     },
+    "6272": {
+      "cantidad": 4617.19,
+      "nombre": "MCPA 28",
+      "senasa": "34567",
+      "sustancia": "M.C.P.A.",
+      "ct": "III"
+    },
     "9329": {
       "cantidad": 2558.46,
       "nombre": "MIRAVIS DUO CON TECNOLOGIA ADEPIDYN",
@@ -1156,13 +1163,6 @@
       "nombre": "LUXOR",
       "senasa": "38231",
       "sustancia": "CLETODIM",
-      "ct": "III"
-    },
-    "6272": {
-      "cantidad": 4597.19,
-      "nombre": "MCPA 28",
-      "senasa": "34567",
-      "sustancia": "M.C.P.A.",
       "ct": "III"
     },
     "5577": {
@@ -1689,6 +1689,13 @@
       "senasa": "38048",
       "sustancia": "DIFENOCONAZOLE",
       "ct": "III"
+    },
+    "13975": {
+      "cantidad": 1340.0,
+      "nombre": "MEGAFOL",
+      "senasa": "18180",
+      "sustancia": "FERTILIZANTE - COMPUESTO - FOLIAR - NITROGENADO POTASICO",
+      "ct": "FT"
     },
     "6265": {
       "cantidad": 2000.0,
@@ -2560,6 +2567,13 @@
       "sustancia": "PROTHIOCONAZOLE + TRIFLOXISTROBIN",
       "ct": "IV"
     },
+    "34567": {
+      "cantidad": 4617.19,
+      "id_mda": "6272",
+      "nombre": "MCPA 28",
+      "sustancia": "M.C.P.A.",
+      "ct": "III"
+    },
     "38954": {
       "cantidad": 2558.46,
       "id_mda": "9329",
@@ -2880,13 +2894,6 @@
       "id_mda": "8655",
       "nombre": "LUXOR",
       "sustancia": "CLETODIM",
-      "ct": "III"
-    },
-    "34567": {
-      "cantidad": 4597.19,
-      "id_mda": "6272",
-      "nombre": "MCPA 28",
-      "sustancia": "M.C.P.A.",
       "ct": "III"
     },
     "32630": {
@@ -3413,6 +3420,13 @@
       "nombre": "SHELTER 3 FS",
       "sustancia": "DIFENOCONAZOLE",
       "ct": "III"
+    },
+    "18180": {
+      "cantidad": 1340.0,
+      "id_mda": "13975",
+      "nombre": "MEGAFOL",
+      "sustancia": "FERTILIZANTE - COMPUESTO - FOLIAR - NITROGENADO POTASICO",
+      "ct": "FT"
     },
     "34554": {
       "cantidad": 2000.0,
@@ -4284,6 +4298,13 @@
       "senasa": "36374",
       "sustancia": "PROTHIOCONAZOLE + TRIFLOXISTROBIN"
     },
+    "mcpa 28": {
+      "cantidad": 4617.19,
+      "id_mda": "6272",
+      "nombre": "MCPA 28",
+      "senasa": "34567",
+      "sustancia": "M.C.P.A."
+    },
     "miravis duo con tecnologia adepidyn": {
       "cantidad": 2558.46,
       "id_mda": "9329",
@@ -4612,13 +4633,6 @@
       "nombre": "CLETODIM INZIRA",
       "senasa": "",
       "sustancia": "CLETODIM"
-    },
-    "mcpa 28": {
-      "cantidad": 4597.19,
-      "id_mda": "6272",
-      "nombre": "MCPA 28",
-      "senasa": "34567",
-      "sustancia": "M.C.P.A."
     },
     "trifluralina atanor 44 5": {
       "cantidad": 260.0,
@@ -5158,6 +5172,13 @@
       "nombre": "SHELTER 3 FS",
       "senasa": "38048",
       "sustancia": "DIFENOCONAZOLE"
+    },
+    "megafol": {
+      "cantidad": 1340.0,
+      "id_mda": "13975",
+      "nombre": "MEGAFOL",
+      "senasa": "18180",
+      "sustancia": "FERTILIZANTE - COMPUESTO - FOLIAR - NITROGENADO POTASICO"
     },
     "engeo": {
       "cantidad": 2000.0,
@@ -5754,10 +5775,10 @@
       }
     },
     "M.C.P.A.": {
-      "cantidad": 18423.65,
+      "cantidad": 18443.65,
       "marcas": {
         "MCPA AMINA 75": 7586.46,
-        "MCPA 28": 4597.19,
+        "MCPA 28": 4617.19,
         "MATAYUYOS SELECTIVO MCPA": 6240.0
       }
     },
@@ -6064,6 +6085,12 @@
       "cantidad": 1290.0,
       "marcas": {
         "SHELTER 3 FS": 1290.0
+      }
+    },
+    "FERTILIZANTE - COMPUESTO - FOLIAR - NITROGENADO POTASICO": {
+      "cantidad": 1340.0,
+      "marcas": {
+        "MEGAFOL": 1340.0
       }
     },
     "METIL TIOFANATO + TOLCLOFOS METIL + CAPTAN": {
