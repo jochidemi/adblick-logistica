@@ -1,7 +1,7 @@
 {
   "_descripcion": "Stock oficial vivo de MDA SIGIRAO para ADBLICK GRANOS S.A. (30710939345)",
-  "fecha_actualizacion": "2026-10-08 15:56:55",
-  "total_ids_con_stock": 247,
+  "fecha_actualizacion": "2026-10-09 15:47:37",
+  "total_ids_con_stock": 250,
   "stock_por_id": {
     "6401": {
       "cantidad": 0.1,
@@ -81,7 +81,7 @@
       "ct": "III"
     },
     "7554": {
-      "cantidad": 115.0,
+      "cantidad": 163.0,
       "nombre": "LIGATE",
       "senasa": "36831",
       "sustancia": "SULFOMETURON METIL + CLORIMURON ETIL",
@@ -942,7 +942,7 @@
       "ct": "III"
     },
     "9125": {
-      "cantidad": 3000.0,
+      "cantidad": 3800.0,
       "nombre": "MAZETA",
       "senasa": "38742",
       "sustancia": "IMAZETAPIR",
@@ -1247,6 +1247,13 @@
       "nombre": "DUAL GOLD",
       "senasa": "33400",
       "sustancia": "S-METOLACLORO",
+      "ct": "III"
+    },
+    "8876": {
+      "cantidad": 1780.0,
+      "nombre": "ADAMA ESSENTIALS RAINBOW EC",
+      "senasa": "38476",
+      "sustancia": "FLUROCLORIDONA",
       "ct": "III"
     },
     "16641": {
@@ -1648,11 +1655,25 @@
       "sustancia": "DIFLUFENICAN",
       "ct": "III"
     },
+    "10933": {
+      "cantidad": 760.0,
+      "nombre": "GUERRER MYL",
+      "senasa": "40585",
+      "sustancia": "SULFENTRAZONE",
+      "ct": "III"
+    },
     "7399": {
       "cantidad": 800.0,
       "nombre": "KUMMEL CORRECTOR DE PH",
       "senasa": "36612",
       "sustancia": "ACIDO CITRICO",
+      "ct": "IV"
+    },
+    "16599": {
+      "cantidad": 850.0,
+      "nombre": "VOLIAM 20",
+      "senasa": "42452",
+      "sustancia": "CLORANTRANILIPROLE",
       "ct": "IV"
     },
     "10291": {
@@ -1812,7 +1833,7 @@
       "ct": "III"
     },
     "36831": {
-      "cantidad": 115.0,
+      "cantidad": 163.0,
       "id_mda": "7554",
       "nombre": "LIGATE",
       "sustancia": "SULFOMETURON METIL + CLORIMURON ETIL",
@@ -2673,7 +2694,7 @@
       "ct": "III"
     },
     "38742": {
-      "cantidad": 3000.0,
+      "cantidad": 3800.0,
       "id_mda": "9125",
       "nombre": "MAZETA",
       "sustancia": "IMAZETAPIR",
@@ -2978,6 +2999,13 @@
       "id_mda": "5754",
       "nombre": "DUAL GOLD",
       "sustancia": "S-METOLACLORO",
+      "ct": "III"
+    },
+    "38476": {
+      "cantidad": 1780.0,
+      "id_mda": "8876",
+      "nombre": "ADAMA ESSENTIALS RAINBOW EC",
+      "sustancia": "FLUROCLORIDONA",
       "ct": "III"
     },
     "42475": {
@@ -3379,11 +3407,25 @@
       "sustancia": "DIFLUFENICAN",
       "ct": "III"
     },
+    "40585": {
+      "cantidad": 760.0,
+      "id_mda": "10933",
+      "nombre": "GUERRER MYL",
+      "sustancia": "SULFENTRAZONE",
+      "ct": "III"
+    },
     "36612": {
       "cantidad": 800.0,
       "id_mda": "7399",
       "nombre": "KUMMEL CORRECTOR DE PH",
       "sustancia": "ACIDO CITRICO",
+      "ct": "IV"
+    },
+    "42452": {
+      "cantidad": 850.0,
+      "id_mda": "16599",
+      "nombre": "VOLIAM 20",
+      "sustancia": "CLORANTRANILIPROLE",
       "ct": "IV"
     },
     "39928": {
@@ -3543,7 +3585,7 @@
       "sustancia": "CARFENTRAZONE ETHYL"
     },
     "ligate": {
-      "cantidad": 115.0,
+      "cantidad": 163.0,
       "id_mda": "7554",
       "nombre": "LIGATE",
       "senasa": "36831",
@@ -4404,7 +4446,7 @@
       "sustancia": "ATRAZINA"
     },
     "atanor imazetapir 10 6 sl": {
-      "cantidad": 3000.0,
+      "cantidad": 3800.0,
       "id_mda": "9125",
       "nombre": "ATANOR IMAZETAPIR 10,6 SL",
       "senasa": "38742",
@@ -4717,6 +4759,13 @@
       "nombre": "DUAL GOLD",
       "senasa": "33400",
       "sustancia": "S-METOLACLORO"
+    },
+    "adama essentials rainbow ec": {
+      "cantidad": 1780.0,
+      "id_mda": "8876",
+      "nombre": "ADAMA ESSENTIALS RAINBOW EC",
+      "senasa": "38476",
+      "sustancia": "FLUROCLORIDONA"
     },
     "diflu 50 controler ii": {
       "cantidad": 85.0,
@@ -5131,12 +5180,26 @@
       "senasa": "37643",
       "sustancia": "DIFLUFENICAN"
     },
+    "guerrer myl": {
+      "cantidad": 760.0,
+      "id_mda": "10933",
+      "nombre": "GUERRER MYL",
+      "senasa": "40585",
+      "sustancia": "SULFENTRAZONE"
+    },
     "kummel corrector de ph": {
       "cantidad": 800.0,
       "id_mda": "7399",
       "nombre": "KUMMEL CORRECTOR DE PH",
       "senasa": "36612",
       "sustancia": "ACIDO CITRICO"
+    },
+    "voliam 20": {
+      "cantidad": 850.0,
+      "id_mda": "16599",
+      "nombre": "VOLIAM 20",
+      "senasa": "42452",
+      "sustancia": "CLORANTRANILIPROLE"
     },
     "allgram 2 4 d 89 ester": {
       "cantidad": 3420.0,
@@ -5302,9 +5365,9 @@
       }
     },
     "SULFOMETURON METIL + CLORIMURON ETIL": {
-      "cantidad": 115.0,
+      "cantidad": 163.0,
       "marcas": {
-        "LIGATE": 115.0
+        "LIGATE": 163.0
       }
     },
     "BROMOXINIL": {
@@ -5589,9 +5652,10 @@
       }
     },
     "CLORANTRANILIPROLE": {
-      "cantidad": 38.0,
+      "cantidad": 888.0,
       "marcas": {
-        "CORAGEN": 38.0
+        "CORAGEN": 38.0,
+        "VOLIAM 20": 850.0
       }
     },
     "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITE VEGETAL": {
@@ -5603,7 +5667,7 @@
       }
     },
     "SULFENTRAZONE": {
-      "cantidad": 3750.0,
+      "cantidad": 4510.0,
       "marcas": {
         "ADELFOS": 285.0,
         "DESPEJE": 15.0,
@@ -5611,7 +5675,8 @@
         "MOAV 50 SC": 70.0,
         "BORAL 50 SC": 790.0,
         "MILENIAL 50": 480.0,
-        "CAPAZ 50 SC": 1600.0
+        "CAPAZ 50 SC": 1600.0,
+        "GUERRER MYL": 760.0
       }
     },
     "PICLORAM": {
@@ -5654,10 +5719,10 @@
       }
     },
     "IMAZETAPIR": {
-      "cantidad": 4090.0,
+      "cantidad": 4890.0,
       "marcas": {
         "PIVOT": 150.0,
-        "ATANOR IMAZETAPIR 10,6 SL": 3000.0,
+        "ATANOR IMAZETAPIR 10,6 SL": 3800.0,
         "IMAZE AGROTERRUM": 300.0,
         "XCALIBUR": 640.0
       }
@@ -5885,9 +5950,10 @@
       }
     },
     "FLUROCLORIDONA": {
-      "cantidad": 28640.0,
+      "cantidad": 30420.0,
       "marcas": {
         "TALIS": 1800.0,
+        "ADAMA ESSENTIALS RAINBOW EC": 1780.0,
         "FLUROCLORIDONA NUFARM": 15980.0,
         "FLORANE ACA 25": 10860.0
       }
