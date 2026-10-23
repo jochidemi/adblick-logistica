@@ -1,7 +1,7 @@
 {
   "_descripcion": "Stock oficial vivo de MDA SIGIRAO para ADBLICK GRANOS S.A. (30710939345)",
-  "fecha_actualizacion": "2026-10-09 15:47:37",
-  "total_ids_con_stock": 250,
+  "fecha_actualizacion": "2026-10-23 11:13:36",
+  "total_ids_con_stock": 254,
   "stock_por_id": {
     "6401": {
       "cantidad": 0.1,
@@ -17,6 +17,13 @@
       "sustancia": "TIAFENACIL",
       "ct": "III"
     },
+    "6974": {
+      "cantidad": 25.94,
+      "nombre": "HEAT",
+      "senasa": "35954",
+      "sustancia": "SAFLUFENACIL",
+      "ct": "III"
+    },
     "5669": {
       "cantidad": 15.5,
       "nombre": "SPIDER",
@@ -30,13 +37,6 @@
       "senasa": "40715",
       "sustancia": "ABAMECTINA",
       "ct": "II"
-    },
-    "6974": {
-      "cantidad": 34.63,
-      "nombre": "HEAT",
-      "senasa": "35954",
-      "sustancia": "SAFLUFENACIL",
-      "ct": "III"
     },
     "7547": {
       "cantidad": 747.0,
@@ -74,7 +74,7 @@
       "ct": "III"
     },
     "6060": {
-      "cantidad": 602.89,
+      "cantidad": 636.33,
       "nombre": "AFFINITY",
       "senasa": "34130",
       "sustancia": "CARFENTRAZONE ETHYL",
@@ -102,7 +102,7 @@
       "ct": "II"
     },
     "5858": {
-      "cantidad": 241.0,
+      "cantidad": 238.73,
       "nombre": "KARATE ZEON 5 CS",
       "senasa": "33650",
       "sustancia": "LAMBDACIALOTRINA",
@@ -116,7 +116,7 @@
       "ct": "IV"
     },
     "13684": {
-      "cantidad": 409.0,
+      "cantidad": 469.0,
       "nombre": "TOP ZINC MAX",
       "senasa": "17879",
       "sustancia": "COMPLEJO - FOLIAR - TRATAMIENTO DE SEMILLAS",
@@ -128,13 +128,6 @@
       "senasa": "41573",
       "sustancia": "FLUROXIPIR MEPTIL",
       "ct": "III"
-    },
-    "5352": {
-      "cantidad": 30.01,
-      "nombre": "ESCORT",
-      "senasa": "30458",
-      "sustancia": "METSULFURON METIL",
-      "ct": "IV"
     },
     "8457": {
       "cantidad": 143.0,
@@ -262,13 +255,6 @@
       "sustancia": "AMINOPYRALID",
       "ct": "IV"
     },
-    "15631": {
-      "cantidad": 4.0,
-      "nombre": "VORAXOR",
-      "senasa": "41497",
-      "sustancia": "SAFLUFENACIL + TRIFLUDIMOXAZIN",
-      "ct": "III"
-    },
     "7965": {
       "cantidad": 1085.0,
       "nombre": "ABACROPS 1,8%",
@@ -346,13 +332,6 @@
       "sustancia": "ISOXAFLUTOLE + THIENCARBAZONE METIL + CYPROSULFAMIDE",
       "ct": "III"
     },
-    "6847": {
-      "cantidad": 380.0,
-      "nombre": "STARANE XTRA",
-      "senasa": "35712",
-      "sustancia": "FLUROXIPIR MEPTIL",
-      "ct": "IV"
-    },
     "5402": {
       "cantidad": 5.0,
       "nombre": "NISSORUN",
@@ -372,6 +351,13 @@
       "nombre": "BEMUS",
       "senasa": "35637",
       "sustancia": "DICAMBA",
+      "ct": "IV"
+    },
+    "6847": {
+      "cantidad": 304.61,
+      "nombre": "STARANE XTRA",
+      "senasa": "35712",
+      "sustancia": "FLUROXIPIR MEPTIL",
       "ct": "IV"
     },
     "15450": {
@@ -396,7 +382,7 @@
       "ct": "III"
     },
     "6075": {
-      "cantidad": 6886.08,
+      "cantidad": 5460.15,
       "nombre": "NIMBUS",
       "senasa": "34159",
       "sustancia": "ACEITE MINERAL PARAFINICO",
@@ -421,6 +407,13 @@
       "nombre": "DIFLUFENICAN 50 INSUAGRO",
       "senasa": "40427",
       "sustancia": "DIFLUFENICAN",
+      "ct": "IV"
+    },
+    "16599": {
+      "cantidad": 844.82,
+      "nombre": "VOLIAM 20",
+      "senasa": "42452",
+      "sustancia": "CLORANTRANILIPROLE",
       "ct": "IV"
     },
     "7231": {
@@ -522,14 +515,14 @@
       "ct": "II"
     },
     "5825": {
-      "cantidad": 714.13,
+      "cantidad": 667.03,
       "nombre": "LONTREL",
       "senasa": "33572",
       "sustancia": "CLOPIRALID",
       "ct": "III"
     },
     "5360": {
-      "cantidad": 961.04,
+      "cantidad": 829.91,
       "nombre": "BANVEL",
       "senasa": "30596",
       "sustancia": "DICAMBA",
@@ -599,7 +592,7 @@
       "ct": "III"
     },
     "16225": {
-      "cantidad": 105.74,
+      "cantidad": 102.83,
       "nombre": "FULLTEC OIL",
       "senasa": "42081",
       "sustancia": "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITE DE SOJA",
@@ -627,7 +620,7 @@
       "ct": "III"
     },
     "5535": {
-      "cantidad": 2896.84,
+      "cantidad": 2580.63,
       "nombre": "BRODAL 50 SC",
       "senasa": "32478",
       "sustancia": "DIFLUFENICAN",
@@ -647,26 +640,12 @@
       "sustancia": "BICICLOPIRONA",
       "ct": "IV"
     },
-    "9395": {
-      "cantidad": 7175.76,
-      "nombre": "PARAQUAT SIGMA",
-      "senasa": "39024",
-      "sustancia": "PARAQUAT DICLORURO",
-      "ct": "III"
-    },
     "7956": {
       "cantidad": 1656.0,
       "nombre": "NOVOLESTER 97",
       "senasa": "37356",
       "sustancia": "2,4-D",
       "ct": "II"
-    },
-    "10631": {
-      "cantidad": 17.78,
-      "nombre": "2,4 D LV 89 SIGMA",
-      "senasa": "40141",
-      "sustancia": "2,4-D",
-      "ct": "III"
     },
     "7146": {
       "cantidad": 58.0,
@@ -731,15 +710,8 @@
       "sustancia": "2,4-D",
       "ct": "III"
     },
-    "7417": {
-      "cantidad": 262458.58,
-      "nombre": "POWER PLUS II",
-      "senasa": "36639",
-      "sustancia": "GLIFOSATO",
-      "ct": "IV"
-    },
     "5353": {
-      "cantidad": 52375.05,
+      "cantidad": 51272.78,
       "nombre": "SELECT",
       "senasa": "30461",
       "sustancia": "CLETODIM",
@@ -809,7 +781,7 @@
       "ct": "III"
     },
     "9605": {
-      "cantidad": 1531.64,
+      "cantidad": 1375.45,
       "nombre": "GEMMIT TOP",
       "senasa": "39238",
       "sustancia": "FLUMIOXAZIN",
@@ -830,25 +802,39 @@
       "ct": "III"
     },
     "7246": {
-      "cantidad": 5982.82,
+      "cantidad": 4892.0,
       "nombre": "CRIPTON",
       "senasa": "36374",
       "sustancia": "PROTHIOCONAZOLE + TRIFLOXISTROBIN",
       "ct": "IV"
     },
     "6272": {
-      "cantidad": 4617.19,
+      "cantidad": 2759.09,
       "nombre": "MCPA 28",
       "senasa": "34567",
       "sustancia": "M.C.P.A.",
       "ct": "III"
     },
+    "9784": {
+      "cantidad": 720.0,
+      "nombre": "PARAQUAT INZIRA",
+      "senasa": "39421",
+      "sustancia": "PARAQUAT DICLORURO",
+      "ct": "III"
+    },
     "9329": {
-      "cantidad": 2558.46,
+      "cantidad": 2281.12,
       "nombre": "MIRAVIS DUO CON TECNOLOGIA ADEPIDYN",
       "senasa": "38954",
       "sustancia": "DIFENOCONAZOLE + PYDIFLUMETOFEN",
       "ct": "II"
+    },
+    "13703": {
+      "cantidad": 455.53,
+      "nombre": "FULLTEC MAX",
+      "senasa": "17902",
+      "sustancia": "COMPLEJO - BINARIO",
+      "ct": "FT"
     },
     "9672": {
       "cantidad": 24.0,
@@ -871,12 +857,12 @@
       "sustancia": "SULFENTRAZONE",
       "ct": "III"
     },
-    "6387": {
-      "cantidad": 25.0,
-      "nombre": "AXIAL",
-      "senasa": "34802",
-      "sustancia": "PINOXADEN + CLOQUINTOCET MEXIL",
-      "ct": "IV"
+    "9395": {
+      "cantidad": 6345.77,
+      "nombre": "PARAQUAT SIGMA",
+      "senasa": "39024",
+      "sustancia": "PARAQUAT DICLORURO",
+      "ct": "III"
     },
     "10349": {
       "cantidad": 830.0,
@@ -897,6 +883,13 @@
       "nombre": "BRUCIA SC 40%",
       "senasa": "39596",
       "sustancia": "TOLPIRALATE",
+      "ct": "IV"
+    },
+    "8989": {
+      "cantidad": 189.25,
+      "nombre": "ONTARIO",
+      "senasa": "38599",
+      "sustancia": "IMAZAPIR SAL ISOPROPILAMINA",
       "ct": "IV"
     },
     "6775": {
@@ -928,7 +921,7 @@
       "ct": "II"
     },
     "13720": {
-      "cantidad": 40.0,
+      "cantidad": 210.0,
       "nombre": "FULLTEC",
       "senasa": "17920",
       "sustancia": "COMPLEJO - FOLIAR",
@@ -1053,18 +1046,18 @@
       "sustancia": "PICLORAM",
       "ct": "IV"
     },
-    "8989": {
-      "cantidad": 233.55,
-      "nombre": "ONTARIO",
-      "senasa": "38599",
-      "sustancia": "IMAZAPIR SAL ISOPROPILAMINA",
-      "ct": "IV"
-    },
     "5643": {
       "cantidad": 395.0,
       "nombre": "SUMISOYA TOP",
       "senasa": "32975",
       "sustancia": "FLUMIOXAZIN",
+      "ct": "IV"
+    },
+    "7417": {
+      "cantidad": 251382.24,
+      "nombre": "POWER PLUS II",
+      "senasa": "36639",
+      "sustancia": "GLIFOSATO",
       "ct": "IV"
     },
     "6729": {
@@ -1088,12 +1081,26 @@
       "sustancia": "CLETODIM",
       "ct": "III"
     },
+    "7694": {
+      "cantidad": 220.0,
+      "nombre": "RIZOSPRAY EXTREMO",
+      "senasa": "37021",
+      "sustancia": "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITES VEGETALES",
+      "ct": "IV"
+    },
     "15384": {
       "cantidad": 110.0,
       "nombre": "ABAMEC 3,6 SIGMA",
       "senasa": "41215",
       "sustancia": "ABAMECTINA",
       "ct": "II"
+    },
+    "5352": {
+      "cantidad": 57.98,
+      "nombre": "ESCORT",
+      "senasa": "30458",
+      "sustancia": "METSULFURON METIL",
+      "ct": "IV"
     },
     "8093": {
       "cantidad": 120.0,
@@ -1193,6 +1200,13 @@
       "sustancia": "CLOROTALONIL",
       "ct": "II"
     },
+    "15631": {
+      "cantidad": 76.95,
+      "nombre": "VORAXOR",
+      "senasa": "41497",
+      "sustancia": "SAFLUFENACIL + TRIFLUDIMOXAZIN",
+      "ct": "III"
+    },
     "5315": {
       "cantidad": 6240.0,
       "nombre": "MATAYUYOS SELECTIVO MCPA",
@@ -1221,13 +1235,6 @@
       "sustancia": "2,4-D",
       "ct": "II"
     },
-    "11027": {
-      "cantidad": 880.0,
-      "nombre": "2,4D 89 PROCHEM",
-      "senasa": "40742",
-      "sustancia": "2,4-D",
-      "ct": "II"
-    },
     "16554": {
       "cantidad": 80.0,
       "nombre": "ELUMIS",
@@ -1243,14 +1250,14 @@
       "ct": "III"
     },
     "5754": {
-      "cantidad": 37060.0,
+      "cantidad": 37640.21,
       "nombre": "DUAL GOLD",
       "senasa": "33400",
       "sustancia": "S-METOLACLORO",
       "ct": "III"
     },
     "8876": {
-      "cantidad": 1780.0,
+      "cantidad": 1920.0,
       "nombre": "ADAMA ESSENTIALS RAINBOW EC",
       "senasa": "38476",
       "sustancia": "FLUROCLORIDONA",
@@ -1417,6 +1424,13 @@
       "sustancia": "MEZCLA DE ACIDOS Y ESTERES DE ACIDOS GRASOS",
       "ct": "IV"
     },
+    "10223": {
+      "cantidad": 149.83,
+      "nombre": "ELATUS ACE CON TECNOLOGIA SOLATENOL",
+      "senasa": "39860",
+      "sustancia": "PROPICONAZOLE + BENZOVINDIFLUPYR",
+      "ct": "II"
+    },
     "5734": {
       "cantidad": 790.0,
       "nombre": "BORAL 50 SC",
@@ -1438,13 +1452,6 @@
       "sustancia": "CLETODIM",
       "ct": "III"
     },
-    "7694": {
-      "cantidad": 180.0,
-      "nombre": "RIZOSPRAY EXTREMO",
-      "senasa": "37021",
-      "sustancia": "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITES VEGETALES",
-      "ct": "IV"
-    },
     "9460": {
       "cantidad": 2720.0,
       "nombre": "KAISER FULL",
@@ -1460,7 +1467,7 @@
       "ct": "III"
     },
     "5412": {
-      "cantidad": 24994.91,
+      "cantidad": 23197.41,
       "nombre": "GESAPRIM 90 WDG",
       "senasa": "31220",
       "sustancia": "ATRAZINA",
@@ -1487,19 +1494,26 @@
       "sustancia": "IMAZETAPIR",
       "ct": "III"
     },
+    "6776": {
+      "cantidad": 15833.72,
+      "nombre": "FLUROCLORIDONA NUFARM",
+      "senasa": "35558",
+      "sustancia": "FLUROCLORIDONA",
+      "ct": "III"
+    },
+    "10188": {
+      "cantidad": 260.0,
+      "nombre": "CLETODIM 24 EBC",
+      "senasa": "39825",
+      "sustancia": "CLETODIM",
+      "ct": "III"
+    },
     "15329": {
       "cantidad": 630.0,
       "nombre": "VIRANTRA CON TECNOLOGIA PLINAZOLIN",
       "senasa": "40620",
       "sustancia": "ISOCYCLOSERAM",
       "ct": "IV"
-    },
-    "10223": {
-      "cantidad": 290.0,
-      "nombre": "ELATUS ACE CON TECNOLOGIA SOLATENOL",
-      "senasa": "39860",
-      "sustancia": "PROPICONAZOLE + BENZOVINDIFLUPYR",
-      "ct": "II"
     },
     "8625": {
       "cantidad": 300.0,
@@ -1536,26 +1550,12 @@
       "sustancia": "LACTOFEN",
       "ct": "IV"
     },
-    "6776": {
-      "cantidad": 15980.0,
-      "nombre": "FLUROCLORIDONA NUFARM",
-      "senasa": "35558",
-      "sustancia": "FLUROCLORIDONA",
-      "ct": "III"
-    },
     "7923": {
       "cantidad": 400.0,
       "nombre": "PARAQUAT INSUAGRO",
       "senasa": "37309",
       "sustancia": "PARAQUAT DICLORURO",
       "ct": "II"
-    },
-    "13703": {
-      "cantidad": 408.0,
-      "nombre": "FULLTEC MAX",
-      "senasa": "17902",
-      "sustancia": "COMPLEJO - FOLIAR",
-      "ct": "FT"
     },
     "12355": {
       "cantidad": 5260.0,
@@ -1570,6 +1570,13 @@
       "senasa": "33566",
       "sustancia": "GLIFOSATO",
       "ct": "IV"
+    },
+    "7524": {
+      "cantidad": 440.0,
+      "nombre": "GLIFOSATO 48 SIGMA",
+      "senasa": "36791",
+      "sustancia": "GLIFOSATO",
+      "ct": "III"
     },
     "11022": {
       "cantidad": 480.0,
@@ -1604,6 +1611,13 @@
       "nombre": "GLUFOSINATO DE AMONIO SIGMA",
       "senasa": "38634",
       "sustancia": "GLUFOSINATO DE AMONIO",
+      "ct": "III"
+    },
+    "7419": {
+      "cantidad": 520.0,
+      "nombre": "MARCH II",
+      "senasa": "36641",
+      "sustancia": "GLIFOSATO",
       "ct": "III"
     },
     "11262": {
@@ -1669,11 +1683,11 @@
       "sustancia": "ACIDO CITRICO",
       "ct": "IV"
     },
-    "16599": {
-      "cantidad": 850.0,
-      "nombre": "VOLIAM 20",
-      "senasa": "42452",
-      "sustancia": "CLORANTRANILIPROLE",
+    "6387": {
+      "cantidad": 899.0,
+      "nombre": "AXIAL",
+      "senasa": "34802",
+      "sustancia": "PINOXADEN + CLOQUINTOCET MEXIL",
       "ct": "IV"
     },
     "10291": {
@@ -1696,6 +1710,13 @@
       "senasa": "38792",
       "sustancia": "2,4-D",
       "ct": "III"
+    },
+    "5727": {
+      "cantidad": 1000.0,
+      "nombre": "KARATE® CON TECNOLOGIA ZEON™",
+      "senasa": "33310",
+      "sustancia": "LAMBDACIALOTRINA",
+      "ct": "II"
     },
     "8975": {
       "cantidad": 1065.0,
@@ -1739,6 +1760,13 @@
       "sustancia": "MANCOZEB",
       "ct": "III"
     },
+    "10631": {
+      "cantidad": 5839.19,
+      "nombre": "2,4 D LV 89 SIGMA",
+      "senasa": "40141",
+      "sustancia": "2,4-D",
+      "ct": "III"
+    },
     "10056": {
       "cantidad": 6000.0,
       "nombre": "WEIZEN NT",
@@ -1769,6 +1797,13 @@
       "sustancia": "TIAFENACIL",
       "ct": "III"
     },
+    "35954": {
+      "cantidad": 25.94,
+      "id_mda": "6974",
+      "nombre": "HEAT",
+      "sustancia": "SAFLUFENACIL",
+      "ct": "III"
+    },
     "33101": {
       "cantidad": 15.5,
       "id_mda": "5669",
@@ -1782,13 +1817,6 @@
       "nombre": "AGRIMEK",
       "sustancia": "ABAMECTINA",
       "ct": "II"
-    },
-    "35954": {
-      "cantidad": 34.63,
-      "id_mda": "6974",
-      "nombre": "HEAT",
-      "sustancia": "SAFLUFENACIL",
-      "ct": "III"
     },
     "36821": {
       "cantidad": 747.0,
@@ -1826,7 +1854,7 @@
       "ct": "III"
     },
     "34130": {
-      "cantidad": 602.89,
+      "cantidad": 636.33,
       "id_mda": "6060",
       "nombre": "AFFINITY",
       "sustancia": "CARFENTRAZONE ETHYL",
@@ -1854,7 +1882,7 @@
       "ct": "II"
     },
     "33650": {
-      "cantidad": 241.0,
+      "cantidad": 238.73,
       "id_mda": "5858",
       "nombre": "KARATE ZEON 5 CS",
       "sustancia": "LAMBDACIALOTRINA",
@@ -1868,7 +1896,7 @@
       "ct": "IV"
     },
     "17879": {
-      "cantidad": 409.0,
+      "cantidad": 469.0,
       "id_mda": "13684",
       "nombre": "TOP ZINC MAX",
       "sustancia": "COMPLEJO - FOLIAR - TRATAMIENTO DE SEMILLAS",
@@ -1880,13 +1908,6 @@
       "nombre": "FLUROXIPIR SIGMA",
       "sustancia": "FLUROXIPIR MEPTIL",
       "ct": "III"
-    },
-    "30458": {
-      "cantidad": 30.01,
-      "id_mda": "5352",
-      "nombre": "ESCORT",
-      "sustancia": "METSULFURON METIL",
-      "ct": "IV"
     },
     "38008": {
       "cantidad": 143.0,
@@ -2014,13 +2035,6 @@
       "sustancia": "AMINOPYRALID",
       "ct": "IV"
     },
-    "41497": {
-      "cantidad": 4.0,
-      "id_mda": "15631",
-      "nombre": "VORAXOR",
-      "sustancia": "SAFLUFENACIL + TRIFLUDIMOXAZIN",
-      "ct": "III"
-    },
     "37365": {
       "cantidad": 1085.0,
       "id_mda": "7965",
@@ -2098,13 +2112,6 @@
       "sustancia": "ISOXAFLUTOLE + THIENCARBAZONE METIL + CYPROSULFAMIDE",
       "ct": "III"
     },
-    "35712": {
-      "cantidad": 380.0,
-      "id_mda": "6847",
-      "nombre": "STARANE XTRA",
-      "sustancia": "FLUROXIPIR MEPTIL",
-      "ct": "IV"
-    },
     "31149": {
       "cantidad": 5.0,
       "id_mda": "5402",
@@ -2124,6 +2131,13 @@
       "id_mda": "6813",
       "nombre": "BEMUS",
       "sustancia": "DICAMBA",
+      "ct": "IV"
+    },
+    "35712": {
+      "cantidad": 304.61,
+      "id_mda": "6847",
+      "nombre": "STARANE XTRA",
+      "sustancia": "FLUROXIPIR MEPTIL",
       "ct": "IV"
     },
     "40776": {
@@ -2148,7 +2162,7 @@
       "ct": "III"
     },
     "34159": {
-      "cantidad": 6886.08,
+      "cantidad": 5460.15,
       "id_mda": "6075",
       "nombre": "NIMBUS",
       "sustancia": "ACEITE MINERAL PARAFINICO",
@@ -2173,6 +2187,13 @@
       "id_mda": "16676",
       "nombre": "DIFLUFENICAN 50 INSUAGRO",
       "sustancia": "DIFLUFENICAN",
+      "ct": "IV"
+    },
+    "42452": {
+      "cantidad": 844.82,
+      "id_mda": "16599",
+      "nombre": "VOLIAM 20",
+      "sustancia": "CLORANTRANILIPROLE",
       "ct": "IV"
     },
     "36351": {
@@ -2274,14 +2295,14 @@
       "ct": "II"
     },
     "33572": {
-      "cantidad": 714.13,
+      "cantidad": 667.03,
       "id_mda": "5825",
       "nombre": "LONTREL",
       "sustancia": "CLOPIRALID",
       "ct": "III"
     },
     "30596": {
-      "cantidad": 961.04,
+      "cantidad": 829.91,
       "id_mda": "5360",
       "nombre": "BANVEL",
       "sustancia": "DICAMBA",
@@ -2351,7 +2372,7 @@
       "ct": "III"
     },
     "42081": {
-      "cantidad": 105.74,
+      "cantidad": 102.83,
       "id_mda": "16225",
       "nombre": "FULLTEC OIL",
       "sustancia": "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITE DE SOJA",
@@ -2379,7 +2400,7 @@
       "ct": "III"
     },
     "32478": {
-      "cantidad": 2896.84,
+      "cantidad": 2580.63,
       "id_mda": "5535",
       "nombre": "BRODAL 50 SC",
       "sustancia": "DIFLUFENICAN",
@@ -2399,26 +2420,12 @@
       "sustancia": "BICICLOPIRONA",
       "ct": "IV"
     },
-    "39024": {
-      "cantidad": 7175.76,
-      "id_mda": "9395",
-      "nombre": "PARAQUAT SIGMA",
-      "sustancia": "PARAQUAT DICLORURO",
-      "ct": "III"
-    },
     "37356": {
       "cantidad": 1656.0,
       "id_mda": "7956",
       "nombre": "NOVOLESTER 97",
       "sustancia": "2,4-D",
       "ct": "II"
-    },
-    "40141": {
-      "cantidad": 17.78,
-      "id_mda": "10631",
-      "nombre": "2,4 D LV 89 SIGMA",
-      "sustancia": "2,4-D",
-      "ct": "III"
     },
     "36227": {
       "cantidad": 58.0,
@@ -2483,15 +2490,8 @@
       "sustancia": "2,4-D",
       "ct": "III"
     },
-    "36639": {
-      "cantidad": 262458.58,
-      "id_mda": "7417",
-      "nombre": "POWER PLUS II",
-      "sustancia": "GLIFOSATO",
-      "ct": "IV"
-    },
     "30461": {
-      "cantidad": 52375.05,
+      "cantidad": 51272.78,
       "id_mda": "5353",
       "nombre": "SELECT",
       "sustancia": "CLETODIM",
@@ -2561,7 +2561,7 @@
       "ct": "III"
     },
     "39238": {
-      "cantidad": 1531.64,
+      "cantidad": 1375.45,
       "id_mda": "9605",
       "nombre": "GEMMIT TOP",
       "sustancia": "FLUMIOXAZIN",
@@ -2582,25 +2582,39 @@
       "ct": "III"
     },
     "36374": {
-      "cantidad": 5982.82,
+      "cantidad": 4892.0,
       "id_mda": "7246",
       "nombre": "CRIPTON",
       "sustancia": "PROTHIOCONAZOLE + TRIFLOXISTROBIN",
       "ct": "IV"
     },
     "34567": {
-      "cantidad": 4617.19,
+      "cantidad": 2759.09,
       "id_mda": "6272",
       "nombre": "MCPA 28",
       "sustancia": "M.C.P.A.",
       "ct": "III"
     },
+    "39421": {
+      "cantidad": 720.0,
+      "id_mda": "9784",
+      "nombre": "PARAQUAT INZIRA",
+      "sustancia": "PARAQUAT DICLORURO",
+      "ct": "III"
+    },
     "38954": {
-      "cantidad": 2558.46,
+      "cantidad": 2281.12,
       "id_mda": "9329",
       "nombre": "MIRAVIS DUO CON TECNOLOGIA ADEPIDYN",
       "sustancia": "DIFENOCONAZOLE + PYDIFLUMETOFEN",
       "ct": "II"
+    },
+    "17902": {
+      "cantidad": 455.53,
+      "id_mda": "13703",
+      "nombre": "FULLTEC MAX",
+      "sustancia": "COMPLEJO - BINARIO",
+      "ct": "FT"
     },
     "39306": {
       "cantidad": 24.0,
@@ -2623,12 +2637,12 @@
       "sustancia": "SULFENTRAZONE",
       "ct": "III"
     },
-    "34802": {
-      "cantidad": 25.0,
-      "id_mda": "6387",
-      "nombre": "AXIAL",
-      "sustancia": "PINOXADEN + CLOQUINTOCET MEXIL",
-      "ct": "IV"
+    "39024": {
+      "cantidad": 6345.77,
+      "id_mda": "9395",
+      "nombre": "PARAQUAT SIGMA",
+      "sustancia": "PARAQUAT DICLORURO",
+      "ct": "III"
     },
     "39986": {
       "cantidad": 830.0,
@@ -2649,6 +2663,13 @@
       "id_mda": "9959",
       "nombre": "BRUCIA SC 40%",
       "sustancia": "TOLPIRALATE",
+      "ct": "IV"
+    },
+    "38599": {
+      "cantidad": 189.25,
+      "id_mda": "8989",
+      "nombre": "ONTARIO",
+      "sustancia": "IMAZAPIR SAL ISOPROPILAMINA",
       "ct": "IV"
     },
     "35557": {
@@ -2680,7 +2701,7 @@
       "ct": "II"
     },
     "17920": {
-      "cantidad": 40.0,
+      "cantidad": 210.0,
       "id_mda": "13720",
       "nombre": "FULLTEC",
       "sustancia": "COMPLEJO - FOLIAR",
@@ -2805,18 +2826,18 @@
       "sustancia": "PICLORAM",
       "ct": "IV"
     },
-    "38599": {
-      "cantidad": 233.55,
-      "id_mda": "8989",
-      "nombre": "ONTARIO",
-      "sustancia": "IMAZAPIR SAL ISOPROPILAMINA",
-      "ct": "IV"
-    },
     "32975": {
       "cantidad": 395.0,
       "id_mda": "5643",
       "nombre": "SUMISOYA TOP",
       "sustancia": "FLUMIOXAZIN",
+      "ct": "IV"
+    },
+    "36639": {
+      "cantidad": 251382.24,
+      "id_mda": "7417",
+      "nombre": "POWER PLUS II",
+      "sustancia": "GLIFOSATO",
       "ct": "IV"
     },
     "35472": {
@@ -2840,12 +2861,26 @@
       "sustancia": "CLETODIM",
       "ct": "III"
     },
+    "37021": {
+      "cantidad": 220.0,
+      "id_mda": "7694",
+      "nombre": "RIZOSPRAY EXTREMO",
+      "sustancia": "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITES VEGETALES",
+      "ct": "IV"
+    },
     "41215": {
       "cantidad": 110.0,
       "id_mda": "15384",
       "nombre": "ABAMEC 3,6 SIGMA",
       "sustancia": "ABAMECTINA",
       "ct": "II"
+    },
+    "30458": {
+      "cantidad": 57.98,
+      "id_mda": "5352",
+      "nombre": "ESCORT",
+      "sustancia": "METSULFURON METIL",
+      "ct": "IV"
     },
     "37545": {
       "cantidad": 120.0,
@@ -2945,6 +2980,13 @@
       "sustancia": "CLOROTALONIL",
       "ct": "II"
     },
+    "41497": {
+      "cantidad": 76.95,
+      "id_mda": "15631",
+      "nombre": "VORAXOR",
+      "sustancia": "SAFLUFENACIL + TRIFLUDIMOXAZIN",
+      "ct": "III"
+    },
     "30100": {
       "cantidad": 6240.0,
       "id_mda": "5315",
@@ -2973,13 +3015,6 @@
       "sustancia": "2,4-D",
       "ct": "II"
     },
-    "40742": {
-      "cantidad": 880.0,
-      "id_mda": "11027",
-      "nombre": "2,4D 89 PROCHEM",
-      "sustancia": "2,4-D",
-      "ct": "II"
-    },
     "40970": {
       "cantidad": 80.0,
       "id_mda": "16554",
@@ -2995,14 +3030,14 @@
       "ct": "III"
     },
     "33400": {
-      "cantidad": 37060.0,
+      "cantidad": 37640.21,
       "id_mda": "5754",
       "nombre": "DUAL GOLD",
       "sustancia": "S-METOLACLORO",
       "ct": "III"
     },
     "38476": {
-      "cantidad": 1780.0,
+      "cantidad": 1920.0,
       "id_mda": "8876",
       "nombre": "ADAMA ESSENTIALS RAINBOW EC",
       "sustancia": "FLUROCLORIDONA",
@@ -3169,6 +3204,13 @@
       "sustancia": "MEZCLA DE ACIDOS Y ESTERES DE ACIDOS GRASOS",
       "ct": "IV"
     },
+    "39860": {
+      "cantidad": 149.83,
+      "id_mda": "10223",
+      "nombre": "ELATUS ACE CON TECNOLOGIA SOLATENOL",
+      "sustancia": "PROPICONAZOLE + BENZOVINDIFLUPYR",
+      "ct": "II"
+    },
     "33339": {
       "cantidad": 790.0,
       "id_mda": "5734",
@@ -3190,13 +3232,6 @@
       "sustancia": "CLETODIM",
       "ct": "III"
     },
-    "37021": {
-      "cantidad": 180.0,
-      "id_mda": "7694",
-      "nombre": "RIZOSPRAY EXTREMO",
-      "sustancia": "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITES VEGETALES",
-      "ct": "IV"
-    },
     "39089": {
       "cantidad": 2720.0,
       "id_mda": "9460",
@@ -3212,7 +3247,7 @@
       "ct": "III"
     },
     "31220": {
-      "cantidad": 24994.91,
+      "cantidad": 23197.41,
       "id_mda": "5412",
       "nombre": "GESAPRIM 90 WDG",
       "sustancia": "ATRAZINA",
@@ -3239,19 +3274,26 @@
       "sustancia": "IMAZETAPIR",
       "ct": "III"
     },
+    "35558": {
+      "cantidad": 15833.72,
+      "id_mda": "6776",
+      "nombre": "FLUROCLORIDONA NUFARM",
+      "sustancia": "FLUROCLORIDONA",
+      "ct": "III"
+    },
+    "39825": {
+      "cantidad": 260.0,
+      "id_mda": "10188",
+      "nombre": "CLETODIM 24 EBC",
+      "sustancia": "CLETODIM",
+      "ct": "III"
+    },
     "40620": {
       "cantidad": 630.0,
       "id_mda": "15329",
       "nombre": "VIRANTRA CON TECNOLOGIA PLINAZOLIN",
       "sustancia": "ISOCYCLOSERAM",
       "ct": "IV"
-    },
-    "39860": {
-      "cantidad": 290.0,
-      "id_mda": "10223",
-      "nombre": "ELATUS ACE CON TECNOLOGIA SOLATENOL",
-      "sustancia": "PROPICONAZOLE + BENZOVINDIFLUPYR",
-      "ct": "II"
     },
     "38200": {
       "cantidad": 300.0,
@@ -3288,26 +3330,12 @@
       "sustancia": "LACTOFEN",
       "ct": "IV"
     },
-    "35558": {
-      "cantidad": 15980.0,
-      "id_mda": "6776",
-      "nombre": "FLUROCLORIDONA NUFARM",
-      "sustancia": "FLUROCLORIDONA",
-      "ct": "III"
-    },
     "37309": {
       "cantidad": 400.0,
       "id_mda": "7923",
       "nombre": "PARAQUAT INSUAGRO",
       "sustancia": "PARAQUAT DICLORURO",
       "ct": "II"
-    },
-    "17902": {
-      "cantidad": 408.0,
-      "id_mda": "13703",
-      "nombre": "FULLTEC MAX",
-      "sustancia": "COMPLEJO - FOLIAR",
-      "ct": "FT"
     },
     "16167": {
       "cantidad": 5260.0,
@@ -3322,6 +3350,13 @@
       "nombre": "SULFOSATO TOUCHDOWN",
       "sustancia": "GLIFOSATO",
       "ct": "IV"
+    },
+    "36791": {
+      "cantidad": 440.0,
+      "id_mda": "7524",
+      "nombre": "GLIFOSATO 48 SIGMA",
+      "sustancia": "GLIFOSATO",
+      "ct": "III"
     },
     "40737": {
       "cantidad": 480.0,
@@ -3356,6 +3391,13 @@
       "id_mda": "9019",
       "nombre": "GLUFOSINATO DE AMONIO SIGMA",
       "sustancia": "GLUFOSINATO DE AMONIO",
+      "ct": "III"
+    },
+    "36641": {
+      "cantidad": 520.0,
+      "id_mda": "7419",
+      "nombre": "MARCH II",
+      "sustancia": "GLIFOSATO",
       "ct": "III"
     },
     "13287": {
@@ -3421,11 +3463,11 @@
       "sustancia": "ACIDO CITRICO",
       "ct": "IV"
     },
-    "42452": {
-      "cantidad": 850.0,
-      "id_mda": "16599",
-      "nombre": "VOLIAM 20",
-      "sustancia": "CLORANTRANILIPROLE",
+    "34802": {
+      "cantidad": 899.0,
+      "id_mda": "6387",
+      "nombre": "AXIAL",
+      "sustancia": "PINOXADEN + CLOQUINTOCET MEXIL",
       "ct": "IV"
     },
     "39928": {
@@ -3448,6 +3490,13 @@
       "nombre": "2,4D- EHE AGROTERRUM",
       "sustancia": "2,4-D",
       "ct": "III"
+    },
+    "33310": {
+      "cantidad": 1000.0,
+      "id_mda": "5727",
+      "nombre": "KARATE® CON TECNOLOGIA ZEON™",
+      "sustancia": "LAMBDACIALOTRINA",
+      "ct": "II"
     },
     "38583": {
       "cantidad": 1065.0,
@@ -3491,6 +3540,13 @@
       "sustancia": "MANCOZEB",
       "ct": "III"
     },
+    "40141": {
+      "cantidad": 5839.19,
+      "id_mda": "10631",
+      "nombre": "2,4 D LV 89 SIGMA",
+      "sustancia": "2,4-D",
+      "ct": "III"
+    },
     "39693": {
       "cantidad": 6000.0,
       "id_mda": "10056",
@@ -3521,6 +3577,13 @@
       "senasa": "41632",
       "sustancia": "TIAFENACIL"
     },
+    "heat": {
+      "cantidad": 25.94,
+      "id_mda": "6974",
+      "nombre": "HEAT",
+      "senasa": "35954",
+      "sustancia": "SAFLUFENACIL"
+    },
     "spider": {
       "cantidad": 15.5,
       "id_mda": "5669",
@@ -3534,13 +3597,6 @@
       "nombre": "AGRIMEK",
       "senasa": "40715",
       "sustancia": "ABAMECTINA"
-    },
-    "heat": {
-      "cantidad": 34.63,
-      "id_mda": "6974",
-      "nombre": "HEAT",
-      "senasa": "35954",
-      "sustancia": "SAFLUFENACIL"
     },
     "rizospray corrector secuestrante": {
       "cantidad": 747.0,
@@ -3578,7 +3634,7 @@
       "sustancia": "TOPRAMEZONE"
     },
     "affinity": {
-      "cantidad": 602.89,
+      "cantidad": 636.33,
       "id_mda": "6060",
       "nombre": "AFFINITY",
       "senasa": "34130",
@@ -3606,7 +3662,7 @@
       "sustancia": "CLORANTRANILIPROLE + ABAMECTINA"
     },
     "karate zeon 5 cs": {
-      "cantidad": 241.0,
+      "cantidad": 238.73,
       "id_mda": "5858",
       "nombre": "KARATE ZEON 5 CS",
       "senasa": "33650",
@@ -3620,7 +3676,7 @@
       "sustancia": "ALCOHOL LAURICO ETOXILADO"
     },
     "top zinc max": {
-      "cantidad": 409.0,
+      "cantidad": 469.0,
       "id_mda": "13684",
       "nombre": "TOP ZINC MAX",
       "senasa": "17879",
@@ -3632,13 +3688,6 @@
       "nombre": "FLUROXIPIR SIGMA",
       "senasa": "41573",
       "sustancia": "FLUROXIPIR MEPTIL"
-    },
-    "escort": {
-      "cantidad": 30.01,
-      "id_mda": "5352",
-      "nombre": "ESCORT",
-      "senasa": "30458",
-      "sustancia": "METSULFURON METIL"
     },
     "manto": {
       "cantidad": 143.0,
@@ -3766,13 +3815,6 @@
       "senasa": "35525",
       "sustancia": "AMINOPYRALID"
     },
-    "voraxor": {
-      "cantidad": 4.0,
-      "id_mda": "15631",
-      "nombre": "VORAXOR",
-      "senasa": "41497",
-      "sustancia": "SAFLUFENACIL + TRIFLUDIMOXAZIN"
-    },
     "abacrops 1 8": {
       "cantidad": 1085.0,
       "id_mda": "7965",
@@ -3850,13 +3892,6 @@
       "senasa": "36254",
       "sustancia": "ISOXAFLUTOLE + THIENCARBAZONE METIL + CYPROSULFAMIDE"
     },
-    "starane xtra": {
-      "cantidad": 380.0,
-      "id_mda": "6847",
-      "nombre": "STARANE XTRA",
-      "senasa": "35712",
-      "sustancia": "FLUROXIPIR MEPTIL"
-    },
     "nissorun": {
       "cantidad": 5.0,
       "id_mda": "5402",
@@ -3877,6 +3912,13 @@
       "nombre": "BEMUS",
       "senasa": "35637",
       "sustancia": "DICAMBA"
+    },
+    "starane xtra": {
+      "cantidad": 304.61,
+      "id_mda": "6847",
+      "nombre": "STARANE XTRA",
+      "senasa": "35712",
+      "sustancia": "FLUROXIPIR MEPTIL"
     },
     "elevore": {
       "cantidad": 40.0,
@@ -3900,7 +3942,7 @@
       "sustancia": "ACIDO FOSFORICO"
     },
     "nimbus": {
-      "cantidad": 6886.08,
+      "cantidad": 5460.15,
       "id_mda": "6075",
       "nombre": "NIMBUS",
       "senasa": "34159",
@@ -3926,6 +3968,13 @@
       "nombre": "DIFLUFENICAN 50 INSUAGRO",
       "senasa": "40427",
       "sustancia": "DIFLUFENICAN"
+    },
+    "voliam 20": {
+      "cantidad": 844.82,
+      "id_mda": "16599",
+      "nombre": "VOLIAM 20",
+      "senasa": "42452",
+      "sustancia": "CLORANTRANILIPROLE"
     },
     "stagger": {
       "cantidad": 77.0,
@@ -4026,14 +4075,14 @@
       "sustancia": "BIFENTRIN"
     },
     "lontrel": {
-      "cantidad": 714.13,
+      "cantidad": 667.03,
       "id_mda": "5825",
       "nombre": "LONTREL",
       "senasa": "33572",
       "sustancia": "CLOPIRALID"
     },
     "banvel": {
-      "cantidad": 961.04,
+      "cantidad": 829.91,
       "id_mda": "5360",
       "nombre": "BANVEL",
       "senasa": "30596",
@@ -4103,7 +4152,7 @@
       "sustancia": "PROCIMIDONE"
     },
     "fulltec oil": {
-      "cantidad": 105.74,
+      "cantidad": 102.83,
       "id_mda": "16225",
       "nombre": "FULLTEC OIL",
       "senasa": "42081",
@@ -4131,7 +4180,7 @@
       "sustancia": "FLUMIOXAZIN"
     },
     "brodal 50 sc": {
-      "cantidad": 2896.84,
+      "cantidad": 2580.63,
       "id_mda": "5535",
       "nombre": "BRODAL 50 SC",
       "senasa": "32478",
@@ -4151,25 +4200,11 @@
       "senasa": "38411",
       "sustancia": "BICICLOPIRONA"
     },
-    "paraquat sigma": {
-      "cantidad": 7175.76,
-      "id_mda": "9395",
-      "nombre": "PARAQUAT SIGMA",
-      "senasa": "39024",
-      "sustancia": "PARAQUAT DICLORURO"
-    },
     "novolester 97": {
       "cantidad": 1656.0,
       "id_mda": "7956",
       "nombre": "NOVOLESTER 97",
       "senasa": "37356",
-      "sustancia": "2,4-D"
-    },
-    "2 4 d lv 89 sigma": {
-      "cantidad": 17.78,
-      "id_mda": "10631",
-      "nombre": "2,4 D LV 89 SIGMA",
-      "senasa": "40141",
       "sustancia": "2,4-D"
     },
     "biorrector": {
@@ -4235,15 +4270,8 @@
       "senasa": "39589",
       "sustancia": "2,4-D"
     },
-    "power plus ii": {
-      "cantidad": 262458.58,
-      "id_mda": "7417",
-      "nombre": "POWER PLUS II",
-      "senasa": "36639",
-      "sustancia": "GLIFOSATO"
-    },
     "select": {
-      "cantidad": 52375.05,
+      "cantidad": 51272.78,
       "id_mda": "5353",
       "nombre": "SELECT",
       "senasa": "30461",
@@ -4313,7 +4341,7 @@
       "sustancia": "METRIBUZIN"
     },
     "gemmit top": {
-      "cantidad": 1531.64,
+      "cantidad": 1375.45,
       "id_mda": "9605",
       "nombre": "GEMMIT TOP",
       "senasa": "39238",
@@ -4334,25 +4362,39 @@
       "sustancia": "ACLONIFEN"
     },
     "cripton": {
-      "cantidad": 5982.82,
+      "cantidad": 4892.0,
       "id_mda": "7246",
       "nombre": "CRIPTON",
       "senasa": "36374",
       "sustancia": "PROTHIOCONAZOLE + TRIFLOXISTROBIN"
     },
     "mcpa 28": {
-      "cantidad": 4617.19,
+      "cantidad": 2759.09,
       "id_mda": "6272",
       "nombre": "MCPA 28",
       "senasa": "34567",
       "sustancia": "M.C.P.A."
     },
+    "paraquat inzira": {
+      "cantidad": 720.0,
+      "id_mda": "9784",
+      "nombre": "PARAQUAT INZIRA",
+      "senasa": "39421",
+      "sustancia": "PARAQUAT DICLORURO"
+    },
     "miravis duo con tecnologia adepidyn": {
-      "cantidad": 2558.46,
+      "cantidad": 2281.12,
       "id_mda": "9329",
       "nombre": "MIRAVIS DUO CON TECNOLOGIA ADEPIDYN",
       "senasa": "38954",
       "sustancia": "DIFENOCONAZOLE + PYDIFLUMETOFEN"
+    },
+    "fulltec max": {
+      "cantidad": 455.53,
+      "id_mda": "13703",
+      "nombre": "FULLTEC MAX",
+      "senasa": "17902",
+      "sustancia": "COMPLEJO - BINARIO"
     },
     "bagual plus": {
       "cantidad": 24.0,
@@ -4375,12 +4417,12 @@
       "senasa": "39754",
       "sustancia": "SULFENTRAZONE"
     },
-    "axial": {
-      "cantidad": 25.0,
-      "id_mda": "6387",
-      "nombre": "AXIAL",
-      "senasa": "34802",
-      "sustancia": "PINOXADEN + CLOQUINTOCET MEXIL"
+    "paraquat sigma": {
+      "cantidad": 6345.77,
+      "id_mda": "9395",
+      "nombre": "PARAQUAT SIGMA",
+      "senasa": "39024",
+      "sustancia": "PARAQUAT DICLORURO"
     },
     "kylian 48": {
       "cantidad": 830.0,
@@ -4402,6 +4444,13 @@
       "nombre": "BRUCIA SC 40%",
       "senasa": "39596",
       "sustancia": "TOLPIRALATE"
+    },
+    "ontario": {
+      "cantidad": 189.25,
+      "id_mda": "8989",
+      "nombre": "ONTARIO",
+      "senasa": "38599",
+      "sustancia": "IMAZAPIR SAL ISOPROPILAMINA"
     },
     "adama essentials imatron": {
       "cantidad": 35.0,
@@ -4432,7 +4481,7 @@
       "sustancia": "METALAXIL"
     },
     "fulltec": {
-      "cantidad": 40.0,
+      "cantidad": 210.0,
       "id_mda": "13720",
       "nombre": "FULLTEC",
       "senasa": "17920",
@@ -4557,19 +4606,19 @@
       "senasa": "40911",
       "sustancia": "PICLORAM"
     },
-    "ontario": {
-      "cantidad": 233.55,
-      "id_mda": "8989",
-      "nombre": "ONTARIO",
-      "senasa": "38599",
-      "sustancia": "IMAZAPIR SAL ISOPROPILAMINA"
-    },
     "sumisoya top": {
       "cantidad": 395.0,
       "id_mda": "5643",
       "nombre": "SUMISOYA TOP",
       "senasa": "32975",
       "sustancia": "FLUMIOXAZIN"
+    },
+    "power plus ii": {
+      "cantidad": 251382.24,
+      "id_mda": "7417",
+      "nombre": "POWER PLUS II",
+      "senasa": "36639",
+      "sustancia": "GLIFOSATO"
     },
     "porter": {
       "cantidad": 100.0,
@@ -4592,12 +4641,33 @@
       "senasa": "39967",
       "sustancia": "CLETODIM"
     },
+    "rizospray extremo": {
+      "cantidad": 220.0,
+      "id_mda": "7694",
+      "nombre": "RIZOSPRAY EXTREMO",
+      "senasa": "37021",
+      "sustancia": "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITES VEGETALES"
+    },
+    "cletodim inzira": {
+      "cantidad": 700.0,
+      "id_mda": "",
+      "nombre": "CLETODIM INZIRA",
+      "senasa": "",
+      "sustancia": "CLETODIM"
+    },
     "abamec 3 6 sigma": {
       "cantidad": 110.0,
       "id_mda": "15384",
       "nombre": "ABAMEC 3,6 SIGMA",
       "senasa": "41215",
       "sustancia": "ABAMECTINA"
+    },
+    "escort": {
+      "cantidad": 57.98,
+      "id_mda": "5352",
+      "nombre": "ESCORT",
+      "senasa": "30458",
+      "sustancia": "METSULFURON METIL"
     },
     "cowboy elite": {
       "cantidad": 120.0,
@@ -4669,13 +4739,6 @@
       "senasa": "38231",
       "sustancia": "CLETODIM"
     },
-    "cletodim inzira": {
-      "cantidad": 60.0,
-      "id_mda": "",
-      "nombre": "CLETODIM INZIRA",
-      "senasa": "",
-      "sustancia": "CLETODIM"
-    },
     "trifluralina atanor 44 5": {
       "cantidad": 260.0,
       "id_mda": "5577",
@@ -4703,6 +4766,13 @@
       "nombre": "DACONIL 72 F",
       "senasa": "32471",
       "sustancia": "CLOROTALONIL"
+    },
+    "voraxor": {
+      "cantidad": 76.95,
+      "id_mda": "15631",
+      "nombre": "VORAXOR",
+      "senasa": "41497",
+      "sustancia": "SAFLUFENACIL + TRIFLUDIMOXAZIN"
     },
     "matayuyos selectivo mcpa": {
       "cantidad": 6240.0,
@@ -4732,11 +4802,11 @@
       "senasa": "39199",
       "sustancia": "2,4-D"
     },
-    "2 4d 89 prochem": {
+    "de campo blue": {
       "cantidad": 880.0,
-      "id_mda": "11027",
-      "nombre": "2,4D 89 PROCHEM",
-      "senasa": "40742",
+      "id_mda": "",
+      "nombre": "DE CAMPO BLUE",
+      "senasa": "",
       "sustancia": "2,4-D"
     },
     "elumis": {
@@ -4754,14 +4824,14 @@
       "sustancia": "DIFENOCONAZOLE + FLUDIOXONIL + SEDAXANE"
     },
     "dual gold": {
-      "cantidad": 36940.0,
+      "cantidad": 36883.21,
       "id_mda": "5754",
       "nombre": "DUAL GOLD",
       "senasa": "33400",
       "sustancia": "S-METOLACLORO"
     },
     "adama essentials rainbow ec": {
-      "cantidad": 1780.0,
+      "cantidad": 1920.0,
       "id_mda": "8876",
       "nombre": "ADAMA ESSENTIALS RAINBOW EC",
       "senasa": "38476",
@@ -4915,7 +4985,7 @@
       "sustancia": "ABAMECTINA"
     },
     "dual gold a": {
-      "cantidad": 120.0,
+      "cantidad": 757.0,
       "id_mda": "5754",
       "nombre": "DUAL GOLD A",
       "senasa": "33400",
@@ -4942,6 +5012,13 @@
       "senasa": "32767",
       "sustancia": "MEZCLA DE ACIDOS Y ESTERES DE ACIDOS GRASOS"
     },
+    "elatus ace con tecnologia solatenol": {
+      "cantidad": 149.83,
+      "id_mda": "10223",
+      "nombre": "ELATUS ACE CON TECNOLOGIA SOLATENOL",
+      "senasa": "39860",
+      "sustancia": "PROPICONAZOLE + BENZOVINDIFLUPYR"
+    },
     "boral 50 sc": {
       "cantidad": 790.0,
       "id_mda": "5734",
@@ -4963,13 +5040,6 @@
       "senasa": "39476",
       "sustancia": "CLETODIM"
     },
-    "rizospray extremo": {
-      "cantidad": 180.0,
-      "id_mda": "7694",
-      "nombre": "RIZOSPRAY EXTREMO",
-      "senasa": "37021",
-      "sustancia": "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITES VEGETALES"
-    },
     "kaiser full iii": {
       "cantidad": 2720.0,
       "id_mda": "9460",
@@ -4985,7 +5055,7 @@
       "sustancia": "CARBENDAZIM + TIRAM"
     },
     "gesaprim 90 wdg": {
-      "cantidad": 24994.91,
+      "cantidad": 23197.41,
       "id_mda": "5412",
       "nombre": "GESAPRIM 90 WDG",
       "senasa": "31220",
@@ -5012,19 +5082,26 @@
       "senasa": "36705",
       "sustancia": "IMAZETAPIR"
     },
+    "flurocloridona nufarm": {
+      "cantidad": 15833.72,
+      "id_mda": "6776",
+      "nombre": "FLUROCLORIDONA NUFARM",
+      "senasa": "35558",
+      "sustancia": "FLUROCLORIDONA"
+    },
+    "cletodim 24 ebc": {
+      "cantidad": 260.0,
+      "id_mda": "10188",
+      "nombre": "CLETODIM 24 EBC",
+      "senasa": "39825",
+      "sustancia": "CLETODIM"
+    },
     "virantra con tecnologia plinazolin": {
       "cantidad": 630.0,
       "id_mda": "15329",
       "nombre": "VIRANTRA CON TECNOLOGIA PLINAZOLIN",
       "senasa": "40620",
       "sustancia": "ISOCYCLOSERAM"
-    },
-    "elatus ace con tecnologia solatenol": {
-      "cantidad": 290.0,
-      "id_mda": "10223",
-      "nombre": "ELATUS ACE CON TECNOLOGIA SOLATENOL",
-      "senasa": "39860",
-      "sustancia": "PROPICONAZOLE + BENZOVINDIFLUPYR"
     },
     "ttm": {
       "cantidad": 300.0,
@@ -5061,26 +5138,12 @@
       "senasa": "37792",
       "sustancia": "LACTOFEN"
     },
-    "flurocloridona nufarm": {
-      "cantidad": 15980.0,
-      "id_mda": "6776",
-      "nombre": "FLUROCLORIDONA NUFARM",
-      "senasa": "35558",
-      "sustancia": "FLUROCLORIDONA"
-    },
     "paraquat insuagro": {
       "cantidad": 400.0,
       "id_mda": "7923",
       "nombre": "PARAQUAT INSUAGRO",
       "senasa": "37309",
       "sustancia": "PARAQUAT DICLORURO"
-    },
-    "fulltec max": {
-      "cantidad": 408.0,
-      "id_mda": "13703",
-      "nombre": "FULLTEC MAX",
-      "senasa": "17902",
-      "sustancia": "COMPLEJO - FOLIAR"
     },
     "smart foil": {
       "cantidad": 5260.0,
@@ -5094,6 +5157,13 @@
       "id_mda": "5820",
       "nombre": "SULFOSATO TOUCHDOWN",
       "senasa": "33566",
+      "sustancia": "GLIFOSATO"
+    },
+    "glifosato 48 sigma": {
+      "cantidad": 440.0,
+      "id_mda": "7524",
+      "nombre": "GLIFOSATO 48 SIGMA",
+      "senasa": "36791",
       "sustancia": "GLIFOSATO"
     },
     "milenial 50": {
@@ -5130,6 +5200,13 @@
       "nombre": "GLUFOSINATO DE AMONIO SIGMA",
       "senasa": "38634",
       "sustancia": "GLUFOSINATO DE AMONIO"
+    },
+    "march ii": {
+      "cantidad": 520.0,
+      "id_mda": "7419",
+      "nombre": "MARCH II",
+      "senasa": "36641",
+      "sustancia": "GLIFOSATO"
     },
     "macro sorb foliar": {
       "cantidad": 580.0,
@@ -5194,12 +5271,12 @@
       "senasa": "36612",
       "sustancia": "ACIDO CITRICO"
     },
-    "voliam 20": {
-      "cantidad": 850.0,
-      "id_mda": "16599",
-      "nombre": "VOLIAM 20",
-      "senasa": "42452",
-      "sustancia": "CLORANTRANILIPROLE"
+    "axial": {
+      "cantidad": 899.0,
+      "id_mda": "6387",
+      "nombre": "AXIAL",
+      "senasa": "34802",
+      "sustancia": "PINOXADEN + CLOQUINTOCET MEXIL"
     },
     "allgram 2 4 d 89 ester": {
       "cantidad": 3420.0,
@@ -5221,6 +5298,13 @@
       "nombre": "2,4D- EHE AGROTERRUM",
       "senasa": "38792",
       "sustancia": "2,4-D"
+    },
+    "karate con tecnologia zeon": {
+      "cantidad": 1000.0,
+      "id_mda": "5727",
+      "nombre": "KARATE® CON TECNOLOGIA ZEON™",
+      "senasa": "33310",
+      "sustancia": "LAMBDACIALOTRINA"
     },
     "atranex 90": {
       "cantidad": 1065.0,
@@ -5264,6 +5348,13 @@
       "senasa": "31120",
       "sustancia": "MANCOZEB"
     },
+    "2 4 d lv 89 sigma": {
+      "cantidad": 5839.19,
+      "id_mda": "10631",
+      "nombre": "2,4 D LV 89 SIGMA",
+      "senasa": "40141",
+      "sustancia": "2,4-D"
+    },
     "weizen nt": {
       "cantidad": 6000.0,
       "id_mda": "10056",
@@ -5281,20 +5372,27 @@
   },
   "stock_por_sustancia": {
     "METSULFURON METIL": {
-      "cantidad": 46.31,
+      "cantidad": 74.28,
       "marcas": {
         "METSULFURON  SURCOS": 0.1,
-        "ESCORT": 30.01,
         "METT": 2.0,
         "ERRASIN WDG": 2.2,
         "ERRASIN WP": 8.0,
-        "METSULFURON 60 WG INSUAGRO": 4.0
+        "METSULFURON 60 WG INSUAGRO": 4.0,
+        "ESCORT": 57.98
       }
     },
     "TIAFENACIL": {
       "cantidad": 3.35,
       "marcas": {
         "REVITON": 3.35
+      }
+    },
+    "SAFLUFENACIL": {
+      "cantidad": 36.44,
+      "marcas": {
+        "HEAT": 25.94,
+        "VELTROMA": 10.5
       }
     },
     "DICLOSULAM": {
@@ -5315,13 +5413,6 @@
         "VERTIMEC": 360.0
       }
     },
-    "SAFLUFENACIL": {
-      "cantidad": 45.13,
-      "marcas": {
-        "HEAT": 34.63,
-        "VELTROMA": 10.5
-      }
-    },
     "MEZCLA DE ACIDOS FOSFONICOS DTPMP + ATMP": {
       "cantidad": 718.0,
       "marcas": {
@@ -5329,15 +5420,16 @@
       }
     },
     "LAMBDACIALOTRINA": {
-      "cantidad": 1104.0,
+      "cantidad": 2101.73,
       "marcas": {
         "AIKIDO 25": 47.0,
-        "KARATE ZEON 5 CS": 241.0,
+        "KARATE ZEON 5 CS": 238.73,
         "MANTO": 143.0,
         "CIALOTRIN 25 ME": 20.0,
         "DAARGUS LAMBDA": 476.0,
         "AIKIDO": 122.0,
-        "CENTINEL CS": 55.0
+        "CENTINEL CS": 55.0,
+        "KARATE® CON TECNOLOGIA ZEON™": 1000.0
       }
     },
     "HEPTA METILTRISILOXANO MODIFICADO": {
@@ -5359,9 +5451,9 @@
       }
     },
     "CARFENTRAZONE ETHYL": {
-      "cantidad": 602.89,
+      "cantidad": 636.33,
       "marcas": {
-        "AFFINITY": 602.89
+        "AFFINITY": 636.33
       }
     },
     "SULFOMETURON METIL + CLORIMURON ETIL": {
@@ -5395,10 +5487,10 @@
       }
     },
     "FLUROXIPIR MEPTIL": {
-      "cantidad": 381.0,
+      "cantidad": 305.61,
       "marcas": {
         "FLUROXIPIR SIGMA": 1.0,
-        "STARANE XTRA": 380.0
+        "STARANE XTRA": 304.61
       }
     },
     "MEZCLA DE ACIDOS FOSFONICOS (DTMP + ATMP)": {
@@ -5465,12 +5557,6 @@
         "TOCON": 4.0
       }
     },
-    "SAFLUFENACIL + TRIFLUDIMOXAZIN": {
-      "cantidad": 4.0,
-      "marcas": {
-        "VORAXOR": 4.0
-      }
-    },
     "IODOSULFURON METIL SODIO+MEFENPIR DIETIL+ MESOSULFURON METIL SODIO": {
       "cantidad": 231.3,
       "marcas": {
@@ -5478,20 +5564,20 @@
       }
     },
     "2,4-D": {
-      "cantidad": 170086.59,
+      "cantidad": 175908.0,
       "marcas": {
         "HERBIFEN ADVANCE": 78992.81,
         "NOVOLESTER 97": 1656.0,
-        "2,4 D LV 89 SIGMA": 17.78,
         "ENLIST": 61880.0,
         "AUSTAK": 2260.0,
         "ACADEMIX LV EC": 460.0,
         "PRO D-89 BV": 12560.0,
         "TORNADO": 80.0,
-        "2,4D 89 PROCHEM": 880.0,
+        "DE CAMPO BLUE": 880.0,
         "2,4D AMINA": 880.0,
         "ALLGRAM 2,4 D 89 ESTER": 3420.0,
         "2,4D- EHE AGROTERRUM": 1000.0,
+        "2,4 D LV 89 SIGMA": 5839.19,
         "WEIZEN NT": 6000.0
       }
     },
@@ -5549,11 +5635,11 @@
       }
     },
     "DICAMBA": {
-      "cantidad": 1931.04,
+      "cantidad": 1799.91,
       "marcas": {
         "BEMUS": 80.0,
         "ATECTRA BV": 550.0,
-        "BANVEL": 961.04,
+        "BANVEL": 829.91,
         "COWBOY ELITE": 120.0,
         "ATANOR DICAMBA 70,8 SL": 60.0,
         "DICAMBA AGROTERRUM": 160.0
@@ -5579,9 +5665,9 @@
       }
     },
     "ACEITE MINERAL PARAFINICO": {
-      "cantidad": 6886.08,
+      "cantidad": 5460.15,
       "marcas": {
-        "NIMBUS": 6886.08
+        "NIMBUS": 5460.15
       }
     },
     "ALQUIL FENOL ETOXILADO": {
@@ -5591,12 +5677,19 @@
       }
     },
     "DIFLUFENICAN": {
-      "cantidad": 3736.84,
+      "cantidad": 3420.63,
       "marcas": {
         "DIFLUFENICAN 50 INSUAGRO": 5.0,
-        "BRODAL 50 SC": 2896.84,
+        "BRODAL 50 SC": 2580.63,
         "DIFLU 50 CONTROLER II": 85.0,
         "TUKEN": 750.0
+      }
+    },
+    "CLORANTRANILIPROLE": {
+      "cantidad": 882.82,
+      "marcas": {
+        "VOLIAM 20": 844.82,
+        "CORAGEN": 38.0
       }
     },
     "PIRAFLUFEN ETIL": {
@@ -5624,22 +5717,23 @@
       }
     },
     "CLETODIM": {
-      "cantidad": 66828.05,
+      "cantidad": 66625.78,
       "marcas": {
         "CLETO AGRO 24": 23.0,
         "EUDOR 24": 3580.0,
-        "SELECT": 52375.05,
+        "SELECT": 51272.78,
         "CLETODIM SIGMA": 520.0,
         "CLETOS 24% EC": 140.0,
         "KYLIAN 48": 830.0,
         "ZYNION": 40.0,
         "ATANOR CLETODIM 24 EC": 1860.0,
         "TRASPECT M": 40.0,
+        "CLETODIM INZIRA": 700.0,
         "CAMPODIM EC": 5660.0,
         "LUXOR": 120.0,
-        "CLETODIM INZIRA": 60.0,
         "CLETODIM 36% EBC": 320.0,
         "CLETODIM 24 SINO-AGRI": 160.0,
+        "CLETODIM 24 EBC": 260.0,
         "SELECT 36 EC": 500.0,
         "CLETIODIM 24 ARM EBC": 600.0
       }
@@ -5649,13 +5743,6 @@
       "marcas": {
         "DASEN": 160.0,
         "BENAZOLIN 50 DELTA AGRO": 50.0
-      }
-    },
-    "CLORANTRANILIPROLE": {
-      "cantidad": 888.0,
-      "marcas": {
-        "CORAGEN": 38.0,
-        "VOLIAM 20": 850.0
       }
     },
     "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITE VEGETAL": {
@@ -5706,9 +5793,9 @@
       }
     },
     "CLOPIRALID": {
-      "cantidad": 734.13,
+      "cantidad": 687.03,
       "marcas": {
-        "LONTREL": 714.13,
+        "LONTREL": 667.03,
         "CLOPYRALID NOVA": 20.0
       }
     },
@@ -5746,9 +5833,9 @@
       }
     },
     "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITE DE SOJA": {
-      "cantidad": 265.74,
+      "cantidad": 262.83,
       "marcas": {
-        "FULLTEC OIL": 105.74,
+        "FULLTEC OIL": 102.83,
         "COADYUVANTE ACTION": 60.0,
         "ZINAX": 100.0
       }
@@ -5766,11 +5853,11 @@
       }
     },
     "FLUMIOXAZIN": {
-      "cantidad": 2291.64,
+      "cantidad": 2135.45,
       "marcas": {
         "ADAMA OXALIS 48 SC": 175.0,
         "FLUMIOXAZIN 48 SIGMA": 190.0,
-        "GEMMIT TOP": 1531.64,
+        "GEMMIT TOP": 1375.45,
         "SUMISOYA TOP": 395.0
       }
     },
@@ -5778,19 +5865,6 @@
       "cantidad": 6735.0,
       "marcas": {
         "ACURON ™ UNO": 6735.0
-      }
-    },
-    "PARAQUAT DICLORURO": {
-      "cantidad": 27515.76,
-      "marcas": {
-        "PARAQUAT SIGMA": 7175.76,
-        "BARON": 4620.0,
-        "PARAQUAT NOVA -": 4660.0,
-        "PARAQUAT 27,6": 4600.0,
-        "PARAQUAT XIAN": 1440.0,
-        "PARAQUAT 27,6 ARN EBC": 100.0,
-        "PARAQUAT SINON": 4520.0,
-        "PARAQUAT INSUAGRO": 400.0
       }
     },
     "ACIDO CITRICO": {
@@ -5808,12 +5882,12 @@
       }
     },
     "S-METOLACLORO": {
-      "cantidad": 41964.0,
+      "cantidad": 42544.21,
       "marcas": {
         "STRIM UPL": 4880.0,
         "BAGUAL PLUS": 24.0,
-        "DUAL GOLD": 36940.0,
-        "DUAL GOLD A": 120.0
+        "DUAL GOLD": 36883.21,
+        "DUAL GOLD A": 757.0
       }
     },
     "FOMESAFEN": {
@@ -5825,25 +5899,27 @@
       }
     },
     "GLIFOSATO": {
-      "cantidad": 435883.58,
+      "cantidad": 425767.24,
       "marcas": {
-        "POWER PLUS II": 262458.58,
         "PANZER GOLD EN": 20800.0,
+        "POWER PLUS II": 251382.24,
         "PANZER GOLD": 1460.0,
         "LA TIJERETA BOX W": 780.0,
         "LA TIJERETA PLATINUM II": 4060.0,
         "KAISER FULL III": 2720.0,
         "ROUNDUP ULTRAMAX": 345.0,
         "SULFOSATO TOUCHDOWN": 140980.0,
+        "GLIFOSATO 48 SIGMA": 440.0,
+        "MARCH II": 520.0,
         "GLIFOSATO FULL II SIGMA": 1320.0,
         "KAISER FULL II": 960.0
       }
     },
     "M.C.P.A.": {
-      "cantidad": 18443.65,
+      "cantidad": 16585.55,
       "marcas": {
         "MCPA AMINA 75": 7586.46,
-        "MCPA 28": 4617.19,
+        "MCPA 28": 2759.09,
         "MATAYUYOS SELECTIVO MCPA": 6240.0
       }
     },
@@ -5871,28 +5947,42 @@
       }
     },
     "PROTHIOCONAZOLE + TRIFLOXISTROBIN": {
-      "cantidad": 5982.82,
+      "cantidad": 4892.0,
       "marcas": {
-        "CRIPTON": 5982.82
+        "CRIPTON": 4892.0
+      }
+    },
+    "PARAQUAT DICLORURO": {
+      "cantidad": 27405.77,
+      "marcas": {
+        "PARAQUAT INZIRA": 720.0,
+        "PARAQUAT SIGMA": 6345.77,
+        "BARON": 4620.0,
+        "PARAQUAT NOVA -": 4660.0,
+        "PARAQUAT 27,6": 4600.0,
+        "PARAQUAT XIAN": 1440.0,
+        "PARAQUAT 27,6 ARN EBC": 100.0,
+        "PARAQUAT SINON": 4520.0,
+        "PARAQUAT INSUAGRO": 400.0
       }
     },
     "DIFENOCONAZOLE + PYDIFLUMETOFEN": {
-      "cantidad": 2558.46,
+      "cantidad": 2281.12,
       "marcas": {
-        "MIRAVIS DUO CON TECNOLOGIA ADEPIDYN": 2558.46
+        "MIRAVIS DUO CON TECNOLOGIA ADEPIDYN": 2281.12
+      }
+    },
+    "COMPLEJO - BINARIO": {
+      "cantidad": 5282.0,
+      "marcas": {
+        "FULLTEC MAX": 22.0,
+        "SMART FOIL": 5260.0
       }
     },
     "TEFLUBENZURON": {
       "cantidad": 25.0,
       "marcas": {
         "NOMOLT": 25.0
-      }
-    },
-    "PINOXADEN + CLOQUINTOCET MEXIL": {
-      "cantidad": 65.0,
-      "marcas": {
-        "AXIAL": 25.0,
-        "ADAMA PINXIT": 40.0
       }
     },
     "SULFATO DE COBRE PENTAHIDRATADO": {
@@ -5905,6 +5995,12 @@
       "cantidad": 30.0,
       "marcas": {
         "BRUCIA SC 40%": 30.0
+      }
+    },
+    "IMAZAPIR SAL ISOPROPILAMINA": {
+      "cantidad": 189.25,
+      "marcas": {
+        "ONTARIO": 189.25
       }
     },
     "FERTILIZANTE - COMPUESTO - FOLIAR - FERTIRRIEGO - SIMPLE": {
@@ -5920,19 +6016,19 @@
       }
     },
     "COMPLEJO - FOLIAR": {
-      "cantidad": 448.0,
+      "cantidad": 473.53,
       "marcas": {
         "FULLTEC": 40.0,
-        "FULLTEC MAX": 408.0
+        "FULLTEC MAX": 433.53
       }
     },
     "ATRAZINA": {
-      "cantidad": 32204.91,
+      "cantidad": 30407.41,
       "marcas": {
         "TRAC 50 FL": 40.0,
         "TRAC 90 WG AL": 5230.0,
         "ATRAMYL 90 WG": 515.0,
-        "GESAPRIM 90 WDG": 24994.91,
+        "GESAPRIM 90 WDG": 23197.41,
         "ADAMA ATRANEX 90 WG": 360.0,
         "ATRANEX 90": 1065.0
       }
@@ -5943,6 +6039,13 @@
         "PASTAR GOLD": 40.0
       }
     },
+    "PINOXADEN + CLOQUINTOCET MEXIL": {
+      "cantidad": 939.0,
+      "marcas": {
+        "ADAMA PINXIT": 40.0,
+        "AXIAL": 899.0
+      }
+    },
     "CLOPYRALID + M.C.P.A.": {
       "cantidad": 40.0,
       "marcas": {
@@ -5950,11 +6053,11 @@
       }
     },
     "FLUROCLORIDONA": {
-      "cantidad": 30420.0,
+      "cantidad": 30413.72,
       "marcas": {
         "TALIS": 1800.0,
-        "ADAMA ESSENTIALS RAINBOW EC": 1780.0,
-        "FLUROCLORIDONA NUFARM": 15980.0,
+        "ADAMA ESSENTIALS RAINBOW EC": 1920.0,
+        "FLUROCLORIDONA NUFARM": 15833.72,
         "FLORANE ACA 25": 10860.0
       }
     },
@@ -5964,10 +6067,10 @@
         "ARMETIL COBRE FALCROP": 40.0
       }
     },
-    "IMAZAPIR SAL ISOPROPILAMINA": {
-      "cantidad": 233.55,
+    "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITES VEGETALES": {
+      "cantidad": 220.0,
       "marcas": {
-        "ONTARIO": 233.55
+        "RIZOSPRAY EXTREMO": 220.0
       }
     },
     "COMPLEJO - FERTIRRIEGO - NITROGENADO": {
@@ -5983,16 +6086,34 @@
         "ADAMA ESSENTIALS PREMERGE": 820.0
       }
     },
+    "FERTILIZANTE - COMPLEJO - FOLIAR - TRATAMIENTO DE SEMILLAS - N - P + MICRONUTRIENTES": {
+      "cantidad": 60.0,
+      "marcas": {
+        "TOP ZINC MAX": 60.0
+      }
+    },
     "ALCOHOL GRASO ETOXILADO": {
       "cantidad": 370.0,
       "marcas": {
         "ÉXITO LSC": 370.0
       }
     },
+    "COMPLEJO - BINARIO - FOLIAR": {
+      "cantidad": 170.0,
+      "marcas": {
+        "FULLTEC": 170.0
+      }
+    },
     "CLOROTALONIL": {
       "cantidad": 761.88,
       "marcas": {
         "DACONIL 72 F": 761.88
+      }
+    },
+    "SAFLUFENACIL + TRIFLUDIMOXAZIN": {
+      "cantidad": 76.95,
+      "marcas": {
+        "VORAXOR": 76.95
       }
     },
     "SPINETORAM": {
@@ -6075,10 +6196,10 @@
         "DASH - HC": 140.0
       }
     },
-    "ESTERES METILICOS DE ACIDOS GRASOS DE ACEITES VEGETALES": {
-      "cantidad": 180.0,
+    "PROPICONAZOLE + BENZOVINDIFLUPYR": {
+      "cantidad": 149.83,
       "marcas": {
-        "RIZOSPRAY EXTREMO": 180.0
+        "ELATUS ACE CON TECNOLOGIA SOLATENOL": 149.83
       }
     },
     "CARBENDAZIM + TIRAM": {
@@ -6099,12 +6220,6 @@
         "VIRANTRA CON TECNOLOGIA PLINAZOLIN": 630.0
       }
     },
-    "PROPICONAZOLE + BENZOVINDIFLUPYR": {
-      "cantidad": 290.0,
-      "marcas": {
-        "ELATUS ACE CON TECNOLOGIA SOLATENOL": 290.0
-      }
-    },
     "ACEITE DE SOJA": {
       "cantidad": 300.0,
       "marcas": {
@@ -6115,12 +6230,6 @@
       "cantidad": 740.0,
       "marcas": {
         "OPERA": 740.0
-      }
-    },
-    "COMPLEJO - BINARIO": {
-      "cantidad": 5260.0,
-      "marcas": {
-        "SMART FOIL": 5260.0
       }
     },
     "CLOROTALONIL + PIDIFLUMETOFEN": {
