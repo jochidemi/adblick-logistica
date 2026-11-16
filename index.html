@@ -108,9 +108,9 @@ input[type=number] { -moz-appearance: textfield; }
   background: var(--dark); color: var(--white); padding: 8px 10px; text-align: center;
   font-size: 11px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap;
 }
-.pedidos-table th:first-child, .pedidos-table th:nth-child(2) { text-align: left; }
+.pedidos-table th:first-child, .pedidos-table th:nth-child(2), .pedidos-table th:nth-child(3) { text-align: left; }
 .pedidos-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; vertical-align: middle; }
-.pedidos-table td:first-child, .pedidos-table td:nth-child(2) { text-align: left; font-weight: 600; }
+.pedidos-table td:first-child, .pedidos-table td:nth-child(2), .pedidos-table td:nth-child(3) { text-align: left; font-weight: 600; }
 .pedidos-table tr:hover td { background: #fffbe8; }
 .badge {
   display: inline-block; background: var(--yellow-light); color: #7a6000;
@@ -127,6 +127,7 @@ input[type=number] { -moz-appearance: textfield; }
 .pedido-meta { font-size: 11px; color: var(--gray); margin-top: 4px; }
 .pedido-campo { font-size: 15px; font-weight: 700; color: var(--dark); }
 .pedido-cultivo { display: inline-block; background: var(--yellow-light); color: #7a6000; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin-top: 4px; }
+.pedido-lote { display: inline-block; background: #eef2f5; color: #333; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin-top: 4px; margin-left: 6px; }
 .pedido-dias { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .dia-chip {
   background: #f5f5f5; border-radius: 8px; padding: 6px 10px; font-size: 11px; text-align: center;
@@ -171,9 +172,9 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 /* PREVIEW TABLE */
 .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .preview-table th { background: #2e7d32; color: #fff; padding: 7px 10px; text-align: center; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.preview-table th:first-child, .preview-table th:nth-child(2), .preview-table th:nth-child(3) { text-align: left; }
+.preview-table th:first-child, .preview-table th:nth-child(2), .preview-table th:nth-child(3), .preview-table th:nth-child(4) { text-align: left; }
 .preview-table td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; vertical-align: middle; font-size: 12px; }
-.preview-table td:first-child, .preview-table td:nth-child(2), .preview-table td:nth-child(3) { text-align: left; }
+.preview-table td:first-child, .preview-table td:nth-child(2), .preview-table td:nth-child(3), .preview-table td:nth-child(4) { text-align: left; }
 .preview-table tr:hover td { background: #f1f8e9; }
 
 /* DRAG & DROP */
@@ -238,6 +239,12 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
             <label>Cultivo</label>
             <select id="selCultivo" disabled onchange="onCultivoChange()" style="min-width:180px;">
               <option value="">-- Cultivo --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Lote</label>
+            <select id="selLote" disabled onchange="onLoteChange()" style="min-width:160px;">
+              <option value="">-- Lote --</option>
             </select>
           </div>
           <div class="field">
@@ -368,7 +375,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         <div class="card-title">Actualizar datos maestros</div>
         <p style="font-size:13px;color:var(--gray);margin-bottom:12px;">
           Arrastrá el Excel <strong>DB Logística Campos</strong> para reemplazar los datos maestros en SharePoint.
-          Columnas esperadas: <strong>Campo</strong>, <strong>Cultivo</strong>, <strong>Comentario_Logistica</strong>, <strong>Responsable</strong>, <strong>Zona</strong>
+          Columnas esperadas: <strong>Campo</strong>, <strong>Cultivo</strong>, <strong>Lote</strong>, <strong>Comentario_Logistica</strong>, <strong>Responsable</strong>, <strong>Zona</strong>
         </p>
         <div class="drop-zone" id="dz-logistica"
           ondragover="event.preventDefault();this.classList.add('dragover');"
@@ -437,8 +444,93 @@ var CONFIG = {
 
 var CAMPOS_ZONA = {};
 var CAMPO_CULTIVOS = {};
+var CAMPO_CULTIVO_LOTES = {};
 var CULTIVO_COMENTARIOS = {};
 var CAMPOS_RESPONSABLE = {};
+var SP_COLS = {
+  dbLote: null,
+  dbChecked: false,
+  pedidosLote: null,
+  pedidosChecked: false
+};
+
+function escHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function natSortLotes(arr) {
+  return arr.slice().sort(function(a, b) {
+    return a.localeCompare(b, "es", { numeric: true, sensitivity: "base" });
+  });
+}
+
+async function detectLoteColumnWithStatus(listId) {
+  try {
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/columns",
+      { headers: { Authorization: "Bearer " + graphToken } }
+    );
+    if (!r.ok) return { ok: false, colName: null };
+    var data = await r.json();
+    var cols = data.value || [];
+    for (var i = 0; i < cols.length; i++) {
+      var dn = (cols[i].displayName || "").toLowerCase().trim();
+      var nm = (cols[i].name || "").toLowerCase().trim();
+      if (dn === "lote" || nm === "lote") return { ok: true, colName: cols[i].name };
+    }
+    for (var j = 0; j < cols.length; j++) {
+      var dn2 = (cols[j].displayName || "").toLowerCase().trim();
+      if (dn2.indexOf("lote") !== -1 && !cols[j].readOnly) return { ok: true, colName: cols[j].name };
+    }
+    return { ok: true, colName: null };
+  } catch (e) {
+    console.warn("Error detectando columna Lote en lista " + listId + ":", e);
+    return { ok: false, colName: null };
+  }
+}
+
+async function ensureDbLoteCol(forceRefresh) {
+  if (!SP_COLS.dbChecked || forceRefresh) {
+    var info = await detectLoteColumnWithStatus(CONFIG.dbListId);
+    if (info.ok) {
+      SP_COLS.dbLote = info.colName;
+      SP_COLS.dbChecked = true;
+    }
+    return info;
+  }
+  return { ok: true, colName: SP_COLS.dbLote };
+}
+
+async function ensurePedidosLoteCol(forceRefresh) {
+  if (!SP_COLS.pedidosChecked || forceRefresh) {
+    var info = await detectLoteColumnWithStatus(CONFIG.sharepointListId);
+    if (info.ok) {
+      SP_COLS.pedidosLote = info.colName;
+      SP_COLS.pedidosChecked = true;
+    }
+  }
+  return SP_COLS.pedidosLote;
+}
+
+function extractPedidoLote(f) {
+  if (!f) return "";
+  if (SP_COLS.pedidosLote && f[SP_COLS.pedidosLote]) return String(f[SP_COLS.pedidosLote]).trim();
+  if (f.Lote) return String(f.Lote).trim();
+  if (f.lote) return String(f.lote).trim();
+  var c = String(f.Comentarios || "");
+  var m = c.match(/^\[Lote:\s*([^\]]+)\]\s*/i);
+  return m ? m[1].trim() : "";
+}
+
+function cleanPedidoComentarios(f) {
+  if (!f || !f.Comentarios) return "";
+  return String(f.Comentarios).replace(/^\[Lote:\s*[^\]]+\]\s*/i, "").trim();
+}
 
 var msalInstance = null;
 var currentAccount = null;
@@ -457,7 +549,11 @@ function switchTab(name) {
   document.getElementById("tab-" + name).classList.add("active");
   if (name === "mispedidos") cargarMisPedidos();
   if (name === "metricas") cargarMetricas();
-  if (name === "logistica") { renderComentariosActivos(); renderPadronStatus(); }
+  if (name === "logistica") {
+    renderComentariosActivos();
+    renderPadronStatus();
+    ensurePedidosLoteCol().then(function() { renderPadronStatus(); });
+  }
 }
 
 // ── FECHAS ──
@@ -506,6 +602,7 @@ function showApp() {
   document.getElementById("loadingScreen").style.display = "none";
   document.getElementById("appContent").style.display = "block";
   loadMasterData();
+  ensurePedidosLoteCol();
   setupDropZoneClick();
 }
 
@@ -515,6 +612,7 @@ async function loadMasterData() {
   sel.innerHTML = "<option value=\"\">Cargando campos...</option>";
   sel.disabled = true;
   try {
+    await ensureDbLoteCol(true);
     var items = [];
     var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
               "/lists/" + CONFIG.dbListId +
@@ -535,6 +633,7 @@ async function loadMasterData() {
     // Poblar estructuras
     CAMPOS_ZONA = {};
     CAMPO_CULTIVOS = {};
+    CAMPO_CULTIVO_LOTES = {};
     CULTIVO_COMENTARIOS = {};
     CAMPOS_RESPONSABLE = {};
     items.forEach(function(item) {
@@ -544,14 +643,29 @@ async function loadMasterData() {
       var comentario = (f.field_2 || "").trim();
       var responsable = (f.field_3 || "").trim();
       var zona = (f.field_4 || "").trim();
+      var loteRaw = (SP_COLS.dbLote && f[SP_COLS.dbLote] != null) ? f[SP_COLS.dbLote] : (f.Lote || f.lote || f.field_5 || "");
+      var lote = String(loteRaw || "").trim();
       if (!campo) return;
       if (!CAMPOS_ZONA[campo]) CAMPOS_ZONA[campo] = zona;
       if (!CAMPOS_RESPONSABLE[campo]) CAMPOS_RESPONSABLE[campo] = responsable;
       if (cultivo) {
         if (!CAMPO_CULTIVOS[campo]) CAMPO_CULTIVOS[campo] = [];
         if (CAMPO_CULTIVOS[campo].indexOf(cultivo) === -1) CAMPO_CULTIVOS[campo].push(cultivo);
-        CULTIVO_COMENTARIOS[campo + "|||" + cultivo] = comentario;
+        var keyCC = campo + "|||" + cultivo;
+        if (!CULTIVO_COMENTARIOS[keyCC] || (comentario && comentario !== "None")) {
+          CULTIVO_COMENTARIOS[keyCC] = comentario;
+        }
+        if (lote) {
+          if (!CAMPO_CULTIVO_LOTES[keyCC]) CAMPO_CULTIVO_LOTES[keyCC] = [];
+          if (CAMPO_CULTIVO_LOTES[keyCC].indexOf(lote) === -1) CAMPO_CULTIVO_LOTES[keyCC].push(lote);
+        }
       }
+    });
+    Object.keys(CAMPO_CULTIVOS).forEach(function(c) {
+      CAMPO_CULTIVOS[c].sort();
+    });
+    Object.keys(CAMPO_CULTIVO_LOTES).forEach(function(k) {
+      CAMPO_CULTIVO_LOTES[k] = natSortLotes(CAMPO_CULTIVO_LOTES[k]);
     });
     initForm();
     renderComentariosActivos();
@@ -572,7 +686,7 @@ function initForm() {
     opt.value = campos[i]; opt.textContent = campos[i]; sel.appendChild(opt);
   }
   sel.disabled = false;
-  buildDiasGrid("diasGrid");
+  resetForm();
 }
 
 function buildDiasGrid(containerId, values) {
@@ -595,6 +709,9 @@ function onCampoChange() {
   document.getElementById("lblZona").textContent = (campo && CAMPOS_ZONA[campo]) ? CAMPOS_ZONA[campo] : "-";
   var sel = document.getElementById("selCultivo");
   sel.innerHTML = "<option value=\"\">-- Cultivo --</option>";
+  var selLote = document.getElementById("selLote");
+  selLote.innerHTML = "<option value=\"\">-- Lote --</option>";
+  selLote.disabled = true;
   document.getElementById("lblComentarioLog").textContent = "-";
   if (campo && CAMPO_CULTIVOS[campo]) {
     CAMPO_CULTIVOS[campo].forEach(function(c) {
@@ -610,17 +727,43 @@ function onCultivoChange() {
   var key = campo + "|||" + cultivo;
   var c = (CULTIVO_COMENTARIOS[key] && CULTIVO_COMENTARIOS[key] !== "None") ? CULTIVO_COMENTARIOS[key] : "-";
   document.getElementById("lblComentarioLog").textContent = c;
+
+  var selLote = document.getElementById("selLote");
+  var lotes = (campo && cultivo && CAMPO_CULTIVO_LOTES[key]) ? CAMPO_CULTIVO_LOTES[key] : [];
+  if (!campo || !cultivo) {
+    selLote.innerHTML = "<option value=\"\">-- Lote --</option>";
+    selLote.disabled = true;
+  } else if (lotes.length === 0) {
+    selLote.innerHTML = "<option value=\"\">Sin lotes</option>";
+    selLote.disabled = true;
+  } else {
+    selLote.innerHTML = "<option value=\"\">-- Lote --</option>";
+    lotes.forEach(function(l) {
+      var opt = document.createElement("option");
+      opt.value = l; opt.textContent = l;
+      selLote.appendChild(opt);
+    });
+    selLote.disabled = false;
+    if (lotes.length === 1) selLote.value = lotes[0];
+  }
+}
+
+function onLoteChange() {
+  // Mantiene consistencia visual por si se extiende lógica específica por lote
 }
 
 function agregarFila() {
   var campo = document.getElementById("selCampo").value;
   var cultivo = document.getElementById("selCultivo").value;
+  var lote = document.getElementById("selLote").value;
   if (!campo || !cultivo) { showToast("Selecciona campo y cultivo", "error"); return; }
-  var zona = CAMPOS_ZONA[campo] || "";
   var key = campo + "|||" + cultivo;
+  var lotesDisponibles = CAMPO_CULTIVO_LOTES[key] || [];
+  if (lotesDisponibles.length > 0 && !lote) { showToast("Selecciona un lote", "error"); return; }
+  var zona = CAMPOS_ZONA[campo] || "";
   var comentarioLog = (CULTIVO_COMENTARIOS[key] && CULTIVO_COMENTARIOS[key] !== "None") ? CULTIVO_COMENTARIOS[key] : "";
   var dates = getDates();
-  var fila = { campo: campo, cultivo: cultivo, zona: zona, comentarioLog: comentarioLog, dias: [] };
+  var fila = { campo: campo, cultivo: cultivo, lote: lote || "", zona: zona, comentarioLog: comentarioLog, dias: [] };
   for (var i = 0; i < dates.length; i++) {
     fila.dias.push({
       fecha: fmtDateShort(dates[i]), fechaKey: fmtDateKey(dates[i]),
@@ -639,6 +782,8 @@ function resetForm() {
   document.getElementById("lblZona").textContent = "-";
   document.getElementById("selCultivo").innerHTML = "<option value=\"\">-- Cultivo --</option>";
   document.getElementById("selCultivo").disabled = true;
+  document.getElementById("selLote").innerHTML = "<option value=\"\">-- Lote --</option>";
+  document.getElementById("selLote").disabled = true;
   document.getElementById("lblComentarioLog").textContent = "-";
   buildDiasGrid("diasGrid");
 }
@@ -652,14 +797,14 @@ function renderTabla() {
   if (filasPedido.length === 0) { card.style.display = "none"; return; }
   card.style.display = "block";
   var dates = getDates();
-  var th = "<tr><th style=\"text-align:left;\">Campo</th><th style=\"text-align:left;\">Cultivo</th><th>Zona</th>";
+  var th = "<tr><th style=\"text-align:left;\">Campo</th><th style=\"text-align:left;\">Cultivo</th><th style=\"text-align:left;\">Lote</th><th>Zona</th>";
   for (var i = 0; i < dates.length; i++) th += "<th>" + fmtDate(dates[i]) + "</th>";
   th += "<th></th></tr>";
   document.getElementById("tablaHead").innerHTML = th;
   var tb = "";
   for (var r = 0; r < filasPedido.length; r++) {
     var fila = filasPedido[r];
-    tb += "<tr><td>" + fila.campo + "</td><td><span class=\"badge\">" + fila.cultivo + "</span></td><td>" + (fila.zona||"-") + "</td>";
+    tb += "<tr><td>" + escHtml(fila.campo) + "</td><td><span class=\"badge\">" + escHtml(fila.cultivo) + "</span></td><td>" + escHtml(fila.lote || "-") + "</td><td>" + escHtml(fila.zona||"-") + "</td>";
     for (var d = 0; d < fila.dias.length; d++) {
       var dia = fila.dias[d];
       tb += "<td>" + (dia.camiones > 0 ? "<strong>" + dia.camiones + "</strong>" : "<span style=\"color:#ccc;\">-</span>");
@@ -680,12 +825,17 @@ async function guardarPedido() {
   var fechaPedido = new Date().toLocaleDateString("es-AR");
   var pedidoId = Date.now().toString(36);
   try {
+    var pedidosLoteCol = await ensurePedidosLoteCol();
     for (var i = 0; i < filasPedido.length; i++) {
       var fila = filasPedido[i];
+      var comentariosItem = comentarios;
+      if (fila.lote && !pedidosLoteCol) {
+        comentariosItem = "[Lote: " + fila.lote + "]" + (comentarios ? " " + comentarios : "");
+      }
       var fields = {
         Title: pedidoId, Usuario: currentUser, FechaPedido: fechaPedido,
         Campo: fila.campo, Cultivo: fila.cultivo, Zona: fila.zona,
-        Comentarios: comentarios, ComentarioLogistica: fila.comentarioLog,
+        Comentarios: comentariosItem, ComentarioLogistica: fila.comentarioLog,
         Camiones0: fila.dias[0].camiones, Embolsar0: fila.dias[0].embolsar, Fecha0: fila.dias[0].fechaKey,
         Camiones1: fila.dias[1].camiones, Embolsar1: fila.dias[1].embolsar, Fecha1: fila.dias[1].fechaKey,
         Camiones2: fila.dias[2].camiones, Embolsar2: fila.dias[2].embolsar, Fecha2: fila.dias[2].fechaKey,
@@ -694,6 +844,9 @@ async function guardarPedido() {
         Camiones5: fila.dias[5].camiones, Embolsar5: fila.dias[5].embolsar, Fecha5: fila.dias[5].fechaKey,
         Camiones6: fila.dias[6].camiones, Embolsar6: fila.dias[6].embolsar, Fecha6: fila.dias[6].fechaKey
       };
+      if (pedidosLoteCol) {
+        fields[pedidosLoteCol] = fila.lote || "";
+      }
       var r = await fetch(
         "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId + "/items",
         { method: "POST", headers: { "Authorization": "Bearer " + graphToken, "Content-Type": "application/json" }, body: JSON.stringify({ fields: fields }) }
@@ -712,6 +865,7 @@ async function cargarMisPedidos() {
   var container = document.getElementById("misPedidosContainer");
   container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
   try {
+    await ensurePedidosLoteCol();
     var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId +
       "/items?$expand=fields&$top=999";
     var r = await fetch(url, { headers: { "Authorization": "Bearer " + graphToken } });
@@ -727,12 +881,14 @@ async function cargarMisPedidos() {
     for (var i = 0; i < items.length; i++) {
       var f = items[i].fields;
       var id = items[i].id;
+      var lote = extractPedidoLote(f);
+      var comClean = cleanPedidoComentarios(f);
       html += "<div class=\"pedido-card\">";
       html += "<div class=\"pedido-header\">";
-      html += "<div><div class=\"pedido-campo\">" + (f.Campo||"") + "</div>";
-      html += "<div class=\"pedido-cultivo\">" + (f.Cultivo||"") + "</div>";
-      html += "<div class=\"pedido-meta\">Pedido el " + (f.FechaPedido||"") + " &nbsp;|&nbsp; Zona: " + (f.Zona||"-") + "</div>";
-      if (f.Comentarios) html += "<div class=\"pedido-meta\" style=\"margin-top:2px;\">Comentario: " + f.Comentarios + "</div>";
+      html += "<div><div class=\"pedido-campo\">" + escHtml(f.Campo||"") + "</div>";
+      html += "<div class=\"pedido-cultivo\">" + escHtml(f.Cultivo||"") + (lote ? " <span class=\"pedido-lote\">Lote: " + escHtml(lote) + "</span>" : "") + "</div>";
+      html += "<div class=\"pedido-meta\">Pedido el " + escHtml(f.FechaPedido||"") + " &nbsp;|&nbsp; Zona: " + escHtml(f.Zona||"-") + "</div>";
+      if (comClean) html += "<div class=\"pedido-meta\" style=\"margin-top:2px;\">Comentario: " + escHtml(comClean) + "</div>";
       html += "</div>";
       html += "<div class=\"pedido-actions\">";
       html += "<button class=\"btn btn-edit\" style=\"padding:6px 12px;font-size:12px;\" onclick=\"abrirEdicion('" + id + "')\" >Editar</button>";
@@ -785,13 +941,16 @@ function abrirEdicion(itemId) {
   var f = window._misPedidosItems[itemId];
   if (!f) return;
   editingItemId = itemId;
+  var lote = extractPedidoLote(f);
+  var comClean = cleanPedidoComentarios(f);
 
   var html = "";
-  // Campo y Cultivo (solo lectura en edicion)
+  // Campo, Cultivo y Lote (solo lectura en edicion)
   html += "<div class=\"form-row\" style=\"margin-bottom:14px;\">";
-  html += "<div class=\"field\"><label>Campo</label><div class=\"field-value\">" + (f.Campo||"") + "</div></div>";
-  html += "<div class=\"field\"><label>Cultivo</label><div class=\"field-value\">" + (f.Cultivo||"") + "</div></div>";
-  html += "<div class=\"field\"><label>Zona</label><div class=\"field-value\">" + (f.Zona||"-") + "</div></div>";
+  html += "<div class=\"field\"><label>Campo</label><div class=\"field-value\">" + escHtml(f.Campo||"") + "</div></div>";
+  html += "<div class=\"field\"><label>Cultivo</label><div class=\"field-value\">" + escHtml(f.Cultivo||"") + "</div></div>";
+  html += "<div class=\"field\"><label>Lote</label><div class=\"field-value\">" + escHtml(lote||"-") + "</div></div>";
+  html += "<div class=\"field\"><label>Zona</label><div class=\"field-value\">" + escHtml(f.Zona||"-") + "</div></div>";
   html += "</div>";
 
   // Dias
@@ -800,7 +959,7 @@ function abrirEdicion(itemId) {
   // Comentarios
   html += "<div class=\"field\" style=\"margin-top:14px;\">";
   html += "<label>Comentarios del pedido</label>";
-  html += "<textarea id=\"modalComentarios\">" + (f.Comentarios||"") + "</textarea>";
+  html += "<textarea id=\"modalComentarios\">" + escHtml(comClean) + "</textarea>";
   html += "</div>";
 
   document.getElementById("modalContent").innerHTML = html;
@@ -819,7 +978,16 @@ async function guardarEdicion() {
   btn.disabled = true; btn.textContent = "Guardando...";
   var dates = getDates();
   try {
-    var fields = { Comentarios: document.getElementById("modalComentarios").value };
+    var origFields = (window._misPedidosItems && window._misPedidosItems[editingItemId]) || {};
+    var lote = extractPedidoLote(origFields);
+    var pedidosLoteCol = await ensurePedidosLoteCol();
+    var comClean = cleanPedidoComentarios({ Comentarios: document.getElementById("modalComentarios").value }).trim();
+    var fields = {
+      Comentarios: (lote && !pedidosLoteCol) ? ("[Lote: " + lote + "]" + (comClean ? " " + comClean : "")) : comClean
+    };
+    if (pedidosLoteCol && lote) {
+      fields[pedidosLoteCol] = lote;
+    }
     for (var i = 0; i < 7; i++) {
       fields["Camiones" + i] = parseInt(document.getElementById("modalDiasGrid_cam" + i).value) || 0;
       fields["Embolsar" + i] = document.getElementById("modalDiasGrid_emb" + i).checked;
@@ -870,12 +1038,13 @@ async function descargarProyeccion() {
   showToast("Generando...", "success");
   try {
     var items = await fetchAllItems();
+    await ensurePedidosLoteCol();
     var today = new Date(); today.setHours(0,0,0,0);
     var dates = [];
     for (var i = 0; i < 7; i++) { var d = new Date(today); d.setDate(d.getDate() + i); dates.push(fmtDateKey(d)); }
     var colMap = {};
     dates.forEach(function(d, i) { colMap[d] = i; });
-    var cols = ["Responsable", "Campo", "Cultivo", "Zona", "Comentario Logística"];
+    var cols = ["Responsable", "Campo", "Cultivo", "Lote", "Zona", "Comentario Logística"];
     dates.forEach(function(d) {
       cols.push(fmtDateExcel(d));
       var p = d.split("-");
@@ -883,10 +1052,11 @@ async function descargarProyeccion() {
     });
     var rowMap = {};
     items.forEach(function(item) {
-      var key = (item.Usuario||"") + "|||" + (item.Campo||"") + "|||" + (item.Cultivo||"");
+      var lote = extractPedidoLote(item);
+      var key = (item.Usuario||"") + "|||" + (item.Campo||"") + "|||" + (item.Cultivo||"") + "|||" + lote;
       if (!rowMap[key]) rowMap[key] = {
         usuario: item.Usuario||"", campo: item.Campo||"", cultivo: item.Cultivo||"",
-        zona: item.Zona||"", comentarioLog: item.ComentarioLogistica||"", dias: {}
+        lote: lote, zona: item.Zona||"", comentarioLog: item.ComentarioLogistica||"", dias: {}
       };
       for (var di = 0; di < 7; di++) {
         var fk = item["Fecha" + di];
@@ -909,7 +1079,7 @@ async function descargarProyeccion() {
       }
       if (totalCamiones === 0) return;
 
-      var line = [row.usuario, row.campo, row.cultivo, row.zona, row.comentarioLog];
+      var line = [row.usuario, row.campo, row.cultivo, row.lote, row.zona, row.comentarioLog];
       for (var di = 0; di < dates.length; di++) {
         var dia = row.dias[di] || { cam: 0, emb: false };
         line.push(dia.cam > 0 ? dia.cam : "");
@@ -931,9 +1101,12 @@ async function descargarHistorico() {
   showToast("Generando...", "success");
   try {
     var items = await fetchAllItems();
-    var cols = ["Fecha Pedido","Usuario","Campo","Cultivo","Zona","Comentario Logistica","Comentarios","Fecha Camion","Camiones","Embolsado"];
+    await ensurePedidosLoteCol();
+    var cols = ["Fecha Pedido","Usuario","Campo","Cultivo","Lote","Zona","Comentario Logistica","Comentarios","Fecha Camion","Camiones","Embolsado"];
     var excelRows = [cols];
     items.forEach(function(item) {
+      var lote = extractPedidoLote(item);
+      var comentariosClean = cleanPedidoComentarios(item);
       for (var di = 0; di < 7; di++) {
         var cam = parseInt(item["Camiones" + di]) || 0;
         var fechaCamion = item["Fecha" + di] || "";
@@ -941,7 +1114,7 @@ async function descargarHistorico() {
         var fechaCamionVal = fmtDateExcel(fechaCamion);
         excelRows.push([
           item.FechaPedido||"", item.Usuario||"", item.Campo||"", item.Cultivo||"",
-          item.Zona||"", item.ComentarioLogistica||"", item.Comentarios||"",
+          lote, item.Zona||"", item.ComentarioLogistica||"", comentariosClean,
           fechaCamionVal, cam||"", item["Embolsar" + di] ? "Si" : "No"
         ]);
       }
@@ -963,13 +1136,14 @@ async function cargarMetricas() {
 
 // Estado global de la previsualización (para filtros)
 var _previewData = { items: null, dates: null, colMap: null, rowMap: null };
-var _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+var _previewFilters = { campo: "", cultivo: "", lote: "", zona: "", responsable: "", usuario: "" };
 
 async function cargarPreview() {
   var container = document.getElementById("previewContainer");
   container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
   try {
     var items = await fetchAllItems();
+    await ensurePedidosLoteCol();
     var today = new Date(); today.setHours(0,0,0,0);
     var dates = [];
     for (var i = 0; i < 7; i++) { var d = new Date(today); d.setDate(d.getDate() + i); dates.push(fmtDateKey(d)); }
@@ -978,9 +1152,10 @@ async function cargarPreview() {
 
     var rowMap = {};
     items.forEach(function(item) {
-      var key = (item.Campo||"") + "|||" + (item.Cultivo||"");
+      var lote = extractPedidoLote(item);
+      var key = (item.Campo||"") + "|||" + (item.Cultivo||"") + "|||" + lote;
       if (!rowMap[key]) rowMap[key] = {
-        campo: item.Campo||"", cultivo: item.Cultivo||"", zona: item.Zona||"",
+        campo: item.Campo||"", cultivo: item.Cultivo||"", lote: lote, zona: item.Zona||"",
         responsable: CAMPOS_RESPONSABLE[item.Campo||""] || "",
         comentarioLog: item.ComentarioLogistica||"", dias: {}, usuarios: new Set()
       };
@@ -998,7 +1173,7 @@ async function cargarPreview() {
 
     // Guardar estado y resetear filtros
     _previewData = { items: items, dates: dates, colMap: colMap, rowMap: rowMap };
-    _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+    _previewFilters = { campo: "", cultivo: "", lote: "", zona: "", responsable: "", usuario: "" };
 
     if (Object.keys(rowMap).length === 0) {
       container.innerHTML = "<div class=\"empty-state\">No hay pedidos cargados para los próximos 7 días.</div>";
@@ -1018,11 +1193,12 @@ function renderPreviewWithFilters() {
   var rowMap = _previewData.rowMap;
 
   // ── Construir opciones únicas para los filtros ──
-  var setCampos = {}, setCultivos = {}, setZonas = {}, setResp = {}, setUsr = {};
+  var setCampos = {}, setCultivos = {}, setLotes = {}, setZonas = {}, setResp = {}, setUsr = {};
   Object.keys(rowMap).forEach(function(k) {
     var r = rowMap[k];
     if (r.campo) setCampos[r.campo] = true;
     if (r.cultivo) setCultivos[r.cultivo] = true;
+    if (r.lote) setLotes[r.lote] = true;
     if (r.zona) setZonas[r.zona] = true;
     if (r.responsable) setResp[r.responsable] = true;
     r.usuarios.forEach(function(u){ if (u) setUsr[u] = true; });
@@ -1031,8 +1207,9 @@ function renderPreviewWithFilters() {
     var html = "<div class='field' style='flex:1;min-width:140px;'><label>" + label + "</label>";
     html += "<select id='" + id + "' onchange='aplicarFiltrosPreview()'>";
     html += "<option value=''>Todos</option>";
-    Object.keys(values).sort().forEach(function(v) {
-      html += "<option value='" + v.replace(/'/g,"&#39;") + "'" + (v === current ? " selected" : "") + ">" + v + "</option>";
+    var sortedVals = id === "filtLote" ? natSortLotes(Object.keys(values)) : Object.keys(values).sort();
+    sortedVals.forEach(function(v) {
+      html += "<option value='" + escHtml(v).replace(/'/g,"&#39;") + "'" + (v === current ? " selected" : "") + ">" + escHtml(v) + "</option>";
     });
     html += "</select></div>";
     return html;
@@ -1046,6 +1223,7 @@ function renderPreviewWithFilters() {
   filtersHtml += "<div class='form-row' style='gap:8px;'>";
   filtersHtml += buildSelect("filtCampo", "Campo", setCampos, _previewFilters.campo);
   filtersHtml += buildSelect("filtCultivo", "Cultivo", setCultivos, _previewFilters.cultivo);
+  filtersHtml += buildSelect("filtLote", "Lote", setLotes, _previewFilters.lote);
   filtersHtml += buildSelect("filtZona", "Zona", setZonas, _previewFilters.zona);
   filtersHtml += buildSelect("filtResp", "Responsable", setResp, _previewFilters.responsable);
   filtersHtml += buildSelect("filtUsr", "Cargado por", setUsr, _previewFilters.usuario);
@@ -1057,6 +1235,7 @@ function renderPreviewWithFilters() {
     var r = rowMap[k];
     if (f.campo && r.campo !== f.campo) return false;
     if (f.cultivo && r.cultivo !== f.cultivo) return false;
+    if (f.lote && r.lote !== f.lote) return false;
     if (f.zona && r.zona !== f.zona) return false;
     if (f.responsable && r.responsable !== f.responsable) return false;
     if (f.usuario && !r.usuarios.has(f.usuario)) return false;
@@ -1064,7 +1243,7 @@ function renderPreviewWithFilters() {
   });
 
   // ── Construir tabla ──
-  var th = "<tr><th>Campo</th><th>Cultivo</th><th>Zona</th><th>Responsable</th><th>Coment. Logística</th><th>Cargado por</th>";
+  var th = "<tr><th>Campo</th><th>Cultivo</th><th>Lote</th><th>Zona</th><th>Responsable</th><th>Coment. Logística</th><th>Cargado por</th>";
   for (var di = 0; di < dates.length; di++) {
     var parts_d = dates[di].split("-"); var dobj = new Date(parseInt(parts_d[0]), parseInt(parts_d[1])-1, parseInt(parts_d[2]));
     th += "<th>" + fmtDateShort(dobj) + "</th>";
@@ -1081,12 +1260,13 @@ function renderPreviewWithFilters() {
     if (totalCam === 0) return;
     totalGeneral += totalCam;
     tb += "<tr>";
-    tb += "<td style=\"font-weight:600;\">" + row.campo + "</td>";
-    tb += "<td><span class=\"badge\">" + row.cultivo + "</span></td>";
-    tb += "<td>" + (row.zona||"-") + "</td>";
-    tb += "<td style=\"font-size:11px;color:#555;\">" + (row.responsable||"-") + "</td>";
-    tb += "<td style=\"font-size:11px;color:#555;\">" + (row.comentarioLog||"-") + "</td>";
-    tb += "<td style=\"font-size:11px;color:#555;\">" + Array.from(row.usuarios).join(", ") + "</td>";
+    tb += "<td style=\"font-weight:600;\">" + escHtml(row.campo) + "</td>";
+    tb += "<td><span class=\"badge\">" + escHtml(row.cultivo) + "</span></td>";
+    tb += "<td>" + (row.lote ? "<span class=\"pedido-lote\">" + escHtml(row.lote) + "</span>" : "-") + "</td>";
+    tb += "<td>" + escHtml(row.zona||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + escHtml(row.responsable||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + escHtml(row.comentarioLog||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + escHtml(Array.from(row.usuarios).join(", ")) + "</td>";
     for (var di = 0; di < dates.length; di++) {
       var dia = row.dias[di] || { cam: 0, emb: false };
       if (dia.cam > 0) {
@@ -1103,7 +1283,7 @@ function renderPreviewWithFilters() {
   // Fila total
   if (tb) {
     tb += "<tr style='background:#1A1A1A;color:#fff;font-weight:700;'>";
-    tb += "<td colspan='6' style='text-align:right;color:#fff;'>TOTAL</td>";
+    tb += "<td colspan='7' style='text-align:right;color:#fff;'>TOTAL</td>";
     for (var di = 0; di < dates.length; di++) {
       tb += "<td style='color:#F5B800;'>" + (totalesPorDia[di] || "-") + "</td>";
     }
@@ -1126,6 +1306,7 @@ function renderPreviewWithFilters() {
 function aplicarFiltrosPreview() {
   _previewFilters.campo = document.getElementById("filtCampo").value;
   _previewFilters.cultivo = document.getElementById("filtCultivo").value;
+  _previewFilters.lote = document.getElementById("filtLote").value;
   _previewFilters.zona = document.getElementById("filtZona").value;
   _previewFilters.responsable = document.getElementById("filtResp").value;
   _previewFilters.usuario = document.getElementById("filtUsr").value;
@@ -1133,7 +1314,7 @@ function aplicarFiltrosPreview() {
 }
 
 function limpiarFiltrosPreview() {
-  _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+  _previewFilters = { campo: "", cultivo: "", lote: "", zona: "", responsable: "", usuario: "" };
   renderPreviewWithFilters();
 }
 
@@ -1476,7 +1657,7 @@ function renderComentariosActivos() {
 
 async function reloadMasterData() {
   showToast("Recargando datos maestros...", "success");
-  await loadMasterData();
+  await Promise.all([loadMasterData(), ensurePedidosLoteCol(true)]);
   renderComentariosActivos();
   renderPadronStatus();
   showToast("Datos actualizados desde SharePoint", "success");
@@ -1535,7 +1716,8 @@ async function processPadronLogistica(file) {
     updateProgress("Mapeando columnas...", 0, 0);
 
     // Map columns flexibly
-    var fields_list = [];
+    var rawRows = [];
+    var hasAnyLote = false;
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       var campo = findCol(r, ["campo","title","nombre"]);
@@ -1544,16 +1726,39 @@ async function processPadronLogistica(file) {
       var comentario = findCol(r, ["comentario_logistica","comentario","comentarios","comment","field_2"]);
       var responsable = findCol(r, ["responsable","resp","field_3"]);
       var zona = findCol(r, ["zona","zone","field_4"]);
-      fields_list.push({
+      var lote = findCol(r, ["lote","field_5"]);
+      var loteStr = (lote !== undefined && lote !== null) ? String(lote).trim() : "";
+      if (loteStr) hasAnyLote = true;
+      rawRows.push({
         Title: String(campo).trim(),
         field_1: String(cultivo||"").trim(),
         field_2: String(comentario||"").trim(),
         field_3: String(responsable||"").trim(),
-        field_4: String(zona||"").trim()
+        field_4: String(zona||"").trim(),
+        _loteStr: loteStr
       });
     }
 
-    if (!fields_list.length) throw new Error("No se encontraron registros válidos. Verificá que el Excel tenga una columna 'Campo'.");
+    if (!rawRows.length) throw new Error("No se encontraron registros válidos. Verificá que el Excel tenga una columna 'Campo'.");
+
+    updateProgress("Verificando columnas en SharePoint...", 0, 0);
+    var loteColInfo = await ensureDbLoteCol(true);
+    if (loteColInfo.ok && !loteColInfo.colName && hasAnyLote) {
+      throw new Error("El Excel incluye la columna 'Lote', pero la lista DB_Logistica_SharePoint todavía no tiene una columna 'Lote' creada.");
+    }
+    var dbLoteCol = loteColInfo.colName || (hasAnyLote ? "Lote" : null);
+
+    var fields_list = rawRows.map(function(item) {
+      var obj = {
+        Title: item.Title,
+        field_1: item.field_1,
+        field_2: item.field_2,
+        field_3: item.field_3,
+        field_4: item.field_4
+      };
+      if (dbLoteCol) obj[dbLoteCol] = item._loteStr;
+      return obj;
+    });
 
     var total = fields_list.length;
 
@@ -1595,7 +1800,7 @@ async function processPadronLogistica(file) {
     showToast(ok + " registros cargados en SharePoint", "success");
 
     // Reload master data
-    await loadMasterData();
+    await Promise.all([loadMasterData(), ensurePedidosLoteCol(true)]);
     renderPadronStatus();
     renderComentariosActivos();
 
@@ -1673,12 +1878,19 @@ function renderPadronStatus() {
   if (!div) return;
   var nCampos = Object.keys(CAMPOS_ZONA).length;
   var nCombinaciones = Object.keys(CULTIVO_COMENTARIOS).length;
+  var nLotes = 0;
+  Object.keys(CAMPO_CULTIVO_LOTES).forEach(function(k) {
+    nLotes += (CAMPO_CULTIVO_LOTES[k] || []).length;
+  });
   var nConComentario = Object.keys(CULTIVO_COMENTARIOS).filter(function(k){ return CULTIVO_COMENTARIOS[k] && CULTIVO_COMENTARIOS[k] !== "None"; }).length;
   var nResponsables = Object.keys(CAMPOS_RESPONSABLE).filter(function(k){ return CAMPOS_RESPONSABLE[k]; }).length;
 
   var html = "<div style='background:#e6f4ea;border-radius:8px;padding:14px 18px;margin-bottom:14px;'>";
   html += "<strong style='color:#1e7e34;'>Datos cargados en SharePoint</strong><br>";
-  html += "<span style='font-size:12px;color:#555;'>" + nCampos + " campos &middot; " + nCombinaciones + " combinaciones campo/cultivo &middot; " + nConComentario + " con comentario &middot; " + nResponsables + " con responsable</span>";
+  html += "<span style='font-size:12px;color:#555;'>" + nCampos + " campos &middot; " + nCombinaciones + " combinaciones campo/cultivo &middot; " + nLotes + " lotes &middot; " + nConComentario + " con comentario &middot; " + nResponsables + " con responsable</span>";
+  if (SP_COLS.pedidosChecked && !SP_COLS.pedidosLote) {
+    html += "<div style='font-size:11px;color:#8a6d00;margin-top:6px;'>&#9432; La lista de <strong>Pedidos</strong> aún no tiene columna <code>Lote</code>: el lote seleccionado se guarda automáticamente dentro de <code>Comentarios</code> (<code>[Lote: ...]</code>) hasta que la crees.</div>";
+  }
   html += "</div>";
 
   // Table preview of current data
@@ -1686,13 +1898,24 @@ function renderPadronStatus() {
   if (keys.length > 0) {
     html += "<div class='table-wrapper' style='max-height:400px;overflow-y:auto;'>";
     html += "<table style='width:100%;border-collapse:collapse;font-size:12px;'>";
-    html += "<tr style='background:#f5f5f5;'><th style='padding:5px 8px;text-align:left;font-size:11px;'>Campo</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Zona</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Responsable</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Cultivos</th></tr>";
+    html += "<tr style='background:#f5f5f5;'><th style='padding:5px 8px;text-align:left;font-size:11px;'>Campo</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Zona</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Responsable</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Cultivos</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Lotes</th></tr>";
     keys.forEach(function(campo) {
-      var cultivos = CAMPO_CULTIVOS[campo] ? CAMPO_CULTIVOS[campo].join(", ") : "-";
-      html += "<tr><td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;font-weight:600;'>" + campo + "</td>";
-      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + (CAMPOS_ZONA[campo]||"-") + "</td>";
-      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + (CAMPOS_RESPONSABLE[campo]||"-") + "</td>";
-      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555;'>" + cultivos + "</td></tr>";
+      var listCult = CAMPO_CULTIVOS[campo] || [];
+      var cultivos = listCult.length ? listCult.join(", ") : "-";
+      var lotesTxt = "-";
+      var partesLotes = [];
+      listCult.forEach(function(cult) {
+        var ls = CAMPO_CULTIVO_LOTES[campo + "|||" + cult] || [];
+        if (ls.length) {
+          partesLotes.push((listCult.length > 1 ? escHtml(cult) + ": " : "") + escHtml(ls.join(", ")));
+        }
+      });
+      if (partesLotes.length) lotesTxt = partesLotes.join(" | ");
+      html += "<tr><td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;font-weight:600;'>" + escHtml(campo) + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + escHtml(CAMPOS_ZONA[campo]||"-") + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + escHtml(CAMPOS_RESPONSABLE[campo]||"-") + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555;'>" + escHtml(cultivos) + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555;'>" + lotesTxt + "</td></tr>";
     });
     html += "</table></div>";
   }
