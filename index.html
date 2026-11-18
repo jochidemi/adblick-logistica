@@ -8,9 +8,11 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100vh; }
+body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100vh; color: #1A1A1A; }
 :root {
   --yellow: #F5B800; --yellow-dark: #D9A300; --yellow-light: #FFF3C4;
   --dark: #1A1A1A; --gray: #666; --border: #e0e0e0; --white: #fff;
@@ -20,8 +22,14 @@ body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100
   display: flex; align-items: center; justify-content: space-between;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
 }
-.header-title { font-size: 16px; font-weight: 700; color: var(--dark); }
+.header-title { font-size: 16px; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 10px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
 .header-user { font-size: 12px; font-weight: 600; color: var(--dark); }
+.role-chip {
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 3px 10px; border-radius: 99px; background: var(--dark); color: var(--yellow);
+  display: none;
+}
 .loading-screen {
   display: flex; align-items: center; justify-content: center;
   min-height: calc(100vh - 60px); background: #fffbe8; flex-direction: column; gap: 16px;
@@ -33,19 +41,50 @@ body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100
 @keyframes spin { to { transform: rotate(360deg); } }
 .app { display: none; }
 
-/* TABS */
-.tabs {
+/* MAIN VIEW TABS (Operador / Logística) */
+.main-views-bar {
+  display: flex; background: var(--dark); padding: 0 20px; gap: 4px;
+  position: sticky; top: 60px; z-index: 99;
+}
+.view-tab {
+  padding: 12px 22px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.65);
+  cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s;
+  text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 7px;
+}
+.view-tab:hover { color: #fff; }
+.view-tab.active { color: var(--yellow); border-bottom-color: var(--yellow); background: rgba(255,255,255,0.04); }
+.view-panel { display: none; }
+.view-panel.active { display: block; }
+
+/* SUB-TABS */
+.subtabs {
   display: flex; background: var(--white);
-  border-bottom: 2px solid var(--border); position: sticky; top: 60px; z-index: 99;
+  border-bottom: 2px solid var(--border); padding: 0 16px; overflow-x: auto;
 }
-.tab {
-  flex: 1; padding: 14px 8px; text-align: center; font-size: 14px; font-weight: 600;
+.subtab {
+  padding: 13px 18px; text-align: center; font-size: 13.5px; font-weight: 600;
   color: var(--gray); cursor: pointer; border-bottom: 3px solid transparent;
-  transition: all 0.2s; margin-bottom: -2px;
+  transition: all 0.2s; margin-bottom: -2px; white-space: nowrap;
 }
-.tab.active { color: var(--dark); border-bottom-color: var(--yellow); }
+.subtab:hover { color: var(--dark); }
+.subtab.active { color: var(--dark); border-bottom-color: var(--yellow); font-weight: 700; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
+
+/* ADMIN / SUPERADMIN BANNER */
+.admin-banner {
+  display: none; background: #222; color: #fff; border-radius: 10px;
+  padding: 11px 16px; margin-bottom: 14px; align-items: center; gap: 12px; flex-wrap: wrap;
+  border-left: 4px solid var(--yellow);
+}
+.admin-banner-tag {
+  color: var(--yellow); font-weight: 800; font-size: 11px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.admin-banner select {
+  font-size: 12.5px; background: #333; color: #fff; border: 1px solid #555;
+  border-radius: 6px; padding: 5px 10px; min-width: 210px;
+}
 
 .main { padding: 16px; max-width: 1400px; margin: 0 auto; }
 .card {
@@ -60,14 +99,58 @@ body { font-family: "Segoe UI", sans-serif; background: #fafafa; min-height: 100
   font-size: 13px; padding: 7px 10px; border: 1.5px solid var(--border);
   border-radius: 6px; background: #f9f9f9; color: var(--dark); min-width: 140px;
 }
-select, input[type=number], textarea {
+select, input[type=number], input[type=text], input[type=date], input[type=time], textarea {
   font-family: inherit; border: 1.5px solid var(--border); border-radius: 6px;
   padding: 7px 10px; font-size: 13px; background: var(--white); outline: none; transition: border 0.15s;
 }
-select:focus, input[type=number]:focus, textarea:focus { border-color: var(--yellow-dark); }
+select:focus, input[type=number]:focus, input[type=text]:focus, input[type=date]:focus, input[type=time]:focus, textarea:focus { border-color: var(--yellow-dark); }
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 input[type=number] { -moz-appearance: textfield; }
+
+/* GROUPING CARDS FOR ASIGNACIONES */
+.group-block {
+  background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+  margin-bottom: 14px; overflow: hidden;
+}
+.group-header {
+  background: #f5f5f5; padding: 11px 16px; display: flex; justify-content: space-between;
+  align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none;
+}
+.group-header.primary-group {
+  background: var(--dark); color: var(--white); border-bottom: none;
+}
+.group-header.primary-group .group-title { color: var(--white); }
+.group-header.primary-group .group-sub { color: #ccc; }
+.group-title { font-size: 14px; font-weight: 700; color: var(--dark); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.group-sub { font-size: 12px; color: var(--gray); font-weight: 500; }
+.subgroup-block {
+  border-top: 1px solid var(--border);
+}
+.subgroup-header {
+  background: #fffbe8; padding: 8px 16px; display: flex; justify-content: space-between;
+  align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid #f0e4b8;
+  font-size: 12.5px; font-weight: 700; color: #5c4500;
+}
+.status-pill {
+  display: inline-flex; align-items: center; gap: 4px; border-radius: 20px;
+  padding: 2px 10px; font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.status-pill.pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.status-pill.done { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.status-pill.partial { background: #e8f0fe; color: #1a73e8; border: 1px solid #d2e3fc; }
+.mono-tag {
+  font-family: Consolas, monospace; background: #f0f2f5; padding: 2px 6px;
+  border-radius: 4px; font-size: 11.5px; font-weight: 600; color: #222;
+}
+.access-denied-card {
+  max-width: 520px; margin: 60px auto; background: var(--white); border: 2px solid #f5c6cb;
+  border-radius: 12px; padding: 28px 24px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.access-denied-card h2 { color: #c0392b; font-size: 18px; margin-bottom: 10px; }
+.access-denied-card p { color: var(--gray); font-size: 13.5px; line-height: 1.5; }
+
 
 /* DIAS GRID - scrollable on mobile */
 .dias-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 14px; }
@@ -108,9 +191,9 @@ input[type=number] { -moz-appearance: textfield; }
   background: var(--dark); color: var(--white); padding: 8px 10px; text-align: center;
   font-size: 11px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap;
 }
-.pedidos-table th:first-child, .pedidos-table th:nth-child(2) { text-align: left; }
+.pedidos-table th:first-child, .pedidos-table th:nth-child(2), .pedidos-table th:nth-child(3) { text-align: left; }
 .pedidos-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; vertical-align: middle; }
-.pedidos-table td:first-child, .pedidos-table td:nth-child(2) { text-align: left; font-weight: 600; }
+.pedidos-table td:first-child, .pedidos-table td:nth-child(2), .pedidos-table td:nth-child(3) { text-align: left; font-weight: 600; }
 .pedidos-table tr:hover td { background: #fffbe8; }
 .badge {
   display: inline-block; background: var(--yellow-light); color: #7a6000;
@@ -127,6 +210,7 @@ input[type=number] { -moz-appearance: textfield; }
 .pedido-meta { font-size: 11px; color: var(--gray); margin-top: 4px; }
 .pedido-campo { font-size: 15px; font-weight: 700; color: var(--dark); }
 .pedido-cultivo { display: inline-block; background: var(--yellow-light); color: #7a6000; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin-top: 4px; }
+.pedido-lote { display: inline-block; background: #eef2f5; color: #333; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin-top: 4px; margin-left: 6px; }
 .pedido-dias { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .dia-chip {
   background: #f5f5f5; border-radius: 8px; padding: 6px 10px; font-size: 11px; text-align: center;
@@ -171,9 +255,9 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 /* PREVIEW TABLE */
 .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .preview-table th { background: #2e7d32; color: #fff; padding: 7px 10px; text-align: center; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.preview-table th:first-child, .preview-table th:nth-child(2), .preview-table th:nth-child(3) { text-align: left; }
+.preview-table th:first-child, .preview-table th:nth-child(2), .preview-table th:nth-child(3), .preview-table th:nth-child(4) { text-align: left; }
 .preview-table td { padding: 6px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; vertical-align: middle; font-size: 12px; }
-.preview-table td:first-child, .preview-table td:nth-child(2), .preview-table td:nth-child(3) { text-align: left; }
+.preview-table td:first-child, .preview-table td:nth-child(2), .preview-table td:nth-child(3), .preview-table td:nth-child(4) { text-align: left; }
 .preview-table tr:hover td { background: #f1f8e9; }
 
 /* DRAG & DROP */
@@ -200,215 +284,429 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 <body>
 
 <div class="header">
-  <div class="header-title">ADBlick Granos - Logistica</div>
-  <div class="header-user" id="headerUser"></div>
+  <div class="header-title">ADBlick Granos - Pedido de Camiones</div>
+  <div class="header-right">
+    <span class="role-chip" id="roleChip"></span>
+    <div class="header-user" id="headerUser"></div>
+  </div>
 </div>
 
 <div class="loading-screen" id="loadingScreen">
   <div class="spinner"></div>
-  <div style="font-size:14px;font-weight:600;color:#7a6000;">Conectando...</div>
+  <div id="loadingText" style="font-size:14px;font-weight:600;color:#7a6000;">Conectando...</div>
+</div>
+
+<!-- PANTALLA ACCESO RESTRINGIDO (Usuarios fuera de padrón) -->
+<div id="accessDeniedScreen" style="display:none;padding:20px;">
+  <div class="access-denied-card">
+    <h2>Acceso no habilitado</h2>
+    <p id="accessDeniedMsg">Tu usuario no figura en el padrón de operadores habilitados. Contactá al administrador para solicitar el alta en el padrón.</p>
+  </div>
 </div>
 
 <div class="app" id="appContent">
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('nuevo')">Nuevo Pedido</div>
-    <div class="tab" onclick="switchTab('mispedidos')">Mis Pedidos</div>
-    <div class="tab" onclick="switchTab('descargas')">Descargas</div>
-    <div class="tab" onclick="switchTab('metricas')">Métricas</div>
-    <div class="tab" onclick="switchTab('logistica')">Logística</div>
-  </div>
+  <!-- BARRA DE VISTAS PRINCIPALES SEGÚN ROL -->
+  <div class="main-views-bar" id="mainViewsBar"></div>
 
-  <!-- TAB: NUEVO PEDIDO -->
-  <div class="tab-content active" id="tab-nuevo">
-    <div class="main">
-      <div class="card">
-        <div class="card-title">Cargar fila de pedido</div>
-        <div class="form-row">
-          <div class="field">
-            <label>Campo</label>
-            <select id="selCampo" onchange="onCampoChange()" style="min-width:280px;">
-              <option value="">-- Seleccionar campo --</option>
-            </select>
+  <!-- ═══════════════════════════════════════════════════════════════
+       VISTA 1: OPERADOR
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="view-panel" id="view-operador">
+    <div class="subtabs" id="subtabs-operador">
+      <div class="subtab active" data-subtab="nuevo" onclick="switchSubTab('operador','nuevo')">Nuevo pedido</div>
+      <div class="subtab" data-subtab="mispedidos" onclick="switchSubTab('operador','mispedidos')">Mis pedidos</div>
+      <div class="subtab" data-subtab="op-asignaciones" onclick="switchSubTab('operador','op-asignaciones')">Asignaciones</div>
+    </div>
+
+    <div class="main" style="padding-bottom:0;">
+      <!-- BANNER ADMIN / SUPERADMIN: CAMBIAR DE VISTA DE OPERADOR -->
+      <div class="admin-banner" id="superadminBanner">
+        <span class="admin-banner-tag" id="superadminTag">👁 Vista Admin</span>
+        <span style="font-size:12px;color:#ccc;">Ver como operador:</span>
+        <select id="selOperadorView" onchange="cambiarOperadorVista(this.value)">
+          <option value="">— Mi usuario —</option>
+        </select>
+        <span id="superadminViewLabel" style="font-size:12px;color:#aaa;"></span>
+      </div>
+    </div>
+
+    <!-- SUB-TAB OPERADOR: NUEVO PEDIDO -->
+    <div class="tab-content active" id="tab-nuevo">
+      <div class="main" style="padding-top:4px;">
+        <div class="card">
+          <div class="card-title">Cargar fila de pedido</div>
+          <div class="form-row">
+            <div class="field">
+              <label>Campo</label>
+              <select id="selCampo" onchange="onCampoChange()" style="min-width:280px;">
+                <option value="">-- Seleccionar campo --</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Zona</label>
+              <div class="field-value" id="lblZona">-</div>
+            </div>
+            <div class="field">
+              <label>Cultivo</label>
+              <select id="selCultivo" disabled onchange="onCultivoChange()" style="min-width:180px;">
+                <option value="">-- Cultivo --</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Lote</label>
+              <select id="selLote" disabled onchange="onLoteChange()" style="min-width:160px;">
+                <option value="">-- Lote --</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Comentario Logistica</label>
+              <div class="field-value" id="lblComentarioLog" style="max-width:280px;word-wrap:break-word;">-</div>
+            </div>
           </div>
-          <div class="field">
-            <label>Zona</label>
-            <div class="field-value" id="lblZona">-</div>
+
+          <div class="dias-wrapper">
+            <div class="dias-grid" id="diasGrid"></div>
           </div>
-          <div class="field">
-            <label>Cultivo</label>
-            <select id="selCultivo" disabled onchange="onCultivoChange()" style="min-width:180px;">
-              <option value="">-- Cultivo --</option>
-            </select>
+
+          <div class="field" style="margin-top:14px;">
+            <label>Comentarios del pedido</label>
+            <textarea id="txtComentarios" placeholder="Comentarios opcionales..."></textarea>
           </div>
-          <div class="field">
-            <label>Comentario Logistica</label>
-            <div class="field-value" id="lblComentarioLog" style="max-width:280px;word-wrap:break-word;">-</div>
+
+          <div class="actions">
+            <button class="btn btn-secondary" onclick="agregarFila()">+ Agregar al pedido</button>
+            <button class="btn btn-primary" id="btnGuardar" onclick="guardarPedido()">Guardar Pedido</button>
           </div>
         </div>
 
-        <div class="dias-wrapper">
-          <div class="dias-grid" id="diasGrid"></div>
-        </div>
-
-        <div class="field" style="margin-top:14px;">
-          <label>Comentarios del pedido</label>
-          <textarea id="txtComentarios" placeholder="Comentarios opcionales..."></textarea>
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-secondary" onclick="agregarFila()">+ Agregar al pedido</button>
-          <button class="btn btn-primary" id="btnGuardar" onclick="guardarPedido()">Guardar Pedido</button>
+        <div class="card" id="tablaCard" style="display:none;">
+          <div class="section-header">
+            <h3>Filas del pedido actual &nbsp;<span id="contadorFilas" class="badge">0</span></h3>
+            <button class="btn btn-danger" onclick="limpiarFilas()" style="font-size:12px;padding:6px 12px;">Limpiar todo</button>
+          </div>
+          <div class="table-wrapper">
+            <table class="pedidos-table">
+              <thead id="tablaHead"></thead>
+              <tbody id="tablaBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="card" id="tablaCard" style="display:none;">
-        <div class="section-header">
-          <h3>Filas del pedido actual &nbsp;<span id="contadorFilas" class="badge">0</span></h3>
-          <button class="btn btn-danger" onclick="limpiarFilas()" style="font-size:12px;padding:6px 12px;">Limpiar todo</button>
+    <!-- SUB-TAB OPERADOR: MIS PEDIDOS -->
+    <div class="tab-content" id="tab-mispedidos">
+      <div class="main" style="padding-top:4px;">
+        <div class="section-header" style="margin-top:8px;">
+          <h3 id="misPedidosTitle">Mis pedidos cargados</h3>
+          <button class="btn btn-secondary" onclick="cargarMisPedidos()" style="font-size:12px;padding:6px 12px;">Actualizar</button>
         </div>
-        <div class="table-wrapper">
-          <table class="pedidos-table">
-            <thead id="tablaHead"></thead>
-            <tbody id="tablaBody"></tbody>
-          </table>
+        <div id="misPedidosContainer">
+          <div class="loading-pedidos">Cargando pedidos...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUB-TAB OPERADOR: ASIGNACIONES (SOLO CONSULTA, AGRUPADAS POR CAMPO POR DEFECTO) -->
+    <div class="tab-content" id="tab-op-asignaciones">
+      <div class="main" style="padding-top:4px;">
+        <div class="section-header" style="margin-top:8px;">
+          <div>
+            <h3>Asignaciones de mis pedidos</h3>
+            <p style="font-size:12px;color:var(--gray);margin-top:2px;">Consulta de choferes y camiones asignados a tus pedidos, agrupados por campo por defecto.</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-green" onclick="exportarAsignacionesExcel('operador')" style="font-size:12px;padding:7px 12px;">📥 Descargar Excel</button>
+            <button class="btn btn-dark" onclick="exportarAsignacionesPDF('operador')" style="font-size:12px;padding:7px 12px;">📄 Descargar PDF</button>
+            <button class="btn btn-secondary" onclick="cargarAsignacionesUI()" style="font-size:12px;padding:7px 12px;">Actualizar</button>
+          </div>
+        </div>
+
+        <!-- FILTROS OPERADOR ASIGNACIONES -->
+        <div class="card" style="padding:12px 14px;margin-bottom:14px;background:#fffbe8;border-color:#f5e09a;">
+          <div class="form-row" style="gap:10px;">
+            <div class="field" style="flex:1;min-width:160px;">
+              <label>Agrupar por</label>
+              <select id="opAsigGroup" onchange="renderOperadorAsignaciones()">
+                <option value="campo" selected>Campo (por defecto)</option>
+                <option value="fecha">Fecha</option>
+                <option value="transportista">Transportista</option>
+                <option value="none">Sin agrupar</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;min-width:160px;">
+              <label>Campo</label>
+              <select id="opAsigFiltCampo" onchange="renderOperadorAsignaciones()">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;min-width:140px;">
+              <label>Cultivo</label>
+              <select id="opAsigFiltCultivo" onchange="renderOperadorAsignaciones()">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;min-width:140px;">
+              <label>Fecha</label>
+              <input type="date" id="opAsigFiltFecha" onchange="renderOperadorAsignaciones()">
+            </div>
+            <div class="field" style="flex:1.2;min-width:180px;">
+              <label>Buscar (Chofer / Patente / Transp.)</label>
+              <input type="text" id="opAsigFiltTexto" placeholder="Filtrar..." oninput="renderOperadorAsignaciones()">
+            </div>
+            <button class="btn btn-secondary" style="font-size:11px;padding:7px 12px;" onclick="limpiarFiltrosOpAsig()">Limpiar</button>
+          </div>
+        </div>
+
+        <div id="opAsignacionesContainer">
+          <div class="loading-pedidos">Cargando asignaciones...</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- TAB: MIS PEDIDOS -->
-  <div class="tab-content" id="tab-mispedidos">
-    <div class="main">
-      <div class="section-header" style="margin-top:8px;">
-        <h3>Mis pedidos cargados</h3>
-        <button class="btn btn-secondary" onclick="cargarMisPedidos()" style="font-size:12px;padding:6px 12px;">Actualizar</button>
+  <!-- ═══════════════════════════════════════════════════════════════
+       VISTA 2: LOGÍSTICA
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="view-panel" id="view-logistica">
+    <div class="subtabs" id="subtabs-logistica">
+      <div class="subtab active" data-subtab="log-asignaciones" onclick="switchSubTab('logistica','log-asignaciones')">Asignaciones</div>
+      <div class="subtab" data-subtab="descargas" onclick="switchSubTab('logistica','descargas')">Descargas</div>
+      <div class="subtab" data-subtab="metricas" onclick="switchSubTab('logistica','metricas')">Métricas</div>
+      <div class="subtab" data-subtab="logistica" onclick="switchSubTab('logistica','logistica')">Datos Maestros</div>
+    </div>
+
+    <!-- SUB-TAB LOGÍSTICA: ASIGNACIONES -->
+    <div class="tab-content active" id="tab-log-asignaciones">
+      <div class="main">
+        <div class="section-header" style="margin-bottom:14px;">
+          <div>
+            <h3>Gestión de Asignaciones de Camiones</h3>
+            <p style="font-size:12px;color:var(--gray);margin-top:2px;">Asigná choferes y camiones desde los pedidos cargados o mediante carga directa, y consultá las asignaciones agrupadas por transportista y campo/zona.</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="abrirModalAsignacionDirecta()">+ Nueva asignación directa</button>
+            <button class="btn btn-green" onclick="exportarAsignacionesExcel('logistica')" style="font-size:12px;padding:8px 14px;">📥 Descargar Excel</button>
+            <button class="btn btn-dark" onclick="exportarAsignacionesPDF('logistica')" style="font-size:12px;padding:8px 14px;">📄 Descargar PDF</button>
+            <button class="btn btn-secondary" onclick="cargarAsignacionesUI(true)" style="font-size:12px;padding:8px 14px;">Actualizar</button>
+          </div>
+        </div>
+
+        <!-- KPIs DE ASIGNACIONES -->
+        <div id="asigKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px;"></div>
+
+        <!-- PANEL A: ASIGNAR DESDE PEDIDOS CARGADOS (OPCIÓN A) -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="section-header" style="margin-bottom:10px;">
+            <div>
+              <h3 style="font-size:14px;font-weight:700;color:var(--dark);">Pedidos de operadores — Asignar camiones</h3>
+              <p style="font-size:11.5px;color:var(--gray);margin-top:2px;">Seleccioná "+ Asignar camión" sobre cualquier pedido/día para pre-cargar sus datos, o usá "+ Nueva asignación directa" arriba.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <select id="pedAsigRango" onchange="renderPedidosParaAsignar()" style="font-size:12px;padding:5px 8px;">
+                <option value="7d" selected>Próximos 7 días</option>
+                <option value="hoy">Solo hoy</option>
+                <option value="todos">Todas las fechas</option>
+              </select>
+              <select id="pedAsigEstado" onchange="renderPedidosParaAsignar()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Todos los estados</option>
+                <option value="pendientes">Con camiones pendientes</option>
+                <option value="completos">Completos</option>
+              </select>
+              <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="togglePanelPedidosAsig()" id="btnTogglePedAsig">Ocultar pedidos</button>
+            </div>
+          </div>
+          <div id="pedidosParaAsignarWrapper">
+            <div id="pedidosParaAsignarContainer">
+              <div class="loading-pedidos">Cargando pedidos...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL B: CONSULTA DE ASIGNACIONES REALIZADAS (AGRUPADAS POR TRANSPORTISTA -> CAMPO/ZONA) -->
+        <div class="card">
+          <div class="section-header" style="margin-bottom:12px;">
+            <h3>Asignaciones realizadas &nbsp;<span id="contadorAsignacionesLog" class="badge">0</span></h3>
+          </div>
+
+          <!-- FILTROS LOGÍSTICA ASIGNACIONES -->
+          <div style="padding:12px 14px;margin-bottom:14px;background:#fffbe8;border:1.5px solid #f5e09a;border-radius:8px;">
+            <div class="form-row" style="gap:10px;">
+              <div class="field" style="flex:1.2;min-width:190px;">
+                <label>Agrupar por</label>
+                <select id="logAsigGroup" onchange="renderLogisticaAsignaciones()">
+                  <option value="transp_campo" selected>Transportista → Campo/Zona (por defecto)</option>
+                  <option value="campo">Campo / Zona</option>
+                  <option value="fecha">Fecha</option>
+                  <option value="none">Sin agrupar</option>
+                </select>
+              </div>
+              <div class="field" style="flex:1;min-width:150px;">
+                <label>Transportista</label>
+                <select id="logAsigFiltTransp" onchange="renderLogisticaAsignaciones()">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="field" style="flex:1;min-width:150px;">
+                <label>Campo</label>
+                <select id="logAsigFiltCampo" onchange="renderLogisticaAsignaciones()">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="field" style="flex:0.9;min-width:130px;">
+                <label>Zona</label>
+                <select id="logAsigFiltZona" onchange="renderLogisticaAsignaciones()">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="field" style="flex:0.9;min-width:130px;">
+                <label>Fecha</label>
+                <input type="date" id="logAsigFiltFecha" onchange="renderLogisticaAsignaciones()">
+              </div>
+              <div class="field" style="flex:1.2;min-width:170px;">
+                <label>Buscar (Chofer / Patente / CUIT)</label>
+                <input type="text" id="logAsigFiltTexto" placeholder="Filtrar..." oninput="renderLogisticaAsignaciones()">
+              </div>
+              <button class="btn btn-secondary" style="font-size:11px;padding:7px 12px;" onclick="limpiarFiltrosLogAsig()">Limpiar</button>
+            </div>
+          </div>
+
+          <div id="logAsignacionesContainer">
+            <div class="loading-pedidos">Cargando asignaciones...</div>
+          </div>
+        </div>
       </div>
-      <div id="misPedidosContainer">
-        <div class="loading-pedidos">Cargando pedidos...</div>
+    </div>
+
+    <!-- SUB-TAB LOGÍSTICA: DESCARGAS -->
+    <div class="tab-content" id="tab-descargas">
+      <div class="main">
+        <div class="descarga-card">
+          <div class="card-title">Proyeccion Semanal</div>
+          <p style="font-size:13px;color:#7a6000;margin-bottom:12px;">Una fila por campo/cultivo con los proximos 7 dias como columnas. Los camiones del mismo campo/cultivo/dia se suman.</p>
+          <button class="btn btn-green" onclick="descargarProyeccion()">Descargar Excel</button>
+        </div>
+        <div class="descarga-card">
+          <div class="card-title">Historico de Pedidos</div>
+          <p style="font-size:13px;color:#7a6000;margin-bottom:12px;">Todos los pedidos en formato largo: una fila por dia/camion con fecha, campo, cultivo, zona y comentarios.</p>
+          <button class="btn btn-dark" onclick="descargarHistorico()">Descargar Excel</button>
+        </div>
+        <div class="descarga-card">
+          <div class="card-title">Asignaciones de Camiones</div>
+          <p style="font-size:13px;color:#7a6000;margin-bottom:12px;">Todas las asignaciones de choferes y camiones registradas en SharePoint (en Excel o PDF).</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-green" onclick="exportarAsignacionesExcel('todos')">Descargar Excel</button>
+            <button class="btn btn-dark" onclick="exportarAsignacionesPDF('todos')">Descargar PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUB-TAB LOGÍSTICA: MÉTRICAS -->
+    <div class="tab-content" id="tab-metricas">
+      <div class="main">
+        <div class="section-header" style="margin-bottom:14px;">
+          <h3>Métricas y Planificación Semanal</h3>
+          <button class="btn btn-secondary" onclick="cargarMetricas()" style="font-size:12px;padding:6px 12px;">Actualizar</button>
+        </div>
+
+        <!-- KPIs RESUMEN -->
+        <div id="metricsKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;"></div>
+
+        <!-- FILA 1: CAMIONES POR DÍA + PROYECCIÓN DE COSECHA -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px;">
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-title">Camiones por día — próxima semana</div>
+            <div style="position:relative;height:320px;"><canvas id="chartCamionesDia"></canvas></div>
+          </div>
+          <div class="card" style="margin-bottom:0;">
+            <div class="section-header" style="margin-bottom:6px;">
+              <h3 style="font-size:14px;font-weight:700;color:var(--dark);">Proyección de cosecha — próximos 4 días</h3>
+              <button class="btn btn-green" onclick="descargarProyeccionCosechaPNG()" style="font-size:11px;padding:5px 10px;" title="Descargar tabla como imagen PNG">📥 PNG</button>
+            </div>
+            <p style="font-size:11px;color:var(--gray);margin-bottom:12px;">Cantidad de camiones por cultivo y zona. Soja agrupa todas sus variantes (1ra, 2da, tardía); Soja No GMO también.</p>
+            <div id="proyeccionCosechaContainer" style="max-height:320px;overflow-y:auto;">
+              <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Cargando...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FILA 2: ZONA Y CULTIVO -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-title">Camiones por zona — próxima semana</div>
+            <div style="position:relative;height:280px;"><canvas id="chartCamionesZona"></canvas></div>
+          </div>
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-title">Camiones por cultivo — próxima semana</div>
+            <p style="font-size:11px;color:var(--gray);margin-top:-8px;margin-bottom:8px;">Soja No GMO agrupa todas las variantes (1ra, 2da, tardía). Soja agrupa soja, soja 2 y soja tardía.</p>
+            <div style="position:relative;height:280px;"><canvas id="chartCamionesCultivo"></canvas></div>
+          </div>
+        </div>
+
+        <!-- PREVISUALIZACIÓN SEMANAL -->
+        <div class="card" style="margin-top:16px;">
+          <div class="card-title">Planificación Semanal — detalle</div>
+          <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">Todos los pedidos cargados por todos los usuarios, agrupados por campo y cultivo.</p>
+          <div id="previewContainer">
+            <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Presioná "Actualizar" para cargar la planificación y métricas.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUB-TAB LOGÍSTICA: DATOS MAESTROS -->
+    <div class="tab-content" id="tab-logistica">
+      <div class="main">
+
+        <!-- SECCIÓN: ACTUALIZAR DATOS MAESTROS -->
+        <div class="card">
+          <div class="card-title">Actualizar datos maestros</div>
+          <p style="font-size:13px;color:var(--gray);margin-bottom:12px;">
+            Arrastrá el Excel <strong>DB Logística Campos</strong> para reemplazar los datos maestros en SharePoint.
+            Columnas esperadas: <strong>Campo</strong>, <strong>Cultivo</strong>, <strong>Lote</strong>, <strong>Comentario_Logistica</strong>, <strong>Responsable</strong>, <strong>Zona</strong>
+          </p>
+          <div class="drop-zone" id="dz-logistica"
+            ondragover="event.preventDefault();this.classList.add('dragover');"
+            ondragleave="this.classList.remove('dragover');"
+            ondrop="dropPadronLogistica(event)">
+            <p>Arrastrá el archivo Excel acá</p>
+            <span>o hacé click para seleccionar</span>
+          </div>
+          <input type="file" id="inp-pad-logistica" accept=".xlsx,.xls" style="display:none;" onchange="loadPadronLogistica(this)">
+          <div id="padron-progress" style="display:none;margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span id="padron-progress-label" style="font-size:13px;font-weight:600;color:var(--dark);">Procesando...</span>
+              <span id="padron-progress-count" style="font-size:12px;color:var(--gray);">0/0</span>
+            </div>
+            <div style="background:#e0e0e0;border-radius:6px;height:10px;overflow:hidden;">
+              <div id="padron-progress-bar" style="background:var(--yellow);height:100%;width:0%;border-radius:6px;transition:width 0.3s;"></div>
+            </div>
+          </div>
+          <div class="log-status" id="padron-log-status"></div>
+        </div>
+
+        <!-- SECCIÓN: ESTADO DE DATOS CARGADOS -->
+        <div class="card">
+          <div class="section-header">
+            <h3>Estado de datos maestros</h3>
+            <button class="btn btn-secondary" onclick="reloadMasterData()" style="font-size:12px;padding:6px 12px;">Recargar</button>
+          </div>
+          <div id="padronStatusContainer" style="font-size:13px;color:var(--gray);">Cargando...</div>
+        </div>
+
+        <!-- SECCIÓN: COMENTARIOS LOGÍSTICA ACTIVOS -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:8px;">Comentarios de logística activos</div>
+          <div id="comentariosActivos" style="font-size:12px;color:var(--gray);max-height:400px;overflow-y:auto;"></div>
+        </div>
+
       </div>
     </div>
   </div>
+</div>
 
-  <!-- TAB: DESCARGAS -->
-  <div class="tab-content" id="tab-descargas">
-    <div class="main">
-      <div class="descarga-card">
-        <div class="card-title">Proyeccion Semanal</div>
-        <p style="font-size:13px;color:#7a6000;margin-bottom:12px;">Una fila por campo/cultivo con los proximos 7 dias como columnas. Los camiones del mismo campo/cultivo/dia se suman.</p>
-        <button class="btn btn-green" onclick="descargarProyeccion()">Descargar Excel</button>
-      </div>
-      <div class="descarga-card">
-        <div class="card-title">Historico</div>
-        <p style="font-size:13px;color:#7a6000;margin-bottom:12px;">Todos los pedidos en formato largo: una fila por dia/camion con fecha, campo, cultivo, zona y comentarios.</p>
-        <button class="btn btn-dark" onclick="descargarHistorico()">Descargar Excel</button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- TAB: MÉTRICAS -->
-  <div class="tab-content" id="tab-metricas">
-    <div class="main">
-      <div class="section-header" style="margin-bottom:14px;">
-        <h3>Métricas y Planificación Semanal</h3>
-        <button class="btn btn-secondary" onclick="cargarMetricas()" style="font-size:12px;padding:6px 12px;">Actualizar</button>
-      </div>
-
-      <!-- KPIs RESUMEN -->
-      <div id="metricsKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;"></div>
-
-      <!-- FILA 1: CAMIONES POR DÍA + PROYECCIÓN DE COSECHA -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px;">
-        <div class="card" style="margin-bottom:0;">
-          <div class="card-title">Camiones por día — próxima semana</div>
-          <div style="position:relative;height:320px;"><canvas id="chartCamionesDia"></canvas></div>
-        </div>
-        <div class="card" style="margin-bottom:0;">
-          <div class="section-header" style="margin-bottom:6px;">
-            <h3 style="font-size:14px;font-weight:700;color:var(--dark);">Proyección de cosecha — próximos 4 días</h3>
-            <button class="btn btn-green" onclick="descargarProyeccionCosechaPNG()" style="font-size:11px;padding:5px 10px;" title="Descargar tabla como imagen PNG">📥 PNG</button>
-          </div>
-          <p style="font-size:11px;color:var(--gray);margin-bottom:12px;">Cantidad de camiones por cultivo y zona. Soja agrupa todas sus variantes (1ra, 2da, tardía); Soja No GMO también.</p>
-          <div id="proyeccionCosechaContainer" style="max-height:320px;overflow-y:auto;">
-            <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Cargando...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FILA 2: ZONA Y CULTIVO -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
-        <div class="card" style="margin-bottom:0;">
-          <div class="card-title">Camiones por zona — próxima semana</div>
-          <div style="position:relative;height:280px;"><canvas id="chartCamionesZona"></canvas></div>
-        </div>
-        <div class="card" style="margin-bottom:0;">
-          <div class="card-title">Camiones por cultivo — próxima semana</div>
-          <p style="font-size:11px;color:var(--gray);margin-top:-8px;margin-bottom:8px;">Soja No GMO agrupa todas las variantes (1ra, 2da, tardía). Soja agrupa soja, soja 2 y soja tardía.</p>
-          <div style="position:relative;height:280px;"><canvas id="chartCamionesCultivo"></canvas></div>
-        </div>
-      </div>
-
-      <!-- PREVISUALIZACIÓN SEMANAL -->
-      <div class="card" style="margin-top:16px;">
-        <div class="card-title">Planificación Semanal — detalle</div>
-        <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">Todos los pedidos cargados por todos los usuarios, agrupados por campo y cultivo.</p>
-        <div id="previewContainer">
-          <div class="loading-pedidos" style="color:var(--gray);font-size:13px;">Presioná "Actualizar" para cargar la planificación y métricas.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB: LOGÍSTICA -->
-  <div class="tab-content" id="tab-logistica">
-    <div class="main">
-
-      <!-- SECCIÓN: ACTUALIZAR DATOS MAESTROS -->
-      <div class="card">
-        <div class="card-title">Actualizar datos maestros</div>
-        <p style="font-size:13px;color:var(--gray);margin-bottom:12px;">
-          Arrastrá el Excel <strong>DB Logística Campos</strong> para reemplazar los datos maestros en SharePoint.
-          Columnas esperadas: <strong>Campo</strong>, <strong>Cultivo</strong>, <strong>Comentario_Logistica</strong>, <strong>Responsable</strong>, <strong>Zona</strong>
-        </p>
-        <div class="drop-zone" id="dz-logistica"
-          ondragover="event.preventDefault();this.classList.add('dragover');"
-          ondragleave="this.classList.remove('dragover');"
-          ondrop="dropPadronLogistica(event)">
-          <p>Arrastrá el archivo Excel acá</p>
-          <span>o hacé click para seleccionar</span>
-        </div>
-        <input type="file" id="inp-pad-logistica" accept=".xlsx,.xls" style="display:none;" onchange="loadPadronLogistica(this)">
-        <div id="padron-progress" style="display:none;margin-top:14px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <span id="padron-progress-label" style="font-size:13px;font-weight:600;color:var(--dark);">Procesando...</span>
-            <span id="padron-progress-count" style="font-size:12px;color:var(--gray);">0/0</span>
-          </div>
-          <div style="background:#e0e0e0;border-radius:6px;height:10px;overflow:hidden;">
-            <div id="padron-progress-bar" style="background:var(--yellow);height:100%;width:0%;border-radius:6px;transition:width 0.3s;"></div>
-          </div>
-        </div>
-        <div class="log-status" id="padron-log-status"></div>
-      </div>
-
-      <!-- SECCIÓN: ESTADO DE DATOS CARGADOS -->
-      <div class="card">
-        <div class="section-header">
-          <h3>Estado de datos maestros</h3>
-          <button class="btn btn-secondary" onclick="reloadMasterData()" style="font-size:12px;padding:6px 12px;">Recargar</button>
-        </div>
-        <div id="padronStatusContainer" style="font-size:13px;color:var(--gray);">Cargando...</div>
-      </div>
-
-      <!-- SECCIÓN: COMENTARIOS LOGÍSTICA ACTIVOS -->
-      <div class="card">
-        <div class="card-title" style="margin-bottom:8px;">Comentarios de logística activos</div>
-        <div id="comentariosActivos" style="font-size:12px;color:var(--gray);max-height:400px;overflow-y:auto;"></div>
-      </div>
-
-    </div>
-  </div>
-
-<!-- MODAL EDICION -->
+<!-- MODAL EDICION DE PEDIDO -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <div class="modal-header">
@@ -423,6 +721,121 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
   </div>
 </div>
 
+<!-- MODAL ALTA / EDICIÓN DE ASIGNACIÓN DE CAMIÓN -->
+<div class="modal-overlay" id="modalAsignacionOverlay">
+  <div class="modal" style="max-width:740px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalAsigTitle">Asignar Chofer a Camión</div>
+        <div id="modalAsigSub" style="font-size:12px;color:var(--gray);margin-top:2px;">Todos los campos son opcionales.</div>
+      </div>
+      <button class="modal-close" onclick="cerrarModalAsignacion()">&#x2715;</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <!-- Bloque 1: Destino / Pedido -->
+      <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Datos del Campo y Pedido</div>
+        <div class="form-row" style="gap:10px;">
+          <div class="field" style="flex:1;min-width:140px;">
+            <label>Fecha</label>
+            <input type="date" id="asigFecha">
+          </div>
+          <div class="field" style="flex:1.5;min-width:200px;">
+            <label>Campo</label>
+            <select id="asigCampo" onchange="onAsigCampoChange()">
+              <option value="">-- Seleccionar campo --</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1;min-width:130px;">
+            <label>Zona</label>
+            <input type="text" id="asigZona" placeholder="Zona">
+          </div>
+        </div>
+        <div class="form-row" style="gap:10px;margin-top:10px;">
+          <div class="field" style="flex:1;min-width:150px;">
+            <label>Cultivo</label>
+            <select id="asigCultivo" onchange="onAsigCultivoChange()">
+              <option value="">-- Cultivo --</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1;min-width:140px;">
+            <label>Lote</label>
+            <select id="asigLote">
+              <option value="">-- Lote --</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1.2;min-width:170px;">
+            <label>Operador (Pedido por)</label>
+            <select id="asigUsuarioPedido">
+              <option value="">-- Sin especificar --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloque 2: Transportista, Chofer y Camión -->
+      <div style="background:#fffbe8;border:1px solid #f0e090;border-radius:8px;padding:12px;">
+        <div style="font-size:11px;font-weight:700;color:#7a6000;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Datos del Transportista, Chofer y Unidad</div>
+        <div class="form-row" style="gap:10px;">
+          <div class="field" style="flex:1.5;min-width:220px;">
+            <label>Transportista (Padrón o manual)</label>
+            <input type="text" id="asigTransportista" list="dlTransportistas" placeholder="Buscar o escribir transportista..." oninput="onAsigTransportistaInput()">
+            <datalist id="dlTransportistas"></datalist>
+          </div>
+          <div class="field" style="flex:1;min-width:160px;">
+            <label>CUIT Transportista</label>
+            <input type="text" id="asigCuit" placeholder="30-12345678-9">
+          </div>
+        </div>
+
+        <div class="form-row" style="gap:10px;margin-top:10px;">
+          <div class="field" style="flex:1.4;min-width:200px;">
+            <label>Nombre del Chofer</label>
+            <input type="text" id="asigChofer" placeholder="Nombre y apellido del chofer">
+          </div>
+          <div class="field" style="flex:1;min-width:140px;">
+            <label>Patente Camión (Chasis)</label>
+            <input type="text" id="asigPatente" placeholder="AB 123 CD" style="text-transform:uppercase;">
+          </div>
+          <div class="field" style="flex:1;min-width:140px;">
+            <label>Patente Acoplado</label>
+            <input type="text" id="asigAcoplado" placeholder="AB 456 EF" style="text-transform:uppercase;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloque 3: Datos operativos del Excel de Cosecha -->
+      <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Datos Operativos (Proceso de Cosecha)</div>
+        <div class="form-row" style="gap:10px;">
+          <div class="field" style="flex:1;min-width:130px;">
+            <label>Horario estimado</label>
+            <input type="text" id="asigHorario" placeholder="Ej: 08:00 hs / Mañana">
+          </div>
+          <div class="field" style="flex:1.4;min-width:180px;">
+            <label>Locación / Ubicación</label>
+            <input type="text" id="asigLocacion" placeholder="Entrada / Lote / Coordenadas">
+          </div>
+          <div class="field" style="flex:0.8;min-width:120px;">
+            <label>Tara (kg / tn)</label>
+            <input type="text" id="asigTara" placeholder="Opcional">
+          </div>
+        </div>
+        <div class="field" style="margin-top:10px;">
+          <label>Comentarios / Observaciones</label>
+          <textarea id="asigComentarios" placeholder="Observaciones adicionales..." style="min-height:48px;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions" style="justify-content:flex-end;margin-top:18px;">
+      <button class="btn btn-secondary" onclick="cerrarModalAsignacion()">Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarAsignacion" onclick="guardarAsignacion()">Guardar asignación</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -432,32 +845,296 @@ var CONFIG = {
   sharepointSiteId: "adblickgranossa49.sharepoint.com,152e4cd9-1ef2-45cf-850a-4591a6c80a87,c4d5c877-8ae4-46cc-b602-fec95c7e2287",
   sharepointListId: "9b5b1eb0-784c-4d77-8745-4315b1d993f2",
   dbListId: "09a3a35e-a323-456c-8aaa-62f1da957943",
+  padronOperadoresId: "17a13b1e-217b-40cc-831f-1ea48c8a33ce",
+  padronTranspId: "a5e2cb66-6e75-4b06-a750-26e885af12d4",
+  asignacionesListName: "Asignaciones_Camiones",
+  asignacionesListId: null,
   redirectUri: "https://jochidemi.github.io/adblick-logistica/"
 };
 
 var CAMPOS_ZONA = {};
 var CAMPO_CULTIVOS = {};
+var CAMPO_CULTIVO_LOTES = {};
 var CULTIVO_COMENTARIOS = {};
 var CAMPOS_RESPONSABLE = {};
+var PADRON_OPERADORES = [];
+var PADRON_TRANSP = [];
+var ASIGNACIONES_CACHE = [];
+var PEDIDOS_RAW_CACHE = [];
+var SP_COLS = {
+  dbLote: null,
+  dbChecked: false,
+  pedidosLote: null,
+  pedidosChecked: false,
+  asigColMap: {},
+  asigChecked: false
+};
+
+function escHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normStr(s) {
+  return String(s == null ? "" : s)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function natSortLotes(arr) {
+  return arr.slice().sort(function(a, b) {
+    return a.localeCompare(b, "es", { numeric: true, sensitivity: "base" });
+  });
+}
+
+async function detectLoteColumnWithStatus(listId) {
+  try {
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/columns",
+      { headers: { Authorization: "Bearer " + graphToken } }
+    );
+    if (!r.ok) return { ok: false, colName: null };
+    var data = await r.json();
+    var cols = data.value || [];
+    for (var i = 0; i < cols.length; i++) {
+      var dn = (cols[i].displayName || "").toLowerCase().trim();
+      var nm = (cols[i].name || "").toLowerCase().trim();
+      if (dn === "lote" || nm === "lote") return { ok: true, colName: cols[i].name };
+    }
+    for (var j = 0; j < cols.length; j++) {
+      var dn2 = (cols[j].displayName || "").toLowerCase().trim();
+      if (dn2.indexOf("lote") !== -1 && !cols[j].readOnly) return { ok: true, colName: cols[j].name };
+    }
+    return { ok: true, colName: null };
+  } catch (e) {
+    console.warn("Error detectando columna Lote en lista " + listId + ":", e);
+    return { ok: false, colName: null };
+  }
+}
+
+async function ensureDbLoteCol(forceRefresh) {
+  if (!SP_COLS.dbChecked || forceRefresh) {
+    var info = await detectLoteColumnWithStatus(CONFIG.dbListId);
+    if (info.ok) {
+      SP_COLS.dbLote = info.colName;
+      SP_COLS.dbChecked = true;
+    }
+    return info;
+  }
+  return { ok: true, colName: SP_COLS.dbLote };
+}
+
+async function ensurePedidosLoteCol(forceRefresh) {
+  if (!SP_COLS.pedidosChecked || forceRefresh) {
+    var info = await detectLoteColumnWithStatus(CONFIG.sharepointListId);
+    if (info.ok) {
+      SP_COLS.pedidosLote = info.colName;
+      SP_COLS.pedidosChecked = true;
+    }
+  }
+  return SP_COLS.pedidosLote;
+}
+
+function extractPedidoLote(f) {
+  if (!f) return "";
+  if (SP_COLS.pedidosLote && f[SP_COLS.pedidosLote]) return String(f[SP_COLS.pedidosLote]).trim();
+  if (f.Lote) return String(f.Lote).trim();
+  if (f.lote) return String(f.lote).trim();
+  var c = String(f.Comentarios || "");
+  var m = c.match(/^\[Lote:\s*([^\]]+)\]\s*/i);
+  return m ? m[1].trim() : "";
+}
+
+function cleanPedidoComentarios(f) {
+  if (!f || !f.Comentarios) return "";
+  return String(f.Comentarios).replace(/^\[Lote:\s*[^\]]+\]\s*/i, "").trim();
+}
 
 var msalInstance = null;
 var currentAccount = null;
 var graphToken = null;
 var filasPedido = [];
 var currentUser = "";
+var currentUserEmail = "";
+var currentUserRol = "";
+var superadminViewUser = "";
+var activeMainView = "";
 var editingItemId = null;
+var editingAsignacionSpId = null;
+var currentAsigPedidoId = "";
 
-// ── TABS ──
-function switchTab(name) {
-  var tabNames = ["nuevo","mispedidos","descargas","metricas","logistica"];
-  document.querySelectorAll(".tab").forEach(function(t, i) {
-    t.classList.toggle("active", tabNames[i] === name);
+var ROL_VIEWS = {
+  "operador":      [["operador", "Operador"]],
+  "logistica":     [["logistica", "Logística"]],
+  "administrador": [["operador", "Operador"], ["logistica", "Logística"]],
+  "superadmin":    [["operador", "👁 Operador"], ["logistica", "Logística"]]
+};
+
+function esAdminOSuper() {
+  return currentUserRol === "administrador" || currentUserRol === "superadmin";
+}
+
+function getTargetOperador() {
+  if (esAdminOSuper() && superadminViewUser) return superadminViewUser;
+  return currentUser;
+}
+
+function getTargetOperadorForSave() {
+  if (esAdminOSuper() && superadminViewUser && superadminViewUser !== "__ALL__") return superadminViewUser;
+  return currentUser;
+}
+
+function findOpEntry(nombreOEmail) {
+  if (!nombreOEmail) return null;
+  var n = normStr(nombreOEmail);
+  for (var i = 0; i < PADRON_OPERADORES.length; i++) {
+    var o = PADRON_OPERADORES[i];
+    if (o.nombre && normStr(o.nombre) === n) return o;
+    if (o.email && normStr(o.email) === n) return o;
+    if (o.iniciales && normStr(o.iniciales) === n) return o;
+  }
+  return null;
+}
+
+function matchOperadorName(valorCampo, filtroOp) {
+  if (!filtroOp) return false;
+  if (filtroOp === "__ALL__") return true;
+  var raw = String(valorCampo || "").trim();
+  if (!raw) return false;
+  if (raw === filtroOp) return true;
+  var nRaw = normStr(raw);
+  var nFilt = normStr(filtroOp);
+  if (nRaw && nFilt && nRaw === nFilt) return true;
+  if (nRaw && nFilt && nFilt.length >= 5 && (nRaw.indexOf(nFilt) !== -1 || nFilt.indexOf(nRaw) !== -1)) return true;
+  var opEntry = findOpEntry(filtroOp);
+  if (opEntry) {
+    if (opEntry.email && nRaw === normStr(opEntry.email)) return true;
+    if (opEntry.nombre && nRaw === normStr(opEntry.nombre)) return true;
+  }
+  return false;
+}
+
+// ── VISTAS PRINCIPALES Y SUB-TABS ──
+function renderMainViewsBar() {
+  var views = ROL_VIEWS[currentUserRol] || [];
+  var bar = document.getElementById("mainViewsBar");
+  var html = "";
+  views.forEach(function(v) {
+    html += "<div class=\"view-tab\" data-view=\"" + v[0] + "\" onclick=\"switchMainView('" + v[0] + "')\">" + escHtml(v[1]) + "</div>";
   });
-  document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.remove("active"); });
-  document.getElementById("tab-" + name).classList.add("active");
-  if (name === "mispedidos") cargarMisPedidos();
-  if (name === "metricas") cargarMetricas();
-  if (name === "logistica") { renderComentariosActivos(); renderPadronStatus(); }
+  bar.innerHTML = html;
+}
+
+function switchMainView(viewName) {
+  var allowed = (ROL_VIEWS[currentUserRol] || []).map(function(v){ return v[0]; });
+  if (allowed.indexOf(viewName) === -1) {
+    if (allowed.length > 0) viewName = allowed[0];
+    else return;
+  }
+  activeMainView = viewName;
+  document.querySelectorAll("#mainViewsBar .view-tab").forEach(function(el) {
+    el.classList.toggle("active", el.getAttribute("data-view") === viewName);
+  });
+  document.querySelectorAll(".view-panel").forEach(function(p) {
+    p.classList.remove("active");
+  });
+  var panel = document.getElementById("view-" + viewName);
+  if (panel) panel.classList.add("active");
+
+  if (viewName === "operador") {
+    var banner = document.getElementById("superadminBanner");
+    if (banner) {
+      if (esAdminOSuper()) {
+        banner.style.display = "flex";
+        var tag = document.getElementById("superadminTag");
+        if (tag) tag.textContent = currentUserRol === "superadmin" ? "👁 Superadmin" : "👁 Administrador";
+        poblarSelectOperadorVista();
+      } else {
+        banner.style.display = "none";
+      }
+    }
+    var activeSub = document.querySelector("#subtabs-operador .subtab.active");
+    var subName = activeSub ? activeSub.getAttribute("data-subtab") : "nuevo";
+    switchSubTab("operador", subName);
+  } else if (viewName === "logistica") {
+    var activeSubLog = document.querySelector("#subtabs-logistica .subtab.active");
+    var subNameLog = activeSubLog ? activeSubLog.getAttribute("data-subtab") : "log-asignaciones";
+    switchSubTab("logistica", subNameLog);
+  }
+}
+
+function switchSubTab(viewName, subTabName) {
+  var container = document.getElementById("view-" + viewName);
+  if (!container) return;
+  container.querySelectorAll(".subtab").forEach(function(t) {
+    t.classList.toggle("active", t.getAttribute("data-subtab") === subTabName);
+  });
+  container.querySelectorAll(".tab-content").forEach(function(c) {
+    c.classList.remove("active");
+  });
+  var target = document.getElementById("tab-" + subTabName);
+  if (target) target.classList.add("active");
+
+  if (subTabName === "mispedidos") cargarMisPedidos();
+  if (subTabName === "op-asignaciones") cargarAsignacionesUI();
+  if (subTabName === "log-asignaciones") cargarAsignacionesUI();
+  if (subTabName === "metricas") cargarMetricas();
+  if (subTabName === "logistica") {
+    renderComentariosActivos();
+    renderPadronStatus();
+    ensurePedidosLoteCol().then(function() { renderPadronStatus(); });
+  }
+}
+
+function poblarSelectOperadorVista() {
+  var sel = document.getElementById("selOperadorView");
+  if (!sel) return;
+  var prev = superadminViewUser;
+  var html = "<option value=\"\">— Mi usuario (" + escHtml(currentUser) + ") —</option>";
+  html += "<option value=\"__ALL__\">— Todos los operadores —</option>";
+  var seen = {};
+  seen[normStr(currentUser)] = true;
+  var ops = PADRON_OPERADORES.slice().sort(function(a, b) {
+    return (a.nombre || "").localeCompare(b.nombre || "", "es");
+  });
+  ops.forEach(function(o) {
+    if (!o.nombre) return;
+    var nk = normStr(o.nombre);
+    if (seen[nk]) return;
+    seen[nk] = true;
+    html += "<option value=\"" + escHtml(o.nombre) + "\">" + escHtml(o.nombre) + " (" + escHtml(o.rol) + ")</option>";
+  });
+  PEDIDOS_RAW_CACHE.forEach(function(it) {
+    var u = (it.fields && it.fields.Usuario || "").trim();
+    if (!u) return;
+    var nk = normStr(u);
+    if (seen[nk]) return;
+    seen[nk] = true;
+    html += "<option value=\"" + escHtml(u) + "\">" + escHtml(u) + "</option>";
+  });
+  sel.innerHTML = html;
+  sel.value = prev;
+}
+
+function cambiarOperadorVista(val) {
+  superadminViewUser = val;
+  var lbl = document.getElementById("superadminViewLabel");
+  if (lbl) {
+    if (!val) lbl.textContent = "Viendo como: " + currentUser;
+    else if (val === "__ALL__") lbl.textContent = "Viendo: Todos los operadores";
+    else lbl.textContent = "Viendo como: " + val;
+  }
+  var activeSub = document.querySelector("#subtabs-operador .subtab.active");
+  var subName = activeSub ? activeSub.getAttribute("data-subtab") : "nuevo";
+  if (subName === "mispedidos") cargarMisPedidos();
+  if (subName === "op-asignaciones") renderOperadorAsignaciones();
 }
 
 // ── FECHAS ──
@@ -472,6 +1149,11 @@ function fmtDate(d) { return d.toLocaleDateString("es-AR", { weekday: "short", d
 function fmtDateShort(d) { return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" }); }
 function fmtDateKey(d) { return d.toISOString().split("T")[0]; }
 
+function setLoadingMsg(msg) {
+  var el = document.getElementById("loadingText");
+  if (el) el.textContent = msg;
+}
+
 // ── MSAL ──
 async function initMsal() {
   msalInstance = new msal.PublicClientApplication({
@@ -480,13 +1162,13 @@ async function initMsal() {
   });
   await msalInstance.initialize();
   var response = await msalInstance.handleRedirectPromise();
-  if (response) { currentAccount = response.account; graphToken = response.accessToken; showApp(); return; }
+  if (response) { currentAccount = response.account; graphToken = response.accessToken; await showApp(); return; }
   var accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) { currentAccount = accounts[0]; await acquireTokenSilent(); showApp(); return; }
+  if (accounts.length > 0) { currentAccount = accounts[0]; await acquireTokenSilent(); await showApp(); return; }
   try {
     await msalInstance.ssoSilent({ scopes: ["Sites.ReadWrite.All", "User.Read"] });
     var accs = msalInstance.getAllAccounts();
-    if (accs.length > 0) { currentAccount = accs[0]; await acquireTokenSilent(); showApp(); return; }
+    if (accs.length > 0) { currentAccount = accs[0]; await acquireTokenSilent(); await showApp(); return; }
   } catch(e) {}
   await msalInstance.loginRedirect({ scopes: ["Sites.ReadWrite.All", "User.Read"] });
 }
@@ -496,17 +1178,170 @@ async function acquireTokenSilent() {
     var result = await msalInstance.acquireTokenSilent({ account: currentAccount, scopes: ["Sites.ReadWrite.All", "User.Read"] });
     graphToken = result.accessToken;
   } catch(e) {
-    await msalInstance.acquireTokenRedirect({ account: currentAccount, scopes: ["Sites.ReadWrite.All", "User.Read"] });
+    try {
+      var r2 = await msalInstance.acquireTokenPopup({ account: currentAccount, scopes: ["Sites.ReadWrite.All", "User.Read"] });
+      graphToken = r2.accessToken;
+    } catch(e2) {
+      await msalInstance.acquireTokenRedirect({ account: currentAccount, scopes: ["Sites.ReadWrite.All", "User.Read"] });
+    }
   }
 }
 
-function showApp() {
+async function spGetListItems(listId, topCount) {
+  var items = [];
+  var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
+            "/lists/" + listId + "/items?$expand=fields&$top=" + (topCount || 500);
+  var retried401 = false;
+  while (url) {
+    var res = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
+    if (res.status === 429) {
+      var retryAfter = parseInt(res.headers.get("Retry-After") || "5") * 1000;
+      await sleep(retryAfter);
+      continue;
+    }
+    if (res.status === 401 && !retried401) {
+      retried401 = true;
+      await acquireTokenSilent();
+      continue;
+    }
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    var data = await res.json();
+    items = items.concat(data.value || []);
+    url = data["@odata.nextLink"] || null;
+    if (url) { retried401 = false; await sleep(150); }
+  }
+  return items;
+}
+
+function normalizarRolPadron(rawRol) {
+  var r = normStr(rawRol);
+  if (r.indexOf("superadmin") !== -1 || r.indexOf("super") !== -1) return "superadmin";
+  if (r.indexOf("admin") !== -1) return "administrador";
+  if (r.indexOf("logistica") !== -1) return "logistica";
+  if (r.indexOf("operador") !== -1) return "operador";
+  return r || "operador";
+}
+
+async function loadPadronOperadoresYTransp() {
+  setLoadingMsg("Verificando permisos y padrón de operadores...");
+  var opsItems = await spGetListItems(CONFIG.padronOperadoresId, 500);
+  PADRON_OPERADORES = opsItems.map(function(i) {
+    var f = i.fields || {};
+    var rolVal = f.Rol || f.rol || f.field_2 || "operador";
+    var emailVal = (f.Email || f.email || f.field_1 || "").trim();
+    if (!emailVal) {
+      Object.keys(f).forEach(function(k) {
+        if (!emailVal && typeof f[k] === "string" && f[k].indexOf("@") !== -1 && f[k].indexOf("http") === -1) {
+          emailVal = f[k].trim();
+        }
+      });
+    }
+    var inicialesVal = (f.Iniciales || f.iniciales || "").trim();
+    var nombreVal = (f.Nombre || f.nombre || f.Title || "").trim();
+    return {
+      nombre: nombreVal,
+      iniciales: inicialesVal,
+      email: emailVal,
+      rol: normalizarRolPadron(rolVal),
+      rolRaw: String(rolVal || "").trim()
+    };
+  });
+
+  // Cargar padrón de transportistas
+  try {
+    setLoadingMsg("Cargando padrón de transportistas...");
+    var trItems = await spGetListItems(CONFIG.padronTranspId, 500);
+    PADRON_TRANSP = trItems.map(function(i) {
+      var f = i.fields || {};
+      return {
+        nombre: String(f.Title || f.Nombre || "").trim(),
+        razonSocial: String(f.RazonSocial || f.field_1 || "").trim(),
+        cuit: String(f.CUIT || f.cuit || f.field_2 || "").trim()
+      };
+    }).filter(function(t) { return t.nombre; }).sort(function(a, b) {
+      return a.nombre.localeCompare(b.nombre, "es");
+    });
+    renderTransportistasDatalist();
+  } catch (e) {
+    console.warn("No se pudo cargar padronTransp:", e);
+  }
+}
+
+function renderTransportistasDatalist() {
+  var dl = document.getElementById("dlTransportistas");
+  if (!dl) return;
+  var html = "";
+  PADRON_TRANSP.forEach(function(t) {
+    var sub = [t.razonSocial, t.cuit ? ("CUIT: " + t.cuit) : ""].filter(Boolean).join(" · ");
+    html += "<option value=\"" + escHtml(t.nombre) + "\">" + escHtml(sub) + "</option>";
+  });
+  dl.innerHTML = html;
+}
+
+async function showApp() {
   currentUser = currentAccount ? (currentAccount.name || currentAccount.username) : "Usuario";
+  currentUserEmail = currentAccount ? (currentAccount.username || "") : "";
   document.getElementById("headerUser").textContent = currentUser;
+
+  try {
+    await loadPadronOperadoresYTransp();
+  } catch (e) {
+    console.error("Error leyendo padrón de operadores:", e);
+    showToast("Error al verificar padrón de operadores: " + e.message, "error");
+  }
+
+  // Buscar al usuario autenticado en el padrón de operadores (por email o nombre normalizado)
+  var opEntry = PADRON_OPERADORES.find(function(o) {
+    return o.email && currentUserEmail && o.email.toLowerCase() === currentUserEmail.toLowerCase();
+  });
+  if (!opEntry) {
+    opEntry = PADRON_OPERADORES.find(function(o) {
+      return o.nombre && normStr(o.nombre) === normStr(currentUser);
+    });
+  }
+
   document.getElementById("loadingScreen").style.display = "none";
+
+  if (!opEntry) {
+    // Usuario no figura en el padrón -> bloquear acceso
+    var deniedScreen = document.getElementById("accessDeniedScreen");
+    var deniedMsg = document.getElementById("accessDeniedMsg");
+    if (deniedMsg) {
+      deniedMsg.innerHTML = "El usuario <strong>" + escHtml(currentUser) + "</strong> (<code>" + escHtml(currentUserEmail || "sin email") + "</code>) no figura en el padrón de operadores habilitados en SharePoint.<br><br>Solicitá el alta en <code>Padron_Operadores</code> para acceder a la aplicación.";
+    }
+    if (deniedScreen) deniedScreen.style.display = "block";
+    return;
+  }
+
+  if (opEntry.nombre) {
+    currentUser = opEntry.nombre;
+    document.getElementById("headerUser").textContent = currentUser;
+  }
+  currentUserRol = opEntry.rol;
+  if (!ROL_VIEWS[currentUserRol]) {
+    // Si tiene otro rol en el padrón (ej. "insumos") que no corresponde a Operador/Logística/Admin
+    currentUserRol = "operador";
+  }
+
+  var roleChip = document.getElementById("roleChip");
+  if (roleChip) {
+    var labelsRol = { "operador": "Operador", "logistica": "Logística", "administrador": "Administrador", "superadmin": "Superadmin" };
+    roleChip.textContent = labelsRol[currentUserRol] || currentUserRol;
+    roleChip.style.display = "inline-block";
+  }
+
   document.getElementById("appContent").style.display = "block";
-  loadMasterData();
+  renderMainViewsBar();
   setupDropZoneClick();
+
+  await Promise.all([
+    loadMasterData(),
+    ensurePedidosLoteCol(),
+    ensureAsignacionesList(true)
+  ]);
+
+  var startView = (currentUserRol === "logistica") ? "logistica" : "operador";
+  switchMainView(startView);
 }
 
 // ── CARGA DATOS MAESTROS DESDE SHAREPOINT ──
@@ -515,26 +1350,12 @@ async function loadMasterData() {
   sel.innerHTML = "<option value=\"\">Cargando campos...</option>";
   sel.disabled = true;
   try {
-    var items = [];
-    var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
-              "/lists/" + CONFIG.dbListId +
-              "/items?$expand=fields&$top=100";
-    while (url) {
-      var res = await fetch(url, { headers: { Authorization: "Bearer " + graphToken } });
-      if (res.status === 429) {
-        var retryAfter = parseInt(res.headers.get("Retry-After") || "5") * 1000;
-        await new Promise(function(r){ setTimeout(r, retryAfter); });
-        continue;
-      }
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      var data = await res.json();
-      items = items.concat(data.value || []);
-      url = data["@odata.nextLink"] || null;
-      if (url) await new Promise(function(r){ setTimeout(r, 300); });
-    }
+    await ensureDbLoteCol(true);
+    var items = await spGetListItems(CONFIG.dbListId, 100);
     // Poblar estructuras
     CAMPOS_ZONA = {};
     CAMPO_CULTIVOS = {};
+    CAMPO_CULTIVO_LOTES = {};
     CULTIVO_COMENTARIOS = {};
     CAMPOS_RESPONSABLE = {};
     items.forEach(function(item) {
@@ -544,14 +1365,29 @@ async function loadMasterData() {
       var comentario = (f.field_2 || "").trim();
       var responsable = (f.field_3 || "").trim();
       var zona = (f.field_4 || "").trim();
+      var loteRaw = (SP_COLS.dbLote && f[SP_COLS.dbLote] != null) ? f[SP_COLS.dbLote] : (f.Lote || f.lote || f.field_5 || "");
+      var lote = String(loteRaw || "").trim();
       if (!campo) return;
       if (!CAMPOS_ZONA[campo]) CAMPOS_ZONA[campo] = zona;
       if (!CAMPOS_RESPONSABLE[campo]) CAMPOS_RESPONSABLE[campo] = responsable;
       if (cultivo) {
         if (!CAMPO_CULTIVOS[campo]) CAMPO_CULTIVOS[campo] = [];
         if (CAMPO_CULTIVOS[campo].indexOf(cultivo) === -1) CAMPO_CULTIVOS[campo].push(cultivo);
-        CULTIVO_COMENTARIOS[campo + "|||" + cultivo] = comentario;
+        var keyCC = campo + "|||" + cultivo;
+        if (!CULTIVO_COMENTARIOS[keyCC] || (comentario && comentario !== "None")) {
+          CULTIVO_COMENTARIOS[keyCC] = comentario;
+        }
+        if (lote) {
+          if (!CAMPO_CULTIVO_LOTES[keyCC]) CAMPO_CULTIVO_LOTES[keyCC] = [];
+          if (CAMPO_CULTIVO_LOTES[keyCC].indexOf(lote) === -1) CAMPO_CULTIVO_LOTES[keyCC].push(lote);
+        }
       }
+    });
+    Object.keys(CAMPO_CULTIVOS).forEach(function(c) {
+      CAMPO_CULTIVOS[c].sort();
+    });
+    Object.keys(CAMPO_CULTIVO_LOTES).forEach(function(k) {
+      CAMPO_CULTIVO_LOTES[k] = natSortLotes(CAMPO_CULTIVO_LOTES[k]);
     });
     initForm();
     renderComentariosActivos();
@@ -572,7 +1408,7 @@ function initForm() {
     opt.value = campos[i]; opt.textContent = campos[i]; sel.appendChild(opt);
   }
   sel.disabled = false;
-  buildDiasGrid("diasGrid");
+  resetForm();
 }
 
 function buildDiasGrid(containerId, values) {
@@ -595,6 +1431,9 @@ function onCampoChange() {
   document.getElementById("lblZona").textContent = (campo && CAMPOS_ZONA[campo]) ? CAMPOS_ZONA[campo] : "-";
   var sel = document.getElementById("selCultivo");
   sel.innerHTML = "<option value=\"\">-- Cultivo --</option>";
+  var selLote = document.getElementById("selLote");
+  selLote.innerHTML = "<option value=\"\">-- Lote --</option>";
+  selLote.disabled = true;
   document.getElementById("lblComentarioLog").textContent = "-";
   if (campo && CAMPO_CULTIVOS[campo]) {
     CAMPO_CULTIVOS[campo].forEach(function(c) {
@@ -610,17 +1449,43 @@ function onCultivoChange() {
   var key = campo + "|||" + cultivo;
   var c = (CULTIVO_COMENTARIOS[key] && CULTIVO_COMENTARIOS[key] !== "None") ? CULTIVO_COMENTARIOS[key] : "-";
   document.getElementById("lblComentarioLog").textContent = c;
+
+  var selLote = document.getElementById("selLote");
+  var lotes = (campo && cultivo && CAMPO_CULTIVO_LOTES[key]) ? CAMPO_CULTIVO_LOTES[key] : [];
+  if (!campo || !cultivo) {
+    selLote.innerHTML = "<option value=\"\">-- Lote --</option>";
+    selLote.disabled = true;
+  } else if (lotes.length === 0) {
+    selLote.innerHTML = "<option value=\"\">Sin lotes</option>";
+    selLote.disabled = true;
+  } else {
+    selLote.innerHTML = "<option value=\"\">-- Lote --</option>";
+    lotes.forEach(function(l) {
+      var opt = document.createElement("option");
+      opt.value = l; opt.textContent = l;
+      selLote.appendChild(opt);
+    });
+    selLote.disabled = false;
+    if (lotes.length === 1) selLote.value = lotes[0];
+  }
+}
+
+function onLoteChange() {
+  // Mantiene consistencia visual por si se extiende lógica específica por lote
 }
 
 function agregarFila() {
   var campo = document.getElementById("selCampo").value;
   var cultivo = document.getElementById("selCultivo").value;
+  var lote = document.getElementById("selLote").value;
   if (!campo || !cultivo) { showToast("Selecciona campo y cultivo", "error"); return; }
-  var zona = CAMPOS_ZONA[campo] || "";
   var key = campo + "|||" + cultivo;
+  var lotesDisponibles = CAMPO_CULTIVO_LOTES[key] || [];
+  if (lotesDisponibles.length > 0 && !lote) { showToast("Selecciona un lote", "error"); return; }
+  var zona = CAMPOS_ZONA[campo] || "";
   var comentarioLog = (CULTIVO_COMENTARIOS[key] && CULTIVO_COMENTARIOS[key] !== "None") ? CULTIVO_COMENTARIOS[key] : "";
   var dates = getDates();
-  var fila = { campo: campo, cultivo: cultivo, zona: zona, comentarioLog: comentarioLog, dias: [] };
+  var fila = { campo: campo, cultivo: cultivo, lote: lote || "", zona: zona, comentarioLog: comentarioLog, dias: [] };
   for (var i = 0; i < dates.length; i++) {
     fila.dias.push({
       fecha: fmtDateShort(dates[i]), fechaKey: fmtDateKey(dates[i]),
@@ -639,6 +1504,8 @@ function resetForm() {
   document.getElementById("lblZona").textContent = "-";
   document.getElementById("selCultivo").innerHTML = "<option value=\"\">-- Cultivo --</option>";
   document.getElementById("selCultivo").disabled = true;
+  document.getElementById("selLote").innerHTML = "<option value=\"\">-- Lote --</option>";
+  document.getElementById("selLote").disabled = true;
   document.getElementById("lblComentarioLog").textContent = "-";
   buildDiasGrid("diasGrid");
 }
@@ -652,14 +1519,14 @@ function renderTabla() {
   if (filasPedido.length === 0) { card.style.display = "none"; return; }
   card.style.display = "block";
   var dates = getDates();
-  var th = "<tr><th style=\"text-align:left;\">Campo</th><th style=\"text-align:left;\">Cultivo</th><th>Zona</th>";
+  var th = "<tr><th style=\"text-align:left;\">Campo</th><th style=\"text-align:left;\">Cultivo</th><th style=\"text-align:left;\">Lote</th><th>Zona</th>";
   for (var i = 0; i < dates.length; i++) th += "<th>" + fmtDate(dates[i]) + "</th>";
   th += "<th></th></tr>";
   document.getElementById("tablaHead").innerHTML = th;
   var tb = "";
   for (var r = 0; r < filasPedido.length; r++) {
     var fila = filasPedido[r];
-    tb += "<tr><td>" + fila.campo + "</td><td><span class=\"badge\">" + fila.cultivo + "</span></td><td>" + (fila.zona||"-") + "</td>";
+    tb += "<tr><td>" + escHtml(fila.campo) + "</td><td><span class=\"badge\">" + escHtml(fila.cultivo) + "</span></td><td>" + escHtml(fila.lote || "-") + "</td><td>" + escHtml(fila.zona||"-") + "</td>";
     for (var d = 0; d < fila.dias.length; d++) {
       var dia = fila.dias[d];
       tb += "<td>" + (dia.camiones > 0 ? "<strong>" + dia.camiones + "</strong>" : "<span style=\"color:#ccc;\">-</span>");
@@ -671,7 +1538,7 @@ function renderTabla() {
   document.getElementById("tablaBody").innerHTML = tb;
 }
 
-// ── GUARDAR ──
+// ── GUARDAR PEDIDO ──
 async function guardarPedido() {
   if (filasPedido.length === 0) { showToast("Agrega al menos una fila", "error"); return; }
   var btn = document.getElementById("btnGuardar");
@@ -679,13 +1546,19 @@ async function guardarPedido() {
   var comentarios = document.getElementById("txtComentarios").value;
   var fechaPedido = new Date().toLocaleDateString("es-AR");
   var pedidoId = Date.now().toString(36);
+  var usuarioGuardar = getTargetOperadorForSave();
   try {
+    var pedidosLoteCol = await ensurePedidosLoteCol();
     for (var i = 0; i < filasPedido.length; i++) {
       var fila = filasPedido[i];
+      var comentariosItem = comentarios;
+      if (fila.lote && !pedidosLoteCol) {
+        comentariosItem = "[Lote: " + fila.lote + "]" + (comentarios ? " " + comentarios : "");
+      }
       var fields = {
-        Title: pedidoId, Usuario: currentUser, FechaPedido: fechaPedido,
+        Title: pedidoId, Usuario: usuarioGuardar, FechaPedido: fechaPedido,
         Campo: fila.campo, Cultivo: fila.cultivo, Zona: fila.zona,
-        Comentarios: comentarios, ComentarioLogistica: fila.comentarioLog,
+        Comentarios: comentariosItem, ComentarioLogistica: fila.comentarioLog,
         Camiones0: fila.dias[0].camiones, Embolsar0: fila.dias[0].embolsar, Fecha0: fila.dias[0].fechaKey,
         Camiones1: fila.dias[1].camiones, Embolsar1: fila.dias[1].embolsar, Fecha1: fila.dias[1].fechaKey,
         Camiones2: fila.dias[2].camiones, Embolsar2: fila.dias[2].embolsar, Fecha2: fila.dias[2].fechaKey,
@@ -694,6 +1567,9 @@ async function guardarPedido() {
         Camiones5: fila.dias[5].camiones, Embolsar5: fila.dias[5].embolsar, Fecha5: fila.dias[5].fechaKey,
         Camiones6: fila.dias[6].camiones, Embolsar6: fila.dias[6].embolsar, Fecha6: fila.dias[6].fechaKey
       };
+      if (pedidosLoteCol) {
+        fields[pedidosLoteCol] = fila.lote || "";
+      }
       var r = await fetch(
         "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId + "/items",
         { method: "POST", headers: { "Authorization": "Bearer " + graphToken, "Content-Type": "application/json" }, body: JSON.stringify({ fields: fields }) }
@@ -712,27 +1588,36 @@ async function cargarMisPedidos() {
   var container = document.getElementById("misPedidosContainer");
   container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
   try {
-    var url = "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId +
-      "/items?$expand=fields&$top=999";
-    var r = await fetch(url, { headers: { "Authorization": "Bearer " + graphToken } });
-    var data = await r.json();
-    var items = (data.value || []).map(function(i) { return { id: i.id, fields: i.fields }; });
-    items = items.filter(function(item) { return item.fields.Usuario === currentUser; });
+    await ensurePedidosLoteCol();
+    var rawItems = await spGetListItems(CONFIG.sharepointListId, 999);
+    PEDIDOS_RAW_CACHE = rawItems;
+    if (esAdminOSuper()) poblarSelectOperadorVista();
+    var targetOp = getTargetOperador();
+    var titleEl = document.getElementById("misPedidosTitle");
+    if (titleEl) {
+      titleEl.textContent = (targetOp === "__ALL__")
+        ? "Pedidos cargados (Todos los operadores)"
+        : (esAdminOSuper() && superadminViewUser ? ("Pedidos cargados por " + targetOp) : "Mis pedidos cargados");
+    }
+    var items = rawItems.map(function(i) { return { id: i.id, fields: i.fields }; });
+    items = items.filter(function(item) { return matchOperadorName(item.fields.Usuario, targetOp); });
     items.sort(function(a, b) { return (b.fields.FechaPedido||"").localeCompare(a.fields.FechaPedido||""); });
     if (items.length === 0) {
-      container.innerHTML = "<div class=\"empty-state\">No tenes pedidos cargados aun.</div>"; return;
+      container.innerHTML = "<div class=\"empty-state\">No hay pedidos cargados para mostrar.</div>"; return;
     }
     var dates = getDates();
     var html = "";
     for (var i = 0; i < items.length; i++) {
       var f = items[i].fields;
       var id = items[i].id;
+      var lote = extractPedidoLote(f);
+      var comClean = cleanPedidoComentarios(f);
       html += "<div class=\"pedido-card\">";
       html += "<div class=\"pedido-header\">";
-      html += "<div><div class=\"pedido-campo\">" + (f.Campo||"") + "</div>";
-      html += "<div class=\"pedido-cultivo\">" + (f.Cultivo||"") + "</div>";
-      html += "<div class=\"pedido-meta\">Pedido el " + (f.FechaPedido||"") + " &nbsp;|&nbsp; Zona: " + (f.Zona||"-") + "</div>";
-      if (f.Comentarios) html += "<div class=\"pedido-meta\" style=\"margin-top:2px;\">Comentario: " + f.Comentarios + "</div>";
+      html += "<div><div class=\"pedido-campo\">" + escHtml(f.Campo||"") + "</div>";
+      html += "<div class=\"pedido-cultivo\">" + escHtml(f.Cultivo||"") + (lote ? " <span class=\"pedido-lote\">Lote: " + escHtml(lote) + "</span>" : "") + "</div>";
+      html += "<div class=\"pedido-meta\">Pedido el " + escHtml(f.FechaPedido||"") + " &nbsp;|&nbsp; Zona: " + escHtml(f.Zona||"-") + (targetOp === "__ALL__" && f.Usuario ? (" &nbsp;|&nbsp; Operador: <strong>" + escHtml(f.Usuario) + "</strong>") : "") + "</div>";
+      if (comClean) html += "<div class=\"pedido-meta\" style=\"margin-top:2px;\">Comentario: " + escHtml(comClean) + "</div>";
       html += "</div>";
       html += "<div class=\"pedido-actions\">";
       html += "<button class=\"btn btn-edit\" style=\"padding:6px 12px;font-size:12px;\" onclick=\"abrirEdicion('" + id + "')\" >Editar</button>";
@@ -785,13 +1670,16 @@ function abrirEdicion(itemId) {
   var f = window._misPedidosItems[itemId];
   if (!f) return;
   editingItemId = itemId;
+  var lote = extractPedidoLote(f);
+  var comClean = cleanPedidoComentarios(f);
 
   var html = "";
-  // Campo y Cultivo (solo lectura en edicion)
+  // Campo, Cultivo y Lote (solo lectura en edicion)
   html += "<div class=\"form-row\" style=\"margin-bottom:14px;\">";
-  html += "<div class=\"field\"><label>Campo</label><div class=\"field-value\">" + (f.Campo||"") + "</div></div>";
-  html += "<div class=\"field\"><label>Cultivo</label><div class=\"field-value\">" + (f.Cultivo||"") + "</div></div>";
-  html += "<div class=\"field\"><label>Zona</label><div class=\"field-value\">" + (f.Zona||"-") + "</div></div>";
+  html += "<div class=\"field\"><label>Campo</label><div class=\"field-value\">" + escHtml(f.Campo||"") + "</div></div>";
+  html += "<div class=\"field\"><label>Cultivo</label><div class=\"field-value\">" + escHtml(f.Cultivo||"") + "</div></div>";
+  html += "<div class=\"field\"><label>Lote</label><div class=\"field-value\">" + escHtml(lote||"-") + "</div></div>";
+  html += "<div class=\"field\"><label>Zona</label><div class=\"field-value\">" + escHtml(f.Zona||"-") + "</div></div>";
   html += "</div>";
 
   // Dias
@@ -800,7 +1688,7 @@ function abrirEdicion(itemId) {
   // Comentarios
   html += "<div class=\"field\" style=\"margin-top:14px;\">";
   html += "<label>Comentarios del pedido</label>";
-  html += "<textarea id=\"modalComentarios\">" + (f.Comentarios||"") + "</textarea>";
+  html += "<textarea id=\"modalComentarios\">" + escHtml(comClean) + "</textarea>";
   html += "</div>";
 
   document.getElementById("modalContent").innerHTML = html;
@@ -819,7 +1707,16 @@ async function guardarEdicion() {
   btn.disabled = true; btn.textContent = "Guardando...";
   var dates = getDates();
   try {
-    var fields = { Comentarios: document.getElementById("modalComentarios").value };
+    var origFields = (window._misPedidosItems && window._misPedidosItems[editingItemId]) || {};
+    var lote = extractPedidoLote(origFields);
+    var pedidosLoteCol = await ensurePedidosLoteCol();
+    var comClean = cleanPedidoComentarios({ Comentarios: document.getElementById("modalComentarios").value }).trim();
+    var fields = {
+      Comentarios: (lote && !pedidosLoteCol) ? ("[Lote: " + lote + "]" + (comClean ? " " + comClean : "")) : comClean
+    };
+    if (pedidosLoteCol && lote) {
+      fields[pedidosLoteCol] = lote;
+    }
     for (var i = 0; i < 7; i++) {
       fields["Camiones" + i] = parseInt(document.getElementById("modalDiasGrid_cam" + i).value) || 0;
       fields["Embolsar" + i] = document.getElementById("modalDiasGrid_emb" + i).checked;
@@ -870,12 +1767,13 @@ async function descargarProyeccion() {
   showToast("Generando...", "success");
   try {
     var items = await fetchAllItems();
+    await ensurePedidosLoteCol();
     var today = new Date(); today.setHours(0,0,0,0);
     var dates = [];
     for (var i = 0; i < 7; i++) { var d = new Date(today); d.setDate(d.getDate() + i); dates.push(fmtDateKey(d)); }
     var colMap = {};
     dates.forEach(function(d, i) { colMap[d] = i; });
-    var cols = ["Responsable", "Campo", "Cultivo", "Zona", "Comentario Logística"];
+    var cols = ["Responsable", "Campo", "Cultivo", "Lote", "Zona", "Comentario Logística"];
     dates.forEach(function(d) {
       cols.push(fmtDateExcel(d));
       var p = d.split("-");
@@ -883,10 +1781,11 @@ async function descargarProyeccion() {
     });
     var rowMap = {};
     items.forEach(function(item) {
-      var key = (item.Usuario||"") + "|||" + (item.Campo||"") + "|||" + (item.Cultivo||"");
+      var lote = extractPedidoLote(item);
+      var key = (item.Usuario||"") + "|||" + (item.Campo||"") + "|||" + (item.Cultivo||"") + "|||" + lote;
       if (!rowMap[key]) rowMap[key] = {
         usuario: item.Usuario||"", campo: item.Campo||"", cultivo: item.Cultivo||"",
-        zona: item.Zona||"", comentarioLog: item.ComentarioLogistica||"", dias: {}
+        lote: lote, zona: item.Zona||"", comentarioLog: item.ComentarioLogistica||"", dias: {}
       };
       for (var di = 0; di < 7; di++) {
         var fk = item["Fecha" + di];
@@ -909,7 +1808,7 @@ async function descargarProyeccion() {
       }
       if (totalCamiones === 0) return;
 
-      var line = [row.usuario, row.campo, row.cultivo, row.zona, row.comentarioLog];
+      var line = [row.usuario, row.campo, row.cultivo, row.lote, row.zona, row.comentarioLog];
       for (var di = 0; di < dates.length; di++) {
         var dia = row.dias[di] || { cam: 0, emb: false };
         line.push(dia.cam > 0 ? dia.cam : "");
@@ -931,9 +1830,12 @@ async function descargarHistorico() {
   showToast("Generando...", "success");
   try {
     var items = await fetchAllItems();
-    var cols = ["Fecha Pedido","Usuario","Campo","Cultivo","Zona","Comentario Logistica","Comentarios","Fecha Camion","Camiones","Embolsado"];
+    await ensurePedidosLoteCol();
+    var cols = ["Fecha Pedido","Usuario","Campo","Cultivo","Lote","Zona","Comentario Logistica","Comentarios","Fecha Camion","Camiones","Embolsado"];
     var excelRows = [cols];
     items.forEach(function(item) {
+      var lote = extractPedidoLote(item);
+      var comentariosClean = cleanPedidoComentarios(item);
       for (var di = 0; di < 7; di++) {
         var cam = parseInt(item["Camiones" + di]) || 0;
         var fechaCamion = item["Fecha" + di] || "";
@@ -941,7 +1843,7 @@ async function descargarHistorico() {
         var fechaCamionVal = fmtDateExcel(fechaCamion);
         excelRows.push([
           item.FechaPedido||"", item.Usuario||"", item.Campo||"", item.Cultivo||"",
-          item.Zona||"", item.ComentarioLogistica||"", item.Comentarios||"",
+          lote, item.Zona||"", item.ComentarioLogistica||"", comentariosClean,
           fechaCamionVal, cam||"", item["Embolsar" + di] ? "Si" : "No"
         ]);
       }
@@ -963,13 +1865,14 @@ async function cargarMetricas() {
 
 // Estado global de la previsualización (para filtros)
 var _previewData = { items: null, dates: null, colMap: null, rowMap: null };
-var _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+var _previewFilters = { campo: "", cultivo: "", lote: "", zona: "", responsable: "", usuario: "" };
 
 async function cargarPreview() {
   var container = document.getElementById("previewContainer");
   container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
   try {
     var items = await fetchAllItems();
+    await ensurePedidosLoteCol();
     var today = new Date(); today.setHours(0,0,0,0);
     var dates = [];
     for (var i = 0; i < 7; i++) { var d = new Date(today); d.setDate(d.getDate() + i); dates.push(fmtDateKey(d)); }
@@ -978,9 +1881,10 @@ async function cargarPreview() {
 
     var rowMap = {};
     items.forEach(function(item) {
-      var key = (item.Campo||"") + "|||" + (item.Cultivo||"");
+      var lote = extractPedidoLote(item);
+      var key = (item.Campo||"") + "|||" + (item.Cultivo||"") + "|||" + lote;
       if (!rowMap[key]) rowMap[key] = {
-        campo: item.Campo||"", cultivo: item.Cultivo||"", zona: item.Zona||"",
+        campo: item.Campo||"", cultivo: item.Cultivo||"", lote: lote, zona: item.Zona||"",
         responsable: CAMPOS_RESPONSABLE[item.Campo||""] || "",
         comentarioLog: item.ComentarioLogistica||"", dias: {}, usuarios: new Set()
       };
@@ -998,7 +1902,7 @@ async function cargarPreview() {
 
     // Guardar estado y resetear filtros
     _previewData = { items: items, dates: dates, colMap: colMap, rowMap: rowMap };
-    _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+    _previewFilters = { campo: "", cultivo: "", lote: "", zona: "", responsable: "", usuario: "" };
 
     if (Object.keys(rowMap).length === 0) {
       container.innerHTML = "<div class=\"empty-state\">No hay pedidos cargados para los próximos 7 días.</div>";
@@ -1018,11 +1922,12 @@ function renderPreviewWithFilters() {
   var rowMap = _previewData.rowMap;
 
   // ── Construir opciones únicas para los filtros ──
-  var setCampos = {}, setCultivos = {}, setZonas = {}, setResp = {}, setUsr = {};
+  var setCampos = {}, setCultivos = {}, setLotes = {}, setZonas = {}, setResp = {}, setUsr = {};
   Object.keys(rowMap).forEach(function(k) {
     var r = rowMap[k];
     if (r.campo) setCampos[r.campo] = true;
     if (r.cultivo) setCultivos[r.cultivo] = true;
+    if (r.lote) setLotes[r.lote] = true;
     if (r.zona) setZonas[r.zona] = true;
     if (r.responsable) setResp[r.responsable] = true;
     r.usuarios.forEach(function(u){ if (u) setUsr[u] = true; });
@@ -1031,8 +1936,9 @@ function renderPreviewWithFilters() {
     var html = "<div class='field' style='flex:1;min-width:140px;'><label>" + label + "</label>";
     html += "<select id='" + id + "' onchange='aplicarFiltrosPreview()'>";
     html += "<option value=''>Todos</option>";
-    Object.keys(values).sort().forEach(function(v) {
-      html += "<option value='" + v.replace(/'/g,"&#39;") + "'" + (v === current ? " selected" : "") + ">" + v + "</option>";
+    var sortedVals = id === "filtLote" ? natSortLotes(Object.keys(values)) : Object.keys(values).sort();
+    sortedVals.forEach(function(v) {
+      html += "<option value='" + escHtml(v).replace(/'/g,"&#39;") + "'" + (v === current ? " selected" : "") + ">" + escHtml(v) + "</option>";
     });
     html += "</select></div>";
     return html;
@@ -1046,6 +1952,7 @@ function renderPreviewWithFilters() {
   filtersHtml += "<div class='form-row' style='gap:8px;'>";
   filtersHtml += buildSelect("filtCampo", "Campo", setCampos, _previewFilters.campo);
   filtersHtml += buildSelect("filtCultivo", "Cultivo", setCultivos, _previewFilters.cultivo);
+  filtersHtml += buildSelect("filtLote", "Lote", setLotes, _previewFilters.lote);
   filtersHtml += buildSelect("filtZona", "Zona", setZonas, _previewFilters.zona);
   filtersHtml += buildSelect("filtResp", "Responsable", setResp, _previewFilters.responsable);
   filtersHtml += buildSelect("filtUsr", "Cargado por", setUsr, _previewFilters.usuario);
@@ -1057,6 +1964,7 @@ function renderPreviewWithFilters() {
     var r = rowMap[k];
     if (f.campo && r.campo !== f.campo) return false;
     if (f.cultivo && r.cultivo !== f.cultivo) return false;
+    if (f.lote && r.lote !== f.lote) return false;
     if (f.zona && r.zona !== f.zona) return false;
     if (f.responsable && r.responsable !== f.responsable) return false;
     if (f.usuario && !r.usuarios.has(f.usuario)) return false;
@@ -1064,7 +1972,7 @@ function renderPreviewWithFilters() {
   });
 
   // ── Construir tabla ──
-  var th = "<tr><th>Campo</th><th>Cultivo</th><th>Zona</th><th>Responsable</th><th>Coment. Logística</th><th>Cargado por</th>";
+  var th = "<tr><th>Campo</th><th>Cultivo</th><th>Lote</th><th>Zona</th><th>Responsable</th><th>Coment. Logística</th><th>Cargado por</th>";
   for (var di = 0; di < dates.length; di++) {
     var parts_d = dates[di].split("-"); var dobj = new Date(parseInt(parts_d[0]), parseInt(parts_d[1])-1, parseInt(parts_d[2]));
     th += "<th>" + fmtDateShort(dobj) + "</th>";
@@ -1081,12 +1989,13 @@ function renderPreviewWithFilters() {
     if (totalCam === 0) return;
     totalGeneral += totalCam;
     tb += "<tr>";
-    tb += "<td style=\"font-weight:600;\">" + row.campo + "</td>";
-    tb += "<td><span class=\"badge\">" + row.cultivo + "</span></td>";
-    tb += "<td>" + (row.zona||"-") + "</td>";
-    tb += "<td style=\"font-size:11px;color:#555;\">" + (row.responsable||"-") + "</td>";
-    tb += "<td style=\"font-size:11px;color:#555;\">" + (row.comentarioLog||"-") + "</td>";
-    tb += "<td style=\"font-size:11px;color:#555;\">" + Array.from(row.usuarios).join(", ") + "</td>";
+    tb += "<td style=\"font-weight:600;\">" + escHtml(row.campo) + "</td>";
+    tb += "<td><span class=\"badge\">" + escHtml(row.cultivo) + "</span></td>";
+    tb += "<td>" + (row.lote ? "<span class=\"pedido-lote\">" + escHtml(row.lote) + "</span>" : "-") + "</td>";
+    tb += "<td>" + escHtml(row.zona||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + escHtml(row.responsable||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + escHtml(row.comentarioLog||"-") + "</td>";
+    tb += "<td style=\"font-size:11px;color:#555;\">" + escHtml(Array.from(row.usuarios).join(", ")) + "</td>";
     for (var di = 0; di < dates.length; di++) {
       var dia = row.dias[di] || { cam: 0, emb: false };
       if (dia.cam > 0) {
@@ -1103,7 +2012,7 @@ function renderPreviewWithFilters() {
   // Fila total
   if (tb) {
     tb += "<tr style='background:#1A1A1A;color:#fff;font-weight:700;'>";
-    tb += "<td colspan='6' style='text-align:right;color:#fff;'>TOTAL</td>";
+    tb += "<td colspan='7' style='text-align:right;color:#fff;'>TOTAL</td>";
     for (var di = 0; di < dates.length; di++) {
       tb += "<td style='color:#F5B800;'>" + (totalesPorDia[di] || "-") + "</td>";
     }
@@ -1126,6 +2035,7 @@ function renderPreviewWithFilters() {
 function aplicarFiltrosPreview() {
   _previewFilters.campo = document.getElementById("filtCampo").value;
   _previewFilters.cultivo = document.getElementById("filtCultivo").value;
+  _previewFilters.lote = document.getElementById("filtLote").value;
   _previewFilters.zona = document.getElementById("filtZona").value;
   _previewFilters.responsable = document.getElementById("filtResp").value;
   _previewFilters.usuario = document.getElementById("filtUsr").value;
@@ -1133,7 +2043,7 @@ function aplicarFiltrosPreview() {
 }
 
 function limpiarFiltrosPreview() {
-  _previewFilters = { campo: "", cultivo: "", zona: "", responsable: "", usuario: "" };
+  _previewFilters = { campo: "", cultivo: "", lote: "", zona: "", responsable: "", usuario: "" };
   renderPreviewWithFilters();
 }
 
@@ -1476,7 +2386,7 @@ function renderComentariosActivos() {
 
 async function reloadMasterData() {
   showToast("Recargando datos maestros...", "success");
-  await loadMasterData();
+  await Promise.all([loadMasterData(), ensurePedidosLoteCol(true)]);
   renderComentariosActivos();
   renderPadronStatus();
   showToast("Datos actualizados desde SharePoint", "success");
@@ -1535,7 +2445,8 @@ async function processPadronLogistica(file) {
     updateProgress("Mapeando columnas...", 0, 0);
 
     // Map columns flexibly
-    var fields_list = [];
+    var rawRows = [];
+    var hasAnyLote = false;
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       var campo = findCol(r, ["campo","title","nombre"]);
@@ -1544,16 +2455,39 @@ async function processPadronLogistica(file) {
       var comentario = findCol(r, ["comentario_logistica","comentario","comentarios","comment","field_2"]);
       var responsable = findCol(r, ["responsable","resp","field_3"]);
       var zona = findCol(r, ["zona","zone","field_4"]);
-      fields_list.push({
+      var lote = findCol(r, ["lote","field_5"]);
+      var loteStr = (lote !== undefined && lote !== null) ? String(lote).trim() : "";
+      if (loteStr) hasAnyLote = true;
+      rawRows.push({
         Title: String(campo).trim(),
         field_1: String(cultivo||"").trim(),
         field_2: String(comentario||"").trim(),
         field_3: String(responsable||"").trim(),
-        field_4: String(zona||"").trim()
+        field_4: String(zona||"").trim(),
+        _loteStr: loteStr
       });
     }
 
-    if (!fields_list.length) throw new Error("No se encontraron registros válidos. Verificá que el Excel tenga una columna 'Campo'.");
+    if (!rawRows.length) throw new Error("No se encontraron registros válidos. Verificá que el Excel tenga una columna 'Campo'.");
+
+    updateProgress("Verificando columnas en SharePoint...", 0, 0);
+    var loteColInfo = await ensureDbLoteCol(true);
+    if (loteColInfo.ok && !loteColInfo.colName && hasAnyLote) {
+      throw new Error("El Excel incluye la columna 'Lote', pero la lista DB_Logistica_SharePoint todavía no tiene una columna 'Lote' creada.");
+    }
+    var dbLoteCol = loteColInfo.colName || (hasAnyLote ? "Lote" : null);
+
+    var fields_list = rawRows.map(function(item) {
+      var obj = {
+        Title: item.Title,
+        field_1: item.field_1,
+        field_2: item.field_2,
+        field_3: item.field_3,
+        field_4: item.field_4
+      };
+      if (dbLoteCol) obj[dbLoteCol] = item._loteStr;
+      return obj;
+    });
 
     var total = fields_list.length;
 
@@ -1595,7 +2529,7 @@ async function processPadronLogistica(file) {
     showToast(ok + " registros cargados en SharePoint", "success");
 
     // Reload master data
-    await loadMasterData();
+    await Promise.all([loadMasterData(), ensurePedidosLoteCol(true)]);
     renderPadronStatus();
     renderComentariosActivos();
 
@@ -1673,12 +2607,26 @@ function renderPadronStatus() {
   if (!div) return;
   var nCampos = Object.keys(CAMPOS_ZONA).length;
   var nCombinaciones = Object.keys(CULTIVO_COMENTARIOS).length;
+  var nLotes = 0;
+  Object.keys(CAMPO_CULTIVO_LOTES).forEach(function(k) {
+    nLotes += (CAMPO_CULTIVO_LOTES[k] || []).length;
+  });
   var nConComentario = Object.keys(CULTIVO_COMENTARIOS).filter(function(k){ return CULTIVO_COMENTARIOS[k] && CULTIVO_COMENTARIOS[k] !== "None"; }).length;
   var nResponsables = Object.keys(CAMPOS_RESPONSABLE).filter(function(k){ return CAMPOS_RESPONSABLE[k]; }).length;
 
   var html = "<div style='background:#e6f4ea;border-radius:8px;padding:14px 18px;margin-bottom:14px;'>";
   html += "<strong style='color:#1e7e34;'>Datos cargados en SharePoint</strong><br>";
-  html += "<span style='font-size:12px;color:#555;'>" + nCampos + " campos &middot; " + nCombinaciones + " combinaciones campo/cultivo &middot; " + nConComentario + " con comentario &middot; " + nResponsables + " con responsable</span>";
+  html += "<span style='font-size:12px;color:#555;'>" + nCampos + " campos &middot; " + nCombinaciones + " combinaciones campo/cultivo &middot; " + nLotes + " lotes &middot; " + nConComentario + " con comentario &middot; " + nResponsables + " con responsable &middot; " + PADRON_OPERADORES.length + " operadores &middot; " + PADRON_TRANSP.length + " transportistas</span>";
+  if (SP_COLS.pedidosChecked && !SP_COLS.pedidosLote) {
+    html += "<div style='font-size:11px;color:#8a6d00;margin-top:6px;'>&#9432; La lista de <strong>Pedidos</strong> aún no tiene columna <code>Lote</code>: el lote seleccionado se guarda automáticamente dentro de <code>Comentarios</code> (<code>[Lote: ...]</code>) hasta que la crees.</div>";
+  }
+  if (CONFIG.asignacionesListId) {
+    html += "<div style='font-size:11.5px;color:#1e7e34;margin-top:6px;'>&#10003; Lista de SharePoint <strong>" + escHtml(CONFIG.asignacionesListName) + "</strong> conectada (ID: <code>" + escHtml(CONFIG.asignacionesListId) + "</code>).</div>";
+  } else {
+    html += "<div style='font-size:11.5px;color:#8a6d00;margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;'>" +
+            "<span>&#9888; La lista <strong>" + escHtml(CONFIG.asignacionesListName) + "</strong> aún no fue encontrada en SharePoint.</span>" +
+            "<button class='btn btn-primary' style='font-size:11px;padding:4px 10px;' onclick='inicializarListaAsignacionesManual()'>Crear / Conectar lista ahora</button></div>";
+  }
   html += "</div>";
 
   // Table preview of current data
@@ -1686,18 +2634,1249 @@ function renderPadronStatus() {
   if (keys.length > 0) {
     html += "<div class='table-wrapper' style='max-height:400px;overflow-y:auto;'>";
     html += "<table style='width:100%;border-collapse:collapse;font-size:12px;'>";
-    html += "<tr style='background:#f5f5f5;'><th style='padding:5px 8px;text-align:left;font-size:11px;'>Campo</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Zona</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Responsable</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Cultivos</th></tr>";
+    html += "<tr style='background:#f5f5f5;'><th style='padding:5px 8px;text-align:left;font-size:11px;'>Campo</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Zona</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Responsable</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Cultivos</th><th style='padding:5px 8px;text-align:left;font-size:11px;'>Lotes</th></tr>";
     keys.forEach(function(campo) {
-      var cultivos = CAMPO_CULTIVOS[campo] ? CAMPO_CULTIVOS[campo].join(", ") : "-";
-      html += "<tr><td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;font-weight:600;'>" + campo + "</td>";
-      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + (CAMPOS_ZONA[campo]||"-") + "</td>";
-      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + (CAMPOS_RESPONSABLE[campo]||"-") + "</td>";
-      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555;'>" + cultivos + "</td></tr>";
+      var listCult = CAMPO_CULTIVOS[campo] || [];
+      var cultivos = listCult.length ? listCult.join(", ") : "-";
+      var lotesTxt = "-";
+      var partesLotes = [];
+      listCult.forEach(function(cult) {
+        var ls = CAMPO_CULTIVO_LOTES[campo + "|||" + cult] || [];
+        if (ls.length) {
+          partesLotes.push((listCult.length > 1 ? escHtml(cult) + ": " : "") + escHtml(ls.join(", ")));
+        }
+      });
+      if (partesLotes.length) lotesTxt = partesLotes.join(" | ");
+      html += "<tr><td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;font-weight:600;'>" + escHtml(campo) + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + escHtml(CAMPOS_ZONA[campo]||"-") + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;'>" + escHtml(CAMPOS_RESPONSABLE[campo]||"-") + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555;'>" + escHtml(cultivos) + "</td>";
+      html += "<td style='padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555;'>" + lotesTxt + "</td></tr>";
     });
     html += "</table></div>";
   }
 
   div.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MÓDULO DE ASIGNACIONES (SHAREPOINT + VISTA OPERADOR + VISTA LOGÍSTICA)
+// ═══════════════════════════════════════════════════════════════════════════
+var ASIG_DESIRED_COLS = [
+  { name: "PedidoId", multiline: false },
+  { name: "UsuarioPedido", multiline: false },
+  { name: "Fecha", multiline: false },
+  { name: "Campo", multiline: false },
+  { name: "Zona", multiline: false },
+  { name: "Cultivo", multiline: false },
+  { name: "Lote", multiline: false },
+  { name: "Transportista", multiline: false },
+  { name: "CUIT", multiline: false },
+  { name: "Chofer", multiline: false },
+  { name: "Patente", multiline: false },
+  { name: "Acoplado", multiline: false },
+  { name: "Horario", multiline: false },
+  { name: "Locacion", multiline: false },
+  { name: "Tara", multiline: false },
+  { name: "Comentarios", multiline: true },
+  { name: "AsignadoPor", multiline: false },
+  { name: "FechaAsignacion", multiline: false },
+  { name: "DatosJSON", multiline: true }
+];
+
+async function ensureAsignacionesList(autoCreate) {
+  if (CONFIG.asignacionesListId && SP_COLS.asigChecked) {
+    return CONFIG.asignacionesListId;
+  }
+  try {
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists?$select=id,name,displayName&$top=200",
+      { headers: { Authorization: "Bearer " + graphToken } }
+    );
+    if (r.ok) {
+      var data = await r.json();
+      var lists = data.value || [];
+      var targetNames = ["asignaciones_camiones", "asignacionescamiones", "asignaciones camiones", "lista_asignacionescamiones"];
+      for (var i = 0; i < lists.length; i++) {
+        var dn = (lists[i].displayName || "").toLowerCase().trim();
+        var nm = (lists[i].name || "").toLowerCase().trim();
+        if (targetNames.indexOf(dn) !== -1 || targetNames.indexOf(nm) !== -1) {
+          CONFIG.asignacionesListId = lists[i].id;
+          break;
+        }
+      }
+    }
+
+    if (!CONFIG.asignacionesListId && autoCreate) {
+      var colsPayload = ASIG_DESIRED_COLS.map(function(c) {
+        return {
+          name: c.name,
+          text: c.multiline ? { allowMultipleLines: true } : {}
+        };
+      });
+      var createRes = await fetch(
+        "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists",
+        {
+          method: "POST",
+          headers: { Authorization: "Bearer " + graphToken, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName: CONFIG.asignacionesListName,
+            columns: colsPayload,
+            list: { template: "genericList" }
+          })
+        }
+      );
+      if (createRes.ok) {
+        var createdList = await createRes.json();
+        CONFIG.asignacionesListId = createdList.id;
+        console.log("Lista SharePoint creada automáticamente:", CONFIG.asignacionesListName, CONFIG.asignacionesListId);
+      } else {
+        console.warn("No se pudo crear automáticamente la lista " + CONFIG.asignacionesListName + " (HTTP " + createRes.status + ").");
+      }
+    }
+
+    if (CONFIG.asignacionesListId) {
+      await ensureAsignacionesColumns(CONFIG.asignacionesListId, autoCreate);
+    }
+  } catch (e) {
+    console.warn("Error verificando lista Asignaciones_Camiones:", e);
+  }
+  return CONFIG.asignacionesListId;
+}
+
+async function ensureAsignacionesColumns(listId, createMissing) {
+  try {
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/columns",
+      { headers: { Authorization: "Bearer " + graphToken } }
+    );
+    if (!r.ok) return;
+    var data = await r.json();
+    var cols = data.value || [];
+    var colMap = {};
+    cols.forEach(function(c) {
+      if (c.readOnly && (c.name || "").toLowerCase() !== "title") return;
+      var dn = normStr(c.displayName || "").replace(/\s+/g, "");
+      var nm = normStr(c.name || "").replace(/\s+/g, "");
+      if (dn) colMap[dn] = c.name;
+      if (nm) colMap[nm] = c.name;
+    });
+
+    if (createMissing) {
+      for (var i = 0; i < ASIG_DESIRED_COLS.length; i++) {
+        var desired = ASIG_DESIRED_COLS[i];
+        var key = normStr(desired.name).replace(/\s+/g, "");
+        if (!colMap[key]) {
+          try {
+            var cr = await fetch(
+              "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/columns",
+              {
+                method: "POST",
+                headers: { Authorization: "Bearer " + graphToken, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  name: desired.name,
+                  text: desired.multiline ? { allowMultipleLines: true } : {}
+                })
+              }
+            );
+            if (cr.ok) {
+              var newCol = await cr.json();
+              colMap[key] = newCol.name || desired.name;
+            }
+          } catch (eCol) {}
+        }
+      }
+    }
+
+    SP_COLS.asigColMap = colMap;
+    SP_COLS.asigChecked = true;
+  } catch (e) {
+    console.warn("Error leyendo columnas de Asignaciones_Camiones:", e);
+  }
+}
+
+async function inicializarListaAsignacionesManual() {
+  showToast("Conectando / creando lista en SharePoint...", "success");
+  SP_COLS.asigChecked = false;
+  var id = await ensureAsignacionesList(true);
+  renderPadronStatus();
+  if (id) {
+    showToast("Lista " + CONFIG.asignacionesListName + " lista en SharePoint", "success");
+    cargarAsignacionesUI();
+  } else {
+    showToast("No se pudo crear automáticamente. Creá una lista llamada '" + CONFIG.asignacionesListName + "' en SharePoint y presioná Recargar.", "error");
+  }
+}
+
+function getAsigField(f, canonicalName) {
+  if (!f) return "";
+  if (f[canonicalName] !== undefined && f[canonicalName] !== null) return String(f[canonicalName]).trim();
+  var key = normStr(canonicalName).replace(/\s+/g, "");
+  var mapped = SP_COLS.asigColMap && SP_COLS.asigColMap[key];
+  if (mapped && f[mapped] !== undefined && f[mapped] !== null) return String(f[mapped]).trim();
+  var keys = Object.keys(f);
+  for (var i = 0; i < keys.length; i++) {
+    if (normStr(keys[i]).replace(/\s+/g, "") === key && f[keys[i]] != null) {
+      return String(f[keys[i]]).trim();
+    }
+  }
+  return "";
+}
+
+function parseAsignacionSpItem(item) {
+  var f = item.fields || {};
+  var jsonBackup = {};
+  var rawJson = getAsigField(f, "DatosJSON");
+  if (rawJson) {
+    try { jsonBackup = JSON.parse(rawJson) || {}; } catch (e) {}
+  }
+  var rawCom = getAsigField(f, "Comentarios");
+  var mJson = rawCom.match(/\[ASIG_JSON:(\{[\s\S]*\})\]$/);
+  if (mJson) {
+    try {
+      var parsedInCom = JSON.parse(mJson[1]);
+      jsonBackup = Object.assign({}, parsedInCom, jsonBackup);
+    } catch (e2) {}
+    rawCom = rawCom.replace(/\s*\[ASIG_JSON:\{[\s\S]*\}\]$/, "").trim();
+  }
+
+  function pick(colName, jsonKey) {
+    var v = getAsigField(f, colName);
+    if (v) return v;
+    if (jsonBackup && jsonBackup[jsonKey] != null) return String(jsonBackup[jsonKey]).trim();
+    return "";
+  }
+
+  var campo = pick("Campo", "campo");
+  var zona = pick("Zona", "zona") || (campo && CAMPOS_ZONA[campo]) || "";
+
+  return {
+    spId: String(item.id),
+    codigo: String(f.Title || jsonBackup.codigo || item.id).trim(),
+    pedidoId: pick("PedidoId", "pedidoId"),
+    usuarioPedido: pick("UsuarioPedido", "usuarioPedido"),
+    fecha: pick("Fecha", "fecha"),
+    campo: campo,
+    zona: zona,
+    cultivo: pick("Cultivo", "cultivo"),
+    lote: pick("Lote", "lote"),
+    transportista: pick("Transportista", "transportista"),
+    cuit: pick("CUIT", "cuit"),
+    chofer: pick("Chofer", "chofer"),
+    patente: pick("Patente", "patente"),
+    acoplado: pick("Acoplado", "acoplado"),
+    horario: pick("Horario", "horario"),
+    locacion: pick("Locacion", "locacion"),
+    tara: pick("Tara", "tara"),
+    comentarios: rawCom || (jsonBackup.comentarios ? String(jsonBackup.comentarios).trim() : ""),
+    asignadoPor: pick("AsignadoPor", "asignadoPor"),
+    fechaAsignacion: pick("FechaAsignacion", "fechaAsignacion")
+  };
+}
+
+function buildAsignacionSpFields(asigObj) {
+  var jsonStr = JSON.stringify({
+    codigo: asigObj.codigo || "",
+    pedidoId: asigObj.pedidoId || "",
+    usuarioPedido: asigObj.usuarioPedido || "",
+    fecha: asigObj.fecha || "",
+    campo: asigObj.campo || "",
+    zona: asigObj.zona || "",
+    cultivo: asigObj.cultivo || "",
+    lote: asigObj.lote || "",
+    transportista: asigObj.transportista || "",
+    cuit: asigObj.cuit || "",
+    chofer: asigObj.chofer || "",
+    patente: asigObj.patente || "",
+    acoplado: asigObj.acoplado || "",
+    horario: asigObj.horario || "",
+    locacion: asigObj.locacion || "",
+    tara: asigObj.tara || "",
+    comentarios: asigObj.comentarios || "",
+    asignadoPor: asigObj.asignadoPor || "",
+    fechaAsignacion: asigObj.fechaAsignacion || ""
+  });
+
+  var pairs = {
+    PedidoId: asigObj.pedidoId || "",
+    UsuarioPedido: asigObj.usuarioPedido || "",
+    Fecha: asigObj.fecha || "",
+    Campo: asigObj.campo || "",
+    Zona: asigObj.zona || "",
+    Cultivo: asigObj.cultivo || "",
+    Lote: asigObj.lote || "",
+    Transportista: asigObj.transportista || "",
+    CUIT: asigObj.cuit || "",
+    Chofer: asigObj.chofer || "",
+    Patente: asigObj.patente || "",
+    Acoplado: asigObj.acoplado || "",
+    Horario: asigObj.horario || "",
+    Locacion: asigObj.locacion || "",
+    Tara: asigObj.tara || "",
+    Comentarios: asigObj.comentarios || "",
+    AsignadoPor: asigObj.asignadoPor || "",
+    FechaAsignacion: asigObj.fechaAsignacion || "",
+    DatosJSON: jsonStr
+  };
+
+  var fields = { Title: asigObj.codigo || ("ASG-" + Date.now().toString(36).toUpperCase()) };
+  Object.keys(pairs).forEach(function(canonical) {
+    var key = normStr(canonical).replace(/\s+/g, "");
+    var spCol = (SP_COLS.asigColMap && SP_COLS.asigColMap[key]) || canonical;
+    fields[spCol] = pairs[canonical];
+  });
+  return { fields: fields, jsonStr: jsonStr };
+}
+
+async function spWriteAsignacionWithRetry(listId, itemIdOrNull, asigObj) {
+  var built = buildAsignacionSpFields(asigObj);
+  var f = Object.assign({}, built.fields);
+  var url = itemIdOrNull
+    ? ("https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items/" + itemIdOrNull + "/fields")
+    : ("https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items");
+  var method = itemIdOrNull ? "PATCH" : "POST";
+
+  for (var attempt = 0; attempt < 22; attempt++) {
+    var bodyPayload = itemIdOrNull ? f : { fields: f };
+    var r = await fetch(url, {
+      method: method,
+      headers: { Authorization: "Bearer " + graphToken, "Content-Type": "application/json" },
+      body: JSON.stringify(bodyPayload)
+    });
+    if (r.ok) return itemIdOrNull ? true : (await r.json());
+    var errBody = await r.json().catch(function(){ return {}; });
+    var msg = (errBody.error && errBody.error.message) || "";
+    var bad = msg.match(/Field '([^']+)' is not recognized/i) || msg.match(/'([^']+)' is not recognized/i);
+    if (bad && bad[1] && f[bad[1]] !== undefined) {
+      var removedCol = bad[1];
+      delete f[removedCol];
+      // Si se descartó DatosJSON pero existe Comentarios, respaldar JSON en Comentarios
+      if (normStr(removedCol).indexOf("datosjson") !== -1) {
+        var comCol = (SP_COLS.asigColMap && SP_COLS.asigColMap["comentarios"]) || "Comentarios";
+        if (f[comCol] !== undefined) {
+          f[comCol] = (asigObj.comentarios ? (asigObj.comentarios + " ") : "") + "[ASIG_JSON:" + built.jsonStr + "]";
+        }
+      }
+      continue;
+    }
+    throw new Error(msg || ("HTTP " + r.status));
+  }
+  throw new Error("No se pudo guardar la asignación en SharePoint tras varios intentos.");
+}
+
+async function cargarAsignacionesUI(showToastFeedback) {
+  try {
+    await ensurePedidosLoteCol();
+    var listId = await ensureAsignacionesList(false);
+    var promises = [spGetListItems(CONFIG.sharepointListId, 999)];
+    if (listId) {
+      promises.push(spGetListItems(listId, 999).catch(function(){ return []; }));
+    } else {
+      promises.push(Promise.resolve([]));
+    }
+    var results = await Promise.all(promises);
+    PEDIDOS_RAW_CACHE = results[0] || [];
+    var rawAsig = results[1] || [];
+    ASIGNACIONES_CACHE = rawAsig.map(parseAsignacionSpItem);
+    ASIGNACIONES_CACHE.sort(function(a, b) {
+      var fa = a.fecha || "";
+      var fb = b.fecha || "";
+      if (fa !== fb) return fb.localeCompare(fa);
+      return (a.campo || "").localeCompare(b.campo || "", "es");
+    });
+
+    if (esAdminOSuper()) poblarSelectOperadorVista();
+    poblarFiltrosAsignaciones();
+    renderOperadorAsignaciones();
+    renderPedidosParaAsignar();
+    renderLogisticaAsignaciones();
+    renderAsigKpis();
+    if (showToastFeedback) showToast("Asignaciones actualizadas", "success");
+  } catch (e) {
+    console.error("Error cargando asignaciones:", e);
+    showToast("Error cargando asignaciones: " + e.message, "error");
+  }
+}
+
+function poblarFiltrosAsignaciones() {
+  var camposSet = {}, cultivosSet = {}, transpSet = {}, zonasSet = {};
+  Object.keys(CAMPOS_ZONA).forEach(function(c) {
+    camposSet[c] = true;
+    if (CAMPOS_ZONA[c]) zonasSet[CAMPOS_ZONA[c]] = true;
+  });
+  ASIGNACIONES_CACHE.forEach(function(a) {
+    if (a.campo) camposSet[a.campo] = true;
+    if (a.cultivo) cultivosSet[a.cultivo] = true;
+    if (a.transportista) transpSet[a.transportista] = true;
+    if (a.zona) zonasSet[a.zona] = true;
+  });
+
+  function fillSel(id, valuesObj, allLabel) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    var cur = sel.value;
+    var html = "<option value=\"\">" + allLabel + "</option>";
+    Object.keys(valuesObj).sort(function(a,b){ return a.localeCompare(b, "es"); }).forEach(function(v) {
+      html += "<option value=\"" + escHtml(v) + "\">" + escHtml(v) + "</option>";
+    });
+    sel.innerHTML = html;
+    if (valuesObj[cur]) sel.value = cur;
+  }
+
+  fillSel("opAsigFiltCampo", camposSet, "Todos");
+  fillSel("opAsigFiltCultivo", cultivosSet, "Todos");
+  fillSel("logAsigFiltTransp", transpSet, "Todos");
+  fillSel("logAsigFiltCampo", camposSet, "Todos");
+  fillSel("logAsigFiltZona", zonasSet, "Todas");
+}
+
+function limpiarFiltrosOpAsig() {
+  document.getElementById("opAsigGroup").value = "campo";
+  document.getElementById("opAsigFiltCampo").value = "";
+  document.getElementById("opAsigFiltCultivo").value = "";
+  document.getElementById("opAsigFiltFecha").value = "";
+  document.getElementById("opAsigFiltTexto").value = "";
+  renderOperadorAsignaciones();
+}
+
+function limpiarFiltrosLogAsig() {
+  document.getElementById("logAsigGroup").value = "transp_campo";
+  document.getElementById("logAsigFiltTransp").value = "";
+  document.getElementById("logAsigFiltCampo").value = "";
+  document.getElementById("logAsigFiltZona").value = "";
+  document.getElementById("logAsigFiltFecha").value = "";
+  document.getElementById("logAsigFiltTexto").value = "";
+  renderLogisticaAsignaciones();
+}
+
+function getAsignacionesFiltradasOperador() {
+  var targetOp = getTargetOperador();
+  var misPedidosIds = {};
+  var misCampos = {};
+  PEDIDOS_RAW_CACHE.forEach(function(item) {
+    var f = item.fields || {};
+    if (matchOperadorName(f.Usuario, targetOp)) {
+      misPedidosIds[String(item.id)] = true;
+      if (f.Title) misPedidosIds[String(f.Title)] = true;
+      if (f.Campo) misCampos[normStr(f.Campo)] = true;
+    }
+  });
+
+  var fCampo = (document.getElementById("opAsigFiltCampo") || {}).value || "";
+  var fCultivo = (document.getElementById("opAsigFiltCultivo") || {}).value || "";
+  var fFecha = (document.getElementById("opAsigFiltFecha") || {}).value || "";
+  var fTexto = normStr((document.getElementById("opAsigFiltTexto") || {}).value || "");
+
+  return ASIGNACIONES_CACHE.filter(function(a) {
+    var pertenece = false;
+    if (targetOp === "__ALL__") {
+      pertenece = true;
+    } else if (a.pedidoId && misPedidosIds[a.pedidoId]) {
+      pertenece = true;
+    } else if (a.usuarioPedido && matchOperadorName(a.usuarioPedido, targetOp)) {
+      pertenece = true;
+    } else if (!a.pedidoId && !a.usuarioPedido && a.campo && misCampos[normStr(a.campo)]) {
+      pertenece = true;
+    }
+    if (!pertenece) return false;
+    if (fCampo && a.campo !== fCampo) return false;
+    if (fCultivo && a.cultivo !== fCultivo) return false;
+    if (fFecha && a.fecha !== fFecha) return false;
+    if (fTexto) {
+      var blob = normStr([a.campo, a.zona, a.cultivo, a.lote, a.transportista, a.cuit, a.chofer, a.patente, a.acoplado, a.horario, a.locacion, a.comentarios].join(" "));
+      if (blob.indexOf(fTexto) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function getAsignacionesFiltradasLogistica() {
+  var fTransp = (document.getElementById("logAsigFiltTransp") || {}).value || "";
+  var fCampo = (document.getElementById("logAsigFiltCampo") || {}).value || "";
+  var fZona = (document.getElementById("logAsigFiltZona") || {}).value || "";
+  var fFecha = (document.getElementById("logAsigFiltFecha") || {}).value || "";
+  var fTexto = normStr((document.getElementById("logAsigFiltTexto") || {}).value || "");
+
+  return ASIGNACIONES_CACHE.filter(function(a) {
+    if (fTransp && a.transportista !== fTransp) return false;
+    if (fCampo && a.campo !== fCampo) return false;
+    if (fZona && a.zona !== fZona) return false;
+    if (fFecha && a.fecha !== fFecha) return false;
+    if (fTexto) {
+      var blob = normStr([a.campo, a.zona, a.cultivo, a.lote, a.transportista, a.cuit, a.chofer, a.patente, a.acoplado, a.horario, a.locacion, a.usuarioPedido, a.comentarios].join(" "));
+      if (blob.indexOf(fTexto) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function buildAsignacionesTableHtml(rows, isLogistica) {
+  var html = "<div class=\"table-wrapper\"><table class=\"pedidos-table\"><thead><tr>";
+  html += "<th style=\"text-align:left;\">Fecha</th>";
+  html += "<th style=\"text-align:left;\">Campo / Zona</th>";
+  html += "<th style=\"text-align:left;\">Cultivo / Lote</th>";
+  html += "<th style=\"text-align:left;\">Transportista</th>";
+  html += "<th>CUIT</th>";
+  html += "<th style=\"text-align:left;\">Chofer</th>";
+  html += "<th>Patente Chasis</th>";
+  html += "<th>Acoplado</th>";
+  html += "<th>Horario / Locación</th>";
+  html += "<th>Tara</th>";
+  if (isLogistica) html += "<th>Pedido por</th>";
+  html += "<th style=\"text-align:left;\">Comentarios</th>";
+  if (isLogistica) html += "<th>Acciones</th>";
+  html += "</tr></thead><tbody>";
+
+  rows.forEach(function(a) {
+    var fechaFmt = a.fecha ? fmtDateExcel(a.fecha) : "-";
+    var campoZona = escHtml(a.campo || "Sin campo") + (a.zona ? " <span style=\"color:#777;font-weight:400;\">(" + escHtml(a.zona) + ")</span>" : "");
+    var cultLote = (a.cultivo ? "<span class=\"badge\">" + escHtml(a.cultivo) + "</span>" : "-") +
+                   (a.lote ? " <span class=\"pedido-lote\" style=\"font-size:11px;\">Lote " + escHtml(a.lote) + "</span>" : "");
+    var horLoc = [a.horario, a.locacion].filter(Boolean).map(escHtml).join(" · ") || "-";
+
+    html += "<tr>";
+    html += "<td style=\"white-space:nowrap;\">" + escHtml(fechaFmt) + "</td>";
+    html += "<td>" + campoZona + "</td>";
+    html += "<td>" + cultLote + "</td>";
+    html += "<td style=\"text-align:left;font-weight:600;\">" + escHtml(a.transportista || "-") + "</td>";
+    html += "<td>" + (a.cuit ? "<span class=\"mono-tag\">" + escHtml(a.cuit) + "</span>" : "-") + "</td>";
+    html += "<td style=\"text-align:left;font-weight:600;\">" + escHtml(a.chofer || "-") + "</td>";
+    html += "<td>" + (a.patente ? "<span class=\"mono-tag\">" + escHtml(a.patente) + "</span>" : "-") + "</td>";
+    html += "<td>" + (a.acoplado ? "<span class=\"mono-tag\">" + escHtml(a.acoplado) + "</span>" : "-") + "</td>";
+    html += "<td style=\"font-size:11.5px;\">" + horLoc + "</td>";
+    html += "<td>" + escHtml(a.tara || "-") + "</td>";
+    if (isLogistica) html += "<td style=\"font-size:11.5px;color:#555;\">" + escHtml(a.usuarioPedido || "-") + "</td>";
+    html += "<td style=\"text-align:left;font-size:11.5px;color:#555;max-width:200px;\">" + escHtml(a.comentarios || "-") + "</td>";
+    if (isLogistica) {
+      html += "<td style=\"white-space:nowrap;\">" +
+              "<button class=\"btn btn-edit\" style=\"padding:4px 9px;font-size:11px;margin-right:4px;\" onclick=\"abrirEdicionAsignacion('" + escHtml(a.spId) + "')\">Editar</button>" +
+              "<button class=\"btn btn-danger\" style=\"padding:4px 9px;font-size:11px;\" onclick=\"eliminarAsignacion('" + escHtml(a.spId) + "')\">Eliminar</button>" +
+              "</td>";
+    }
+    html += "</tr>";
+  });
+
+  html += "</tbody></table></div>";
+  return html;
+}
+
+// ── RENDER ASIGNACIONES EN VISTA OPERADOR (AGRUPADAS POR CAMPO POR DEFECTO) ──
+function renderOperadorAsignaciones() {
+  var container = document.getElementById("opAsignacionesContainer");
+  if (!container) return;
+  var list = getAsignacionesFiltradasOperador();
+  if (list.length === 0) {
+    container.innerHTML = "<div class=\"empty-state\">No hay camiones asignados a tus pedidos con los filtros seleccionados.</div>";
+    return;
+  }
+
+  var groupMode = (document.getElementById("opAsigGroup") || {}).value || "campo";
+  if (groupMode === "none") {
+    container.innerHTML = "<div class=\"card\" style=\"padding:0;overflow:hidden;\">" + buildAsignacionesTableHtml(list, false) + "</div>";
+    return;
+  }
+
+  var groups = {};
+  list.forEach(function(a) {
+    var gKey = "";
+    var gTitle = "";
+    var gSub = "";
+    if (groupMode === "campo") {
+      gKey = a.campo || "Sin campo asignado";
+      gTitle = gKey;
+      gSub = a.zona ? ("Zona: " + a.zona) : "";
+    } else if (groupMode === "fecha") {
+      gKey = a.fecha || "Sin fecha";
+      gTitle = a.fecha ? ("Fecha: " + fmtDateExcel(a.fecha)) : "Sin fecha";
+    } else if (groupMode === "transportista") {
+      gKey = a.transportista || "Sin transportista";
+      gTitle = gKey;
+      gSub = a.cuit ? ("CUIT: " + a.cuit) : "";
+    }
+    if (!groups[gKey]) groups[gKey] = { title: gTitle, sub: gSub, rows: [] };
+    if (!groups[gKey].sub && gSub) groups[gKey].sub = gSub;
+    groups[gKey].rows.push(a);
+  });
+
+  var sortedKeys = Object.keys(groups).sort(function(a, b) {
+    if (groupMode === "fecha") return b.localeCompare(a);
+    return a.localeCompare(b, "es");
+  });
+
+  var html = "";
+  sortedKeys.forEach(function(k) {
+    var g = groups[k];
+    html += "<div class=\"group-block\">";
+    html += "<div class=\"group-header\">";
+    html += "<div class=\"group-title\">🌾 " + escHtml(g.title) + (g.sub ? " <span class=\"group-sub\">&middot; " + escHtml(g.sub) + "</span>" : "") + "</div>";
+    html += "<span class=\"badge\">" + g.rows.length + " " + (g.rows.length === 1 ? "camión asignado" : "camiones asignados") + "</span>";
+    html += "</div>";
+    html += buildAsignacionesTableHtml(g.rows, false);
+    html += "</div>";
+  });
+
+  container.innerHTML = html;
+}
+
+// ── RENDER ASIGNACIONES EN VISTA LOGÍSTICA (AGRUPADAS POR TRANSPORTISTA -> CAMPO/ZONA POR DEFECTO) ──
+function renderLogisticaAsignaciones() {
+  var container = document.getElementById("logAsignacionesContainer");
+  var badgeCount = document.getElementById("contadorAsignacionesLog");
+  if (!container) return;
+
+  var list = getAsignacionesFiltradasLogistica();
+  if (badgeCount) badgeCount.textContent = list.length;
+
+  if (list.length === 0) {
+    container.innerHTML = "<div class=\"empty-state\">No hay asignaciones registradas con los filtros aplicados.</div>";
+    return;
+  }
+
+  var groupMode = (document.getElementById("logAsigGroup") || {}).value || "transp_campo";
+  if (groupMode === "none") {
+    container.innerHTML = buildAsignacionesTableHtml(list, true);
+    return;
+  }
+
+  if (groupMode === "transp_campo") {
+    // Nivel 1: Transportista -> Nivel 2: Campo / Zona
+    var transpMap = {};
+    list.forEach(function(a) {
+      var tKey = a.transportista || "Sin transportista especificado";
+      if (!transpMap[tKey]) {
+        transpMap[tKey] = { transportista: tKey, cuit: a.cuit || "", total: 0, camposMap: {} };
+      }
+      if (!transpMap[tKey].cuit && a.cuit) transpMap[tKey].cuit = a.cuit;
+      transpMap[tKey].total++;
+
+      var cLabel = (a.campo || "Sin campo") + (a.zona ? (" — Zona " + a.zona) : "");
+      if (!transpMap[tKey].camposMap[cLabel]) {
+        transpMap[tKey].camposMap[cLabel] = [];
+      }
+      transpMap[tKey].camposMap[cLabel].push(a);
+    });
+
+    var tKeys = Object.keys(transpMap).sort(function(a, b) {
+      if (a === "Sin transportista especificado") return 1;
+      if (b === "Sin transportista especificado") return -1;
+      return a.localeCompare(b, "es");
+    });
+
+    var html = "";
+    tKeys.forEach(function(tk) {
+      var tg = transpMap[tk];
+      html += "<div class=\"group-block\">";
+      html += "<div class=\"group-header primary-group\">";
+      html += "<div class=\"group-title\">🚛 " + escHtml(tg.transportista) +
+              (tg.cuit ? " <span class=\"group-sub\" style=\"font-family:Consolas,monospace;\">(CUIT: " + escHtml(tg.cuit) + ")</span>" : "") +
+              "</div>";
+      html += "<span class=\"badge\">" + tg.total + " " + (tg.total === 1 ? "camión" : "camiones") + "</span>";
+      html += "</div>";
+
+      var cKeys = Object.keys(tg.camposMap).sort(function(a, b) { return a.localeCompare(b, "es"); });
+      cKeys.forEach(function(ck) {
+        var cRows = tg.camposMap[ck];
+        html += "<div class=\"subgroup-block\">";
+        html += "<div class=\"subgroup-header\">";
+        html += "<span>🌾 " + escHtml(ck) + "</span>";
+        html += "<span>" + cRows.length + " " + (cRows.length === 1 ? "asignación" : "asignaciones") + "</span>";
+        html += "</div>";
+        html += buildAsignacionesTableHtml(cRows, true);
+        html += "</div>";
+      });
+
+      html += "</div>";
+    });
+
+    container.innerHTML = html;
+    return;
+  }
+
+  // Otras agrupaciones opcionales (por Campo/Zona o por Fecha)
+  var singleGroups = {};
+  list.forEach(function(a) {
+    var k = groupMode === "campo"
+      ? ((a.campo || "Sin campo") + (a.zona ? (" — Zona " + a.zona) : ""))
+      : (a.fecha ? fmtDateExcel(a.fecha) : "Sin fecha");
+    var sortKey = groupMode === "fecha" ? (a.fecha || "") : k;
+    if (!singleGroups[sortKey]) singleGroups[sortKey] = { label: k, rows: [] };
+    singleGroups[sortKey].rows.push(a);
+  });
+
+  var sKeys = Object.keys(singleGroups).sort(function(a, b) {
+    return groupMode === "fecha" ? b.localeCompare(a) : a.localeCompare(b, "es");
+  });
+
+  var htmlSingle = "";
+  sKeys.forEach(function(sk) {
+    var sg = singleGroups[sk];
+    htmlSingle += "<div class=\"group-block\">";
+    htmlSingle += "<div class=\"group-header\">";
+    htmlSingle += "<div class=\"group-title\">" + escHtml(sg.label) + "</div>";
+    htmlSingle += "<span class=\"badge\">" + sg.rows.length + " " + (sg.rows.length === 1 ? "camión" : "camiones") + "</span>";
+    htmlSingle += "</div>";
+    htmlSingle += buildAsignacionesTableHtml(sg.rows, true);
+    htmlSingle += "</div>";
+  });
+  container.innerHTML = htmlSingle;
+}
+
+// ── PANEL DE PEDIDOS DE OPERADORES PARA ASIGNAR CAMIONES (OPCIÓN A) ──
+var _pedidosSlotsMap = {};
+
+function togglePanelPedidosAsig() {
+  var w = document.getElementById("pedidosParaAsignarWrapper");
+  var btn = document.getElementById("btnTogglePedAsig");
+  if (!w) return;
+  if (w.style.display === "none") {
+    w.style.display = "block";
+    if (btn) btn.textContent = "Ocultar pedidos";
+  } else {
+    w.style.display = "none";
+    if (btn) btn.textContent = "Mostrar pedidos";
+  }
+}
+
+function buildPedidosSlots() {
+  var slots = [];
+  _pedidosSlotsMap = {};
+  PEDIDOS_RAW_CACHE.forEach(function(item) {
+    var f = item.fields || {};
+    var lote = extractPedidoLote(f);
+    var comClean = cleanPedidoComentarios(f);
+    for (var di = 0; di < 7; di++) {
+      var cam = parseInt(f["Camiones" + di]) || 0;
+      var fk = f["Fecha" + di] || "";
+      if (cam <= 0 || !fk) continue;
+      var slotKey = item.id + "__" + fk;
+      var slot = {
+        slotKey: slotKey,
+        pedidoSpId: String(item.id),
+        pedidoCodigo: String(f.Title || item.id),
+        usuario: String(f.Usuario || "").trim(),
+        fecha: fk,
+        campo: String(f.Campo || "").trim(),
+        zona: String(f.Zona || CAMPOS_ZONA[f.Campo || ""] || "").trim(),
+        cultivo: String(f.Cultivo || "").trim(),
+        lote: lote,
+        embolsar: Boolean(f["Embolsar" + di]),
+        camionesPedidos: cam,
+        comentarios: comClean,
+        asignaciones: []
+      };
+      slots.push(slot);
+      _pedidosSlotsMap[slotKey] = slot;
+    }
+  });
+
+  // Vincular asignaciones a cada slot
+  var usedAsigIds = {};
+  // 1) Coincidencia exacta por pedidoId + fecha
+  slots.forEach(function(s) {
+    ASIGNACIONES_CACHE.forEach(function(a) {
+      if (usedAsigIds[a.spId]) return;
+      if (a.pedidoId && (a.pedidoId === s.pedidoSpId || a.pedidoId === s.pedidoCodigo) && (!a.fecha || a.fecha === s.fecha)) {
+        s.asignaciones.push(a);
+        usedAsigIds[a.spId] = true;
+      }
+    });
+  });
+  // 2) Coincidencia por Campo + Fecha (+ Cultivo/Lote si están informados) para asignaciones directas
+  slots.forEach(function(s) {
+    ASIGNACIONES_CACHE.forEach(function(a) {
+      if (usedAsigIds[a.spId]) return;
+      if (!a.pedidoId && a.campo && normStr(a.campo) === normStr(s.campo) && a.fecha === s.fecha) {
+        if (a.cultivo && s.cultivo && normStr(a.cultivo) !== normStr(s.cultivo)) return;
+        if (a.lote && s.lote && normStr(a.lote) !== normStr(s.lote)) return;
+        s.asignaciones.push(a);
+        usedAsigIds[a.spId] = true;
+      }
+    });
+  });
+
+  return slots;
+}
+
+function renderAsigKpis() {
+  var kpiDiv = document.getElementById("asigKpis");
+  if (!kpiDiv) return;
+  var today = new Date(); today.setHours(0,0,0,0);
+  var next7 = {};
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(today); d.setDate(d.getDate() + i);
+    next7[fmtDateKey(d)] = true;
+  }
+  var slots = buildPedidosSlots();
+  var pedidos7d = 0;
+  var asignadosEnPedidos7d = 0;
+  slots.forEach(function(s) {
+    if (next7[s.fecha]) {
+      pedidos7d += s.camionesPedidos;
+      asignadosEnPedidos7d += s.asignaciones.length;
+    }
+  });
+  var pendientes7d = Math.max(0, pedidos7d - asignadosEnPedidos7d);
+
+  function kpiBox(label, val, color) {
+    return "<div class='card' style='margin:0;padding:12px 14px;text-align:center;'>" +
+           "<div style='font-size:10.5px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;'>" + label + "</div>" +
+           "<div style='font-size:22px;font-weight:800;color:" + (color || "var(--dark)") + ";margin-top:4px;'>" + val + "</div>" +
+           "</div>";
+  }
+
+  kpiDiv.innerHTML =
+    kpiBox("Camiones pedidos (7 días)", pedidos7d, "#D9A300") +
+    kpiBox("Asignados (7 días)", asignadosEnPedidos7d, "#2d7a45") +
+    kpiBox("Pendientes de asignar", pendientes7d, pendientes7d > 0 ? "#c0392b" : "#2d7a45") +
+    kpiBox("Total asignaciones", ASIGNACIONES_CACHE.length, "#1a73e8");
+}
+
+function renderPedidosParaAsignar() {
+  var container = document.getElementById("pedidosParaAsignarContainer");
+  if (!container) return;
+
+  var rango = (document.getElementById("pedAsigRango") || {}).value || "7d";
+  var estadoFilt = (document.getElementById("pedAsigEstado") || {}).value || "";
+
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayKey = fmtDateKey(today);
+  var next7 = {};
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(today); d.setDate(d.getDate() + i);
+    next7[fmtDateKey(d)] = true;
+  }
+
+  var slots = buildPedidosSlots().filter(function(s) {
+    if (rango === "hoy" && s.fecha !== todayKey) return false;
+    if (rango === "7d" && !next7[s.fecha]) return false;
+    var asigCount = s.asignaciones.length;
+    if (estadoFilt === "pendientes" && asigCount >= s.camionesPedidos) return false;
+    if (estadoFilt === "completos" && asigCount < s.camionesPedidos) return false;
+    return true;
+  });
+
+  slots.sort(function(a, b) {
+    if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
+    return (a.campo || "").localeCompare(b.campo || "", "es");
+  });
+
+  if (slots.length === 0) {
+    container.innerHTML = "<div class=\"empty-state\" style=\"padding:20px;\">No hay pedidos de camiones para el filtro seleccionado. Podés usar <strong>+ Nueva asignación directa</strong> para cargar una asignación sin pedido previo.</div>";
+    return;
+  }
+
+  var html = "<div class=\"table-wrapper\"><table class=\"pedidos-table\"><thead><tr>";
+  html += "<th style=\"text-align:left;\">Fecha</th>";
+  html += "<th style=\"text-align:left;\">Campo</th>";
+  html += "<th style=\"text-align:left;\">Cultivo / Lote</th>";
+  html += "<th>Zona</th>";
+  html += "<th>Operador</th>";
+  html += "<th>Estado Asignación</th>";
+  html += "<th style=\"text-align:left;\">Camiones asignados</th>";
+  html += "<th>Acción</th>";
+  html += "</tr></thead><tbody>";
+
+  slots.forEach(function(s) {
+    var asigCount = s.asignaciones.length;
+    var pillCls = asigCount === 0 ? "pending" : (asigCount >= s.camionesPedidos ? "done" : "partial");
+    var pillTxt = asigCount + " / " + s.camionesPedidos + (asigCount >= s.camionesPedidos ? " Completo" : " Asignados");
+    var chips = s.asignaciones.map(function(a) {
+      var label = [a.transportista, a.chofer, a.patente].filter(Boolean).join(" · ") || a.codigo;
+      return "<span class=\"mono-tag\" style=\"display:inline-block;margin:2px;cursor:pointer;\" title=\"Click para editar\" onclick=\"abrirEdicionAsignacion('" + escHtml(a.spId) + "')\">🚛 " + escHtml(label) + "</span>";
+    }).join(" ");
+
+    html += "<tr>";
+    html += "<td style=\"white-space:nowrap;\">" + escHtml(fmtDateExcel(s.fecha)) + "</td>";
+    html += "<td>" + escHtml(s.campo) + "</td>";
+    html += "<td><span class=\"badge\">" + escHtml(s.cultivo) + "</span>" +
+            (s.lote ? " <span class=\"pedido-lote\" style=\"font-size:11px;\">Lote " + escHtml(s.lote) + "</span>" : "") +
+            (s.embolsar ? " <span style=\"font-size:10px;color:#c8a000;font-weight:700;\">EMB</span>" : "") + "</td>";
+    html += "<td>" + escHtml(s.zona || "-") + "</td>";
+    html += "<td style=\"font-size:11.5px;\">" + escHtml(s.usuario || "-") + "</td>";
+    html += "<td><span class=\"status-pill " + pillCls + "\">" + pillTxt + "</span></td>";
+    html += "<td style=\"text-align:left;\">" + (chips || "<span style=\"color:#aaa;font-size:11px;\">Sin asignar</span>") + "</td>";
+    html += "<td><button class=\"btn btn-primary\" style=\"padding:5px 11px;font-size:11.5px;\" onclick=\"abrirModalAsignacionDesdePedido('" + escHtml(s.slotKey) + "')\">+ Asignar camión</button></td>";
+    html += "</tr>";
+  });
+
+  html += "</tbody></table></div>";
+  container.innerHTML = html;
+}
+
+// ── MODAL DE ASIGNACIÓN (ALTA DESDE PEDIDO, CARGA DIRECTA Y EDICIÓN) ──
+function poblarCombosModalAsignacion(selectedCampo, selectedCultivo, selectedLote, selectedUsuario) {
+  var selCampo = document.getElementById("asigCampo");
+  var campos = Object.keys(CAMPOS_ZONA).sort(function(a,b){ return a.localeCompare(b, "es"); });
+  if (selectedCampo && campos.indexOf(selectedCampo) === -1) campos.unshift(selectedCampo);
+  var htmlC = "<option value=\"\">-- Seleccionar campo (opcional) --</option>";
+  campos.forEach(function(c) {
+    htmlC += "<option value=\"" + escHtml(c) + "\">" + escHtml(c) + "</option>";
+  });
+  selCampo.innerHTML = htmlC;
+  selCampo.value = selectedCampo || "";
+
+  actualizarCultivosModalAsignacion(selectedCampo, selectedCultivo, selectedLote);
+
+  // Poblar selector de Operador (Pedido por)
+  var selUsr = document.getElementById("asigUsuarioPedido");
+  var usersMap = {};
+  PADRON_OPERADORES.forEach(function(o) { if (o.nombre) usersMap[o.nombre] = true; });
+  PEDIDOS_RAW_CACHE.forEach(function(p) { if (p.fields && p.fields.Usuario) usersMap[p.fields.Usuario.trim()] = true; });
+  if (selectedUsuario) usersMap[selectedUsuario] = true;
+  var htmlU = "<option value=\"\">-- Sin especificar --</option>";
+  Object.keys(usersMap).sort(function(a,b){ return a.localeCompare(b, "es"); }).forEach(function(u) {
+    if (!u) return;
+    htmlU += "<option value=\"" + escHtml(u) + "\">" + escHtml(u) + "</option>";
+  });
+  selUsr.innerHTML = htmlU;
+  selUsr.value = selectedUsuario || "";
+}
+
+function actualizarCultivosModalAsignacion(campo, selectedCultivo, selectedLote) {
+  var selCult = document.getElementById("asigCultivo");
+  var listCult = (campo && CAMPO_CULTIVOS[campo]) ? CAMPO_CULTIVOS[campo].slice() : [];
+  if (selectedCultivo && listCult.indexOf(selectedCultivo) === -1) listCult.push(selectedCultivo);
+  var html = "<option value=\"\">-- Cultivo (opcional) --</option>";
+  listCult.forEach(function(c) {
+    html += "<option value=\"" + escHtml(c) + "\">" + escHtml(c) + "</option>";
+  });
+  selCult.innerHTML = html;
+  selCult.value = selectedCultivo || "";
+  actualizarLotesModalAsignacion(campo, selCult.value, selectedLote);
+}
+
+function actualizarLotesModalAsignacion(campo, cultivo, selectedLote) {
+  var selLote = document.getElementById("asigLote");
+  var key = (campo || "") + "|||" + (cultivo || "");
+  var lotes = (campo && cultivo && CAMPO_CULTIVO_LOTES[key]) ? CAMPO_CULTIVO_LOTES[key].slice() : [];
+  if (selectedLote && lotes.indexOf(selectedLote) === -1) lotes.push(selectedLote);
+  var html = "<option value=\"\">-- Lote (opcional) --</option>";
+  lotes.forEach(function(l) {
+    html += "<option value=\"" + escHtml(l) + "\">" + escHtml(l) + "</option>";
+  });
+  selLote.innerHTML = html;
+  selLote.value = selectedLote || "";
+}
+
+function onAsigCampoChange() {
+  var campo = document.getElementById("asigCampo").value;
+  document.getElementById("asigZona").value = (campo && CAMPOS_ZONA[campo]) ? CAMPOS_ZONA[campo] : "";
+  actualizarCultivosModalAsignacion(campo, "", "");
+
+  // Si en carga directa el operador está vacío y hay un pedido o responsable para ese campo, sugerirlo
+  var selUsr = document.getElementById("asigUsuarioPedido");
+  var fecha = document.getElementById("asigFecha").value;
+  if (campo && selUsr && !selUsr.value) {
+    var matchPed = PEDIDOS_RAW_CACHE.find(function(p) {
+      var f = p.fields || {};
+      if (normStr(f.Campo) !== normStr(campo)) return false;
+      if (!fecha) return true;
+      for (var d = 0; d < 7; d++) {
+        if (f["Fecha" + d] === fecha && (parseInt(f["Camiones" + d]) || 0) > 0) return true;
+      }
+      return false;
+    });
+    if (matchPed && matchPed.fields && matchPed.fields.Usuario) {
+      selUsr.value = matchPed.fields.Usuario.trim();
+    } else if (CAMPOS_RESPONSABLE[campo]) {
+      var resp = CAMPOS_RESPONSABLE[campo];
+      for (var i = 0; i < selUsr.options.length; i++) {
+        if (matchOperadorName(selUsr.options[i].value, resp)) {
+          selUsr.value = selUsr.options[i].value;
+          break;
+        }
+      }
+    }
+  }
+}
+
+function onAsigCultivoChange() {
+  var campo = document.getElementById("asigCampo").value;
+  var cultivo = document.getElementById("asigCultivo").value;
+  actualizarLotesModalAsignacion(campo, cultivo, "");
+}
+
+function onAsigTransportistaInput() {
+  var val = document.getElementById("asigTransportista").value.trim();
+  if (!val) return;
+  var found = PADRON_TRANSP.find(function(t) {
+    return normStr(t.nombre) === normStr(val) || (t.razonSocial && normStr(t.razonSocial) === normStr(val));
+  });
+  if (found && found.cuit) {
+    document.getElementById("asigCuit").value = found.cuit;
+  }
+}
+
+function limpiarInputsTransporteModal() {
+  document.getElementById("asigTransportista").value = "";
+  document.getElementById("asigCuit").value = "";
+  document.getElementById("asigChofer").value = "";
+  document.getElementById("asigPatente").value = "";
+  document.getElementById("asigAcoplado").value = "";
+  document.getElementById("asigHorario").value = "";
+  document.getElementById("asigLocacion").value = "";
+  document.getElementById("asigTara").value = "";
+  document.getElementById("asigComentarios").value = "";
+}
+
+function abrirModalAsignacionDirecta() {
+  editingAsignacionSpId = null;
+  currentAsigPedidoId = "";
+  document.getElementById("modalAsigTitle").textContent = "Nueva Asignación Directa";
+  document.getElementById("modalAsigSub").textContent = "Cargá los datos del camión y chofer. Todos los campos son opcionales.";
+  document.getElementById("asigFecha").value = fmtDateKey(new Date());
+  document.getElementById("asigZona").value = "";
+  poblarCombosModalAsignacion("", "", "", "");
+  limpiarInputsTransporteModal();
+  document.getElementById("modalAsignacionOverlay").classList.add("open");
+}
+
+function abrirModalAsignacionDesdePedido(slotKey) {
+  var slot = _pedidosSlotsMap[slotKey];
+  if (!slot) { abrirModalAsignacionDirecta(); return; }
+  editingAsignacionSpId = null;
+  currentAsigPedidoId = slot.pedidoSpId;
+  document.getElementById("modalAsigTitle").textContent = "Asignar Camión a Pedido — " + (slot.campo || "");
+  document.getElementById("modalAsigSub").textContent =
+    "Pedido de " + (slot.usuario || "Operador") + " · Fecha: " + fmtDateExcel(slot.fecha) +
+    " (" + slot.asignaciones.length + "/" + slot.camionesPedidos + " asignados)";
+  document.getElementById("asigFecha").value = slot.fecha || fmtDateKey(new Date());
+  document.getElementById("asigZona").value = slot.zona || "";
+  poblarCombosModalAsignacion(slot.campo, slot.cultivo, slot.lote, slot.usuario);
+  limpiarInputsTransporteModal();
+  if (slot.comentarios) {
+    document.getElementById("asigComentarios").value = slot.comentarios;
+  }
+  document.getElementById("modalAsignacionOverlay").classList.add("open");
+}
+
+function abrirEdicionAsignacion(spId) {
+  var asig = ASIGNACIONES_CACHE.find(function(a) { return String(a.spId) === String(spId); });
+  if (!asig) return;
+  editingAsignacionSpId = asig.spId;
+  currentAsigPedidoId = asig.pedidoId || "";
+  document.getElementById("modalAsigTitle").textContent = "Editar Asignación";
+  document.getElementById("modalAsigSub").textContent = "Código: " + (asig.codigo || asig.spId) + " · Todos los campos son opcionales.";
+  document.getElementById("asigFecha").value = asig.fecha || "";
+  document.getElementById("asigZona").value = asig.zona || "";
+  poblarCombosModalAsignacion(asig.campo, asig.cultivo, asig.lote, asig.usuarioPedido);
+  document.getElementById("asigTransportista").value = asig.transportista || "";
+  document.getElementById("asigCuit").value = asig.cuit || "";
+  document.getElementById("asigChofer").value = asig.chofer || "";
+  document.getElementById("asigPatente").value = asig.patente || "";
+  document.getElementById("asigAcoplado").value = asig.acoplado || "";
+  document.getElementById("asigHorario").value = asig.horario || "";
+  document.getElementById("asigLocacion").value = asig.locacion || "";
+  document.getElementById("asigTara").value = asig.tara || "";
+  document.getElementById("asigComentarios").value = asig.comentarios || "";
+  document.getElementById("modalAsignacionOverlay").classList.add("open");
+}
+
+function cerrarModalAsignacion() {
+  document.getElementById("modalAsignacionOverlay").classList.remove("open");
+  editingAsignacionSpId = null;
+  currentAsigPedidoId = "";
+}
+
+async function guardarAsignacion() {
+  var btn = document.getElementById("btnGuardarAsignacion");
+  btn.disabled = true;
+  btn.textContent = "Guardando...";
+  try {
+    var listId = await ensureAsignacionesList(true);
+    if (!listId) {
+      throw new Error("La lista '" + CONFIG.asignacionesListName + "' no existe aún en SharePoint y no pudo crearse automáticamente. Creala en SharePoint e intentá de nuevo.");
+    }
+
+    var campo = document.getElementById("asigCampo").value.trim();
+    var zona = document.getElementById("asigZona").value.trim() || (campo && CAMPOS_ZONA[campo]) || "";
+    var existing = editingAsignacionSpId
+      ? ASIGNACIONES_CACHE.find(function(a){ return String(a.spId) === String(editingAsignacionSpId); })
+      : null;
+
+    var asigObj = {
+      codigo: existing ? existing.codigo : ("ASG-" + Date.now().toString(36).toUpperCase()),
+      pedidoId: currentAsigPedidoId || (existing ? existing.pedidoId : ""),
+      usuarioPedido: document.getElementById("asigUsuarioPedido").value.trim(),
+      fecha: document.getElementById("asigFecha").value.trim(),
+      campo: campo,
+      zona: zona,
+      cultivo: document.getElementById("asigCultivo").value.trim(),
+      lote: document.getElementById("asigLote").value.trim(),
+      transportista: document.getElementById("asigTransportista").value.trim(),
+      cuit: document.getElementById("asigCuit").value.trim(),
+      chofer: document.getElementById("asigChofer").value.trim(),
+      patente: document.getElementById("asigPatente").value.trim().toUpperCase(),
+      acoplado: document.getElementById("asigAcoplado").value.trim().toUpperCase(),
+      horario: document.getElementById("asigHorario").value.trim(),
+      locacion: document.getElementById("asigLocacion").value.trim(),
+      tara: document.getElementById("asigTara").value.trim(),
+      comentarios: document.getElementById("asigComentarios").value.trim(),
+      asignadoPor: currentUser,
+      fechaAsignacion: new Date().toLocaleDateString("es-AR")
+    };
+
+    await spWriteAsignacionWithRetry(listId, editingAsignacionSpId, asigObj);
+    showToast(editingAsignacionSpId ? "Asignación actualizada" : "Asignación guardada en SharePoint", "success");
+    cerrarModalAsignacion();
+    await cargarAsignacionesUI(false);
+  } catch (e) {
+    console.error("Error guardando asignación:", e);
+    showToast("Error al guardar: " + e.message, "error");
+  }
+  btn.disabled = false;
+  btn.textContent = "Guardar asignación";
+}
+
+async function eliminarAsignacion(spId) {
+  if (!confirm("¿Eliminar esta asignación? Esta acción no se puede deshacer.")) return;
+  try {
+    var listId = await ensureAsignacionesList(false);
+    if (!listId) throw new Error("Lista de asignaciones no disponible.");
+    var r = await fetch(
+      "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items/" + spId,
+      { method: "DELETE", headers: { Authorization: "Bearer " + graphToken } }
+    );
+    if (r.status === 204 || r.ok) {
+      showToast("Asignación eliminada", "success");
+      await cargarAsignacionesUI(false);
+    } else {
+      throw new Error("HTTP " + r.status);
+    }
+  } catch (e) {
+    showToast("Error al eliminar: " + e.message, "error");
+  }
+}
+
+// ── EXPORTACIÓN DE ASIGNACIONES A EXCEL Y PDF ──
+function obtenerAsignacionesParaExportar(modo) {
+  var list = [];
+  if (modo === "operador") {
+    list = getAsignacionesFiltradasOperador().slice();
+    list.sort(function(a, b) {
+      var cCmp = (a.campo || "").localeCompare(b.campo || "", "es");
+      if (cCmp !== 0) return cCmp;
+      return (a.fecha || "").localeCompare(b.fecha || "");
+    });
+  } else if (modo === "logistica") {
+    list = getAsignacionesFiltradasLogistica().slice();
+    list.sort(function(a, b) {
+      var tCmp = (a.transportista || "").localeCompare(b.transportista || "", "es");
+      if (tCmp !== 0) return tCmp;
+      var cCmp = (a.campo || "").localeCompare(b.campo || "", "es");
+      if (cCmp !== 0) return cCmp;
+      return (a.fecha || "").localeCompare(b.fecha || "");
+    });
+  } else {
+    list = ASIGNACIONES_CACHE.slice();
+    list.sort(function(a, b) {
+      var tCmp = (a.transportista || "").localeCompare(b.transportista || "", "es");
+      if (tCmp !== 0) return tCmp;
+      var cCmp = (a.campo || "").localeCompare(b.campo || "", "es");
+      if (cCmp !== 0) return cCmp;
+      return (a.fecha || "").localeCompare(b.fecha || "");
+    });
+  }
+  return list;
+}
+
+async function exportarAsignacionesExcel(modo) {
+  if (!ASIGNACIONES_CACHE.length) {
+    await cargarAsignacionesUI(false);
+  }
+  var list = obtenerAsignacionesParaExportar(modo);
+  if (!list.length) {
+    showToast("No hay asignaciones para descargar", "error");
+    return;
+  }
+  var cols = [
+    "Fecha", "Transportista", "CUIT Transportista", "Campo", "Zona",
+    "Cultivo", "Lote", "Chofer", "Patente Camión", "Patente Acoplado",
+    "Horario", "Locación", "Tara", "Pedido por (Operador)", "Comentarios", "Asignado por"
+  ];
+  var rows = [cols];
+  list.forEach(function(a) {
+    rows.push([
+      fmtDateExcel(a.fecha),
+      a.transportista || "",
+      a.cuit || "",
+      a.campo || "",
+      a.zona || "",
+      a.cultivo || "",
+      a.lote || "",
+      a.chofer || "",
+      a.patente || "",
+      a.acoplado || "",
+      a.horario || "",
+      a.locacion || "",
+      a.tara || "",
+      a.usuarioPedido || "",
+      a.comentarios || "",
+      a.asignadoPor || ""
+    ]);
+  });
+  var suffix = modo === "operador" ? "mis_pedidos" : "logistica";
+  downloadExcel(rows, "asignaciones_camiones_" + suffix + "_" + fmtDateKey(new Date()) + ".xlsx");
+  showToast("Excel descargado (" + list.length + " asignaciones)", "success");
+}
+
+async function exportarAsignacionesPDF(modo) {
+  if (!ASIGNACIONES_CACHE.length) {
+    await cargarAsignacionesUI(false);
+  }
+  var list = obtenerAsignacionesParaExportar(modo);
+  if (!list.length) {
+    showToast("No hay asignaciones para descargar en PDF", "error");
+    return;
+  }
+
+  if (window.jspdf && window.jspdf.jsPDF) {
+    var doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    var fechaHoy = new Date().toLocaleDateString("es-AR");
+    var titulo = modo === "operador"
+      ? "ADBlick Granos — Asignaciones de Camiones (Agrupadas por Campo)"
+      : "ADBlick Granos — Asignaciones de Camiones (Por Transportista y Campo/Zona)";
+
+    doc.setFontSize(14);
+    doc.text(titulo, 14, 14);
+    doc.setFontSize(9.5);
+    doc.setTextColor(100);
+    doc.text("Generado el " + fechaHoy + " · Usuario: " + currentUser + " · Total: " + list.length + " camiones", 14, 20);
+
+    var head = [["Fecha", "Transportista", "CUIT", "Campo", "Zona", "Cultivo / Lote", "Chofer", "Patente", "Acoplado", "Horario / Locación", "Tara", "Comentarios"]];
+    var body = list.map(function(a) {
+      return [
+        fmtDateExcel(a.fecha) || "-",
+        a.transportista || "-",
+        a.cuit || "-",
+        a.campo || "-",
+        a.zona || "-",
+        [a.cultivo, a.lote ? ("Lote " + a.lote) : ""].filter(Boolean).join(" · ") || "-",
+        a.chofer || "-",
+        a.patente || "-",
+        a.acoplado || "-",
+        [a.horario, a.locacion].filter(Boolean).join(" · ") || "-",
+        a.tara || "-",
+        a.comentarios || ""
+      ];
+    });
+
+    if (typeof doc.autoTable === "function") {
+      doc.autoTable({
+        startY: 24,
+        head: head,
+        body: body,
+        styles: { fontSize: 8, cellPadding: 2.2 },
+        headStyles: { fillColor: [26, 26, 26], textColor: [245, 184, 0], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [252, 250, 242] }
+      });
+    }
+    var suffix = modo === "operador" ? "operador" : "logistica";
+    doc.save("asignaciones_camiones_" + suffix + "_" + fmtDateKey(new Date()) + ".pdf");
+    showToast("PDF descargado (" + list.length + " asignaciones)", "success");
+  } else {
+    window.print();
+  }
 }
 
 function showToast(msg, type) {
