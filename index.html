@@ -1583,13 +1583,22 @@ async function guardarPedido() {
   btn.disabled = false; btn.textContent = "Guardar Pedido";
 }
 
+function isAsignacionFallbackItem(item) {
+  var f = (item && item.fields) ? item.fields : item;
+  if (!f) return false;
+  var t = String(f.Title || "");
+  var c = String(f.Comentarios || "");
+  return t.indexOf("ASIG::") === 0 || c.indexOf("[ASIG_JSON:{") !== -1;
+}
+
 // ── MIS PEDIDOS ──
 async function cargarMisPedidos() {
   var container = document.getElementById("misPedidosContainer");
   container.innerHTML = "<div class=\"loading-pedidos\">Cargando...</div>";
   try {
     await ensurePedidosLoteCol();
-    var rawItems = await spGetListItems(CONFIG.sharepointListId, 999);
+    var allSpItems = await spGetListItems(CONFIG.sharepointListId, 999);
+    var rawItems = allSpItems.filter(function(i) { return !isAsignacionFallbackItem(i); });
     PEDIDOS_RAW_CACHE = rawItems;
     if (esAdminOSuper()) poblarSelectOperadorVista();
     var targetOp = getTargetOperador();
@@ -1744,7 +1753,7 @@ async function fetchAllItems() {
     if (data.value) items = items.concat(data.value);
     url = data["@odata.nextLink"] || null;
   }
-  return items.map(function(i) { return i.fields; });
+  return items.filter(function(i) { return !isAsignacionFallbackItem(i); }).map(function(i) { return i.fields; });
 }
 
 // ── DESCARGAS ──
@@ -2624,8 +2633,8 @@ function renderPadronStatus() {
     html += "<div style='font-size:11.5px;color:#1e7e34;margin-top:6px;'>&#10003; Lista de SharePoint <strong>" + escHtml(CONFIG.asignacionesListName) + "</strong> conectada (ID: <code>" + escHtml(CONFIG.asignacionesListId) + "</code>).</div>";
   } else {
     html += "<div style='font-size:11.5px;color:#8a6d00;margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;'>" +
-            "<span>&#9888; La lista <strong>" + escHtml(CONFIG.asignacionesListName) + "</strong> aún no fue encontrada en SharePoint.</span>" +
-            "<button class='btn btn-primary' style='font-size:11px;padding:4px 10px;' onclick='inicializarListaAsignacionesManual()'>Crear / Conectar lista ahora</button></div>";
+            "<span>&#9432; La lista <strong>" + escHtml(CONFIG.asignacionesListName) + "</strong> aún no está creada en SharePoint: las asignaciones se guardan automáticamente en SharePoint dentro de la lista de Pedidos (<code>ASIG::</code>) y migrarán solas apenas crees la lista <code>Asignaciones_Camiones</code> en el sitio.</span>" +
+            "<button class='btn btn-primary' style='font-size:11px;padding:4px 10px;' onclick='inicializarListaAsignacionesManual()'>Reintentar conexión</button></div>";
   }
   html += "</div>";
 
@@ -2696,7 +2705,7 @@ async function ensureAsignacionesList(autoCreate) {
     if (r.ok) {
       var data = await r.json();
       var lists = data.value || [];
-      var targetNames = ["asignaciones_camiones", "asignacionescamiones", "asignaciones camiones", "lista_asignacionescamiones"];
+      var targetNames = ["asignaciones_camiones", "asignacionescamiones", "asignaciones camiones", "lista_asignacionescamiones", "asignaciones", "lista_asignaciones"];
       for (var i = 0; i < lists.length; i++) {
         var dn = (lists[i].displayName || "").toLowerCase().trim();
         var nm = (lists[i].name || "").toLowerCase().trim();
@@ -2708,12 +2717,7 @@ async function ensureAsignacionesList(autoCreate) {
     }
 
     if (!CONFIG.asignacionesListId && autoCreate) {
-      var colsPayload = ASIG_DESIRED_COLS.map(function(c) {
-        return {
-          name: c.name,
-          text: c.multiline ? { allowMultipleLines: true } : {}
-        };
-      });
+      // Intento 1: crear lista básica sin columnas en el body (evita HTTP 400 de Graph en definiciones de columna)
       var createRes = await fetch(
         "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists",
         {
@@ -2721,7 +2725,6 @@ async function ensureAsignacionesList(autoCreate) {
           headers: { Authorization: "Bearer " + graphToken, "Content-Type": "application/json" },
           body: JSON.stringify({
             displayName: CONFIG.asignacionesListName,
-            columns: colsPayload,
             list: { template: "genericList" }
           })
         }
@@ -2731,7 +2734,7 @@ async function ensureAsignacionesList(autoCreate) {
         CONFIG.asignacionesListId = createdList.id;
         console.log("Lista SharePoint creada automáticamente:", CONFIG.asignacionesListName, CONFIG.asignacionesListId);
       } else {
-        console.warn("No se pudo crear automáticamente la lista " + CONFIG.asignacionesListName + " (HTTP " + createRes.status + ").");
+        console.warn("No se pudo crear automáticamente la lista " + CONFIG.asignacionesListName + " (HTTP " + createRes.status + "). Se usará almacenamiento de respaldo en SharePoint.");
       }
     }
 
@@ -2796,15 +2799,15 @@ async function ensureAsignacionesColumns(listId, createMissing) {
 }
 
 async function inicializarListaAsignacionesManual() {
-  showToast("Conectando / creando lista en SharePoint...", "success");
+  showToast("Verificando lista en SharePoint...", "success");
   SP_COLS.asigChecked = false;
   var id = await ensureAsignacionesList(true);
   renderPadronStatus();
   if (id) {
-    showToast("Lista " + CONFIG.asignacionesListName + " lista en SharePoint", "success");
+    showToast("Lista " + CONFIG.asignacionesListName + " conectada en SharePoint", "success");
     cargarAsignacionesUI();
   } else {
-    showToast("No se pudo crear automáticamente. Creá una lista llamada '" + CONFIG.asignacionesListName + "' en SharePoint y presioná Recargar.", "error");
+    showToast("Usando respaldo automático en SharePoint (podés crear la lista '" + CONFIG.asignacionesListName + "' en SharePoint cuando quieras)", "success");
   }
 }
 
@@ -2823,7 +2826,7 @@ function getAsigField(f, canonicalName) {
   return "";
 }
 
-function parseAsignacionSpItem(item) {
+function parseAsignacionSpItem(item, sourceListId) {
   var f = item.fields || {};
   var jsonBackup = {};
   var rawJson = getAsigField(f, "DatosJSON");
@@ -2847,15 +2850,18 @@ function parseAsignacionSpItem(item) {
     return "";
   }
 
+  var rawTitle = String(f.Title || jsonBackup.codigo || item.id).trim();
+  var cleanCodigo = rawTitle.replace(/^ASIG::/i, "").trim();
   var campo = pick("Campo", "campo");
   var zona = pick("Zona", "zona") || (campo && CAMPOS_ZONA[campo]) || "";
 
   return {
     spId: String(item.id),
-    codigo: String(f.Title || jsonBackup.codigo || item.id).trim(),
+    _listId: sourceListId || CONFIG.asignacionesListId || CONFIG.sharepointListId,
+    codigo: cleanCodigo || String(item.id),
     pedidoId: pick("PedidoId", "pedidoId"),
-    usuarioPedido: pick("UsuarioPedido", "usuarioPedido"),
-    fecha: pick("Fecha", "fecha"),
+    usuarioPedido: pick("UsuarioPedido", "usuarioPedido") || String(f.Usuario || "").trim(),
+    fecha: pick("Fecha", "fecha") || String(f.FechaPedido || "").trim(),
     campo: campo,
     zona: zona,
     cultivo: pick("Cultivo", "cultivo"),
@@ -2874,7 +2880,7 @@ function parseAsignacionSpItem(item) {
   };
 }
 
-function buildAsignacionSpFields(asigObj) {
+function buildAsignacionSpFields(asigObj, isFallbackPedidosList) {
   var jsonStr = JSON.stringify({
     codigo: asigObj.codigo || "",
     pedidoId: asigObj.pedidoId || "",
@@ -2896,6 +2902,27 @@ function buildAsignacionSpFields(asigObj) {
     asignadoPor: asigObj.asignadoPor || "",
     fechaAsignacion: asigObj.fechaAsignacion || ""
   });
+
+  var codigoBase = asigObj.codigo || ("ASG-" + Date.now().toString(36).toUpperCase());
+
+  if (isFallbackPedidosList) {
+    // Guardar dentro de Lista_PedidoCamiones con prefijo ASIG:: y JSON completo en Comentarios
+    var comWithJson = (asigObj.comentarios ? (asigObj.comentarios + " ") : "") + "[ASIG_JSON:" + jsonStr + "]";
+    var fbFields = {
+      Title: "ASIG::" + codigoBase,
+      Usuario: asigObj.usuarioPedido || asigObj.asignadoPor || "",
+      FechaPedido: asigObj.fecha || "",
+      Campo: asigObj.campo || "",
+      Cultivo: asigObj.cultivo || "",
+      Zona: asigObj.zona || "",
+      Comentarios: comWithJson,
+      ComentarioLogistica: [asigObj.transportista, asigObj.chofer, asigObj.patente].filter(Boolean).join(" · ")
+    };
+    if (SP_COLS.pedidosLote && asigObj.lote) {
+      fbFields[SP_COLS.pedidosLote] = asigObj.lote;
+    }
+    return { fields: fbFields, jsonStr: jsonStr };
+  }
 
   var pairs = {
     PedidoId: asigObj.pedidoId || "",
@@ -2919,17 +2946,32 @@ function buildAsignacionSpFields(asigObj) {
     DatosJSON: jsonStr
   };
 
-  var fields = { Title: asigObj.codigo || ("ASG-" + Date.now().toString(36).toUpperCase()) };
+  var fields = { Title: codigoBase };
+  var hasKnownCols = SP_COLS.asigColMap && Object.keys(SP_COLS.asigColMap).length > 0;
+  var hasJsonCol = hasKnownCols && Boolean(SP_COLS.asigColMap["datosjson"]);
+  var hasComCol = hasKnownCols && Boolean(SP_COLS.asigColMap["comentarios"]);
+
   Object.keys(pairs).forEach(function(canonical) {
     var key = normStr(canonical).replace(/\s+/g, "");
-    var spCol = (SP_COLS.asigColMap && SP_COLS.asigColMap[key]) || canonical;
-    fields[spCol] = pairs[canonical];
+    if (hasKnownCols) {
+      var spCol = SP_COLS.asigColMap[key];
+      if (spCol) fields[spCol] = pairs[canonical];
+    } else {
+      fields[canonical] = pairs[canonical];
+    }
   });
+
+  if (hasKnownCols && !hasJsonCol && hasComCol) {
+    var comColName = SP_COLS.asigColMap["comentarios"];
+    fields[comColName] = (asigObj.comentarios ? (asigObj.comentarios + " ") : "") + "[ASIG_JSON:" + jsonStr + "]";
+  }
+
   return { fields: fields, jsonStr: jsonStr };
 }
 
 async function spWriteAsignacionWithRetry(listId, itemIdOrNull, asigObj) {
-  var built = buildAsignacionSpFields(asigObj);
+  var isFallback = (listId === CONFIG.sharepointListId);
+  var built = buildAsignacionSpFields(asigObj, isFallback);
   var f = Object.assign({}, built.fields);
   var url = itemIdOrNull
     ? ("https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items/" + itemIdOrNull + "/fields")
@@ -2950,7 +2992,6 @@ async function spWriteAsignacionWithRetry(listId, itemIdOrNull, asigObj) {
     if (bad && bad[1] && f[bad[1]] !== undefined) {
       var removedCol = bad[1];
       delete f[removedCol];
-      // Si se descartó DatosJSON pero existe Comentarios, respaldar JSON en Comentarios
       if (normStr(removedCol).indexOf("datosjson") !== -1) {
         var comCol = (SP_COLS.asigColMap && SP_COLS.asigColMap["comentarios"]) || "Comentarios";
         if (f[comCol] !== undefined) {
@@ -2967,17 +3008,58 @@ async function spWriteAsignacionWithRetry(listId, itemIdOrNull, asigObj) {
 async function cargarAsignacionesUI(showToastFeedback) {
   try {
     await ensurePedidosLoteCol();
-    var listId = await ensureAsignacionesList(false);
+    var dedicatedListId = await ensureAsignacionesList(false);
     var promises = [spGetListItems(CONFIG.sharepointListId, 999)];
-    if (listId) {
-      promises.push(spGetListItems(listId, 999).catch(function(){ return []; }));
+    if (dedicatedListId) {
+      promises.push(spGetListItems(dedicatedListId, 999).catch(function(){ return []; }));
     } else {
       promises.push(Promise.resolve([]));
     }
     var results = await Promise.all(promises);
-    PEDIDOS_RAW_CACHE = results[0] || [];
-    var rawAsig = results[1] || [];
-    ASIGNACIONES_CACHE = rawAsig.map(parseAsignacionSpItem);
+    var allPedidosListItems = results[0] || [];
+    var dedicatedAsigItems = results[1] || [];
+
+    // Separar pedidos reales de asignaciones guardadas en modo respaldo (ASIG::)
+    var pedidosReales = [];
+    var fallbackAsigItems = [];
+    allPedidosListItems.forEach(function(item) {
+      if (isAsignacionFallbackItem(item)) fallbackAsigItems.push(item);
+      else pedidosReales.push(item);
+    });
+
+    PEDIDOS_RAW_CACHE = pedidosReales;
+
+    var parsedDedicated = dedicatedAsigItems.map(function(it) {
+      return parseAsignacionSpItem(it, dedicatedListId);
+    });
+    var parsedFallback = fallbackAsigItems.map(function(it) {
+      return parseAsignacionSpItem(it, CONFIG.sharepointListId);
+    });
+
+    // Si ya existe la lista dedicada Asignaciones_Camiones y había items en fallback, migrarlos automáticamente
+    if (dedicatedListId && parsedFallback.length > 0) {
+      for (var m = 0; m < parsedFallback.length; m++) {
+        var fbAsig = parsedFallback[m];
+        try {
+          var created = await spWriteAsignacionWithRetry(dedicatedListId, null, fbAsig);
+          await fetch(
+            "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + CONFIG.sharepointListId + "/items/" + fbAsig.spId,
+            { method: "DELETE", headers: { Authorization: "Bearer " + graphToken } }
+          );
+          if (created && created.id) {
+            fbAsig.spId = String(created.id);
+            fbAsig._listId = dedicatedListId;
+          }
+          parsedDedicated.push(fbAsig);
+        } catch (eMig) {
+          parsedDedicated.push(fbAsig);
+        }
+      }
+      ASIGNACIONES_CACHE = parsedDedicated;
+    } else {
+      ASIGNACIONES_CACHE = parsedDedicated.concat(parsedFallback);
+    }
+
     ASIGNACIONES_CACHE.sort(function(a, b) {
       var fa = a.fecha || "";
       var fb = b.fecha || "";
@@ -3683,16 +3765,18 @@ async function guardarAsignacion() {
   btn.disabled = true;
   btn.textContent = "Guardando...";
   try {
-    var listId = await ensureAsignacionesList(true);
-    if (!listId) {
-      throw new Error("La lista '" + CONFIG.asignacionesListName + "' no existe aún en SharePoint y no pudo crearse automáticamente. Creala en SharePoint e intentá de nuevo.");
-    }
-
-    var campo = document.getElementById("asigCampo").value.trim();
-    var zona = document.getElementById("asigZona").value.trim() || (campo && CAMPOS_ZONA[campo]) || "";
+    var dedicatedListId = await ensureAsignacionesList(true);
     var existing = editingAsignacionSpId
       ? ASIGNACIONES_CACHE.find(function(a){ return String(a.spId) === String(editingAsignacionSpId); })
       : null;
+
+    // Usar la lista dedicada Asignaciones_Camiones si existe; si el token no tiene Sites.Manage.All para crearla aún, guardar en SharePoint en Lista_PedidoCamiones como respaldo automático
+    var targetListId = existing
+      ? (existing._listId || dedicatedListId || CONFIG.sharepointListId)
+      : (dedicatedListId || CONFIG.sharepointListId);
+
+    var campo = document.getElementById("asigCampo").value.trim();
+    var zona = document.getElementById("asigZona").value.trim() || (campo && CAMPOS_ZONA[campo]) || "";
 
     var asigObj = {
       codigo: existing ? existing.codigo : ("ASG-" + Date.now().toString(36).toUpperCase()),
@@ -3716,7 +3800,7 @@ async function guardarAsignacion() {
       fechaAsignacion: new Date().toLocaleDateString("es-AR")
     };
 
-    await spWriteAsignacionWithRetry(listId, editingAsignacionSpId, asigObj);
+    await spWriteAsignacionWithRetry(targetListId, editingAsignacionSpId, asigObj);
     showToast(editingAsignacionSpId ? "Asignación actualizada" : "Asignación guardada en SharePoint", "success");
     cerrarModalAsignacion();
     await cargarAsignacionesUI(false);
@@ -3731,8 +3815,8 @@ async function guardarAsignacion() {
 async function eliminarAsignacion(spId) {
   if (!confirm("¿Eliminar esta asignación? Esta acción no se puede deshacer.")) return;
   try {
-    var listId = await ensureAsignacionesList(false);
-    if (!listId) throw new Error("Lista de asignaciones no disponible.");
+    var existing = ASIGNACIONES_CACHE.find(function(a){ return String(a.spId) === String(spId); });
+    var listId = (existing && existing._listId) || (await ensureAsignacionesList(false)) || CONFIG.sharepointListId;
     var r = await fetch(
       "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId + "/lists/" + listId + "/items/" + spId,
       { method: "DELETE", headers: { Authorization: "Bearer " + graphToken } }
