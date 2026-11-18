@@ -2950,18 +2950,23 @@ function buildAsignacionSpFields(asigObj, isFallbackPedidosList) {
   var hasKnownCols = SP_COLS.asigColMap && Object.keys(SP_COLS.asigColMap).length > 0;
   var hasJsonCol = hasKnownCols && Boolean(SP_COLS.asigColMap["datosjson"]);
   var hasComCol = hasKnownCols && Boolean(SP_COLS.asigColMap["comentarios"]);
+  var hasCoreCols = hasKnownCols && Boolean(SP_COLS.asigColMap["transportista"] || SP_COLS.asigColMap["chofer"] || SP_COLS.asigColMap["patente"]);
 
   Object.keys(pairs).forEach(function(canonical) {
+    if (canonical === "DatosJSON" && hasCoreCols && !hasJsonCol) return;
     var key = normStr(canonical).replace(/\s+/g, "");
     if (hasKnownCols) {
       var spCol = SP_COLS.asigColMap[key];
-      if (spCol) fields[spCol] = pairs[canonical];
+      if (spCol) {
+        if (canonical === "DatosJSON" && pairs[canonical].length > 250) return;
+        fields[spCol] = pairs[canonical];
+      }
     } else {
       fields[canonical] = pairs[canonical];
     }
   });
 
-  if (hasKnownCols && !hasJsonCol && hasComCol) {
+  if (hasKnownCols && !hasCoreCols && !hasJsonCol && hasComCol) {
     var comColName = SP_COLS.asigColMap["comentarios"];
     fields[comColName] = (asigObj.comentarios ? (asigObj.comentarios + " ") : "") + "[ASIG_JSON:" + jsonStr + "]";
   }
