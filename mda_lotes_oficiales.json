@@ -5620,15 +5620,15 @@
     },
     {
       "lote": "SI3",
-      "descripcion_mda": "SANTA INES-PINGO PAMPA S.A.C.I.F.A. Y M Y S SI3",
+      "descripcion_mda": "SANTA INES-PINGO PAMPA S.A.C.I.F.A. Y M Y S-SI3",
       "has": 34.14,
-      "partido": "",
-      "localidad": "",
+      "partido": "CHASCOMUS",
+      "localidad": "CHASCOMUS",
       "zona": "Cuenca Baja",
       "cuit": "30710939345",
       "cultivo": "Girasol Alto Oleico",
-      "encontrado_en_mda": false,
-      "id_mda": null
+      "encontrado_en_mda": true,
+      "id_mda": "12487"
     },
     {
       "lote": "SI4",
