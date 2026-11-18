@@ -935,19 +935,20 @@ async function loadMDAProductos() {
 }
 
 async function loadMDAStock() {
+  var t = "?_ts=" + Date.now();
   var urls = [
-    "./mda_stock_disponible.json",
-    "mda_stock_disponible.json",
-    MDA_STOCK_URL
+    "./mda_stock_disponible.json" + t,
+    "mda_stock_disponible.json" + t,
+    MDA_STOCK_URL + t
   ];
   for (var i = 0; i < urls.length; i++) {
     try {
-      var resp = await fetch(urls[i]);
+      var resp = await fetch(urls[i], { cache: "no-store" });
       if (resp.ok) {
         var data = await resp.json();
         if (data && (data.stock_por_id || data.stock_por_senasa)) {
           MDA_STOCK = data;
-          console.log("Stock MDA cargado:", Object.keys(MDA_STOCK.stock_por_id || {}).length, "productos con stock.");
+          console.log("Stock MDA cargado (v:" + (data.fecha_actualizacion || "ok") + "):", Object.keys(MDA_STOCK.stock_por_id || {}).length, "productos con stock.");
           break;
         }
       }
