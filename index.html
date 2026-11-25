@@ -4981,7 +4981,7 @@ function alborSyncAria(el, announce, forceFallbackInvalid) {
 function alborFilterOptions(listKey, query) {
   var items = ALBOR_STATE.refIndex[listKey] || [];
   var qNorm = normStr(query);
-  if (!qNorm) return items.slice(0, 60);
+  if (!qNorm) return items.slice(0, 60).map(function(it) { return it.raw; });
   var tokens = qNorm.split(/\s+/).filter(Boolean);
   var starts = [];
   var contains = [];
