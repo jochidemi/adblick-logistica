@@ -279,6 +279,209 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
   .form-row { flex-direction: column; }
   .field select, .field-value { min-width: unset; width: 100%; }
 }
+
+/* ── EXPORTADOR ALBOR ── */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+.albor-topbar {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.albor-ref-pill {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px;
+  font-weight: 600; background: #f3f4f6; color: #374151;
+  border: 1px solid var(--border); border-radius: 99px; padding: 4px 11px;
+}
+.albor-ref-pill.custom { background: #e8f0fe; color: #1a73e8; border-color: #c2d7fa; }
+.albor-mode-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;
+}
+.albor-mode-card {
+  position: relative; display: flex; align-items: flex-start; gap: 10px;
+  border: 2px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  background: #fff; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.albor-mode-card:hover { border-color: var(--yellow-dark); }
+.albor-mode-card:has(input:checked) {
+  border-color: var(--yellow-dark); background: var(--yellow-light);
+}
+.albor-mode-card:has(input:focus-visible) {
+  outline: 3px solid #0b57d0; outline-offset: 2px;
+}
+.albor-mode-dot {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid #767676;
+  flex: 0 0 18px; margin-top: 2px; display: grid; place-items: center; background: #fff;
+}
+.albor-mode-card:has(input:checked) .albor-mode-dot { border-color: var(--dark); }
+.albor-mode-card:has(input:checked) .albor-mode-dot::after {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dark);
+}
+.albor-mode-title { font-size: 13.5px; font-weight: 700; color: var(--dark); display: block; }
+.albor-mode-desc { font-size: 11.5px; color: #555; margin-top: 2px; display: block; line-height: 1.35; }
+.albor-section {
+  border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px;
+  margin-bottom: 14px; background: #fcfcfd;
+}
+.albor-section legend {
+  font-size: 12px; font-weight: 800; color: var(--dark); text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 0 8px; background: #fff; border-radius: 4px;
+}
+.albor-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px 16px; align-items: start;
+}
+.albor-field {
+  display: flex; flex-direction: column; gap: 4px; position: relative;
+}
+.albor-field > label, .albor-field-legend {
+  font-size: 11.5px; font-weight: 700; color: #444; letter-spacing: 0.02em;
+}
+.albor-req { color: #c0392b; font-weight: 800; }
+.albor-hint { font-size: 11px; color: #5f6368; line-height: 1.3; }
+.albor-field input[type=text],
+.albor-field input[type=number],
+.albor-field input[type=date],
+.albor-field input[type=time],
+.albor-field select {
+  font: inherit; font-size: max(0.875rem, 1em); width: 100%; min-height: 40px;
+  border: 1.5px solid #9ca3af; border-radius: 7px; padding: 7px 10px;
+  background: #fff; color: var(--dark);
+}
+.albor-field input:focus-visible, .albor-field select:focus-visible {
+  outline: 3px solid #0b57d0; outline-offset: 1px; border-color: #0b57d0;
+}
+.albor-field :is(:user-invalid, .user-invalid-fallback) {
+  border-color: #d93025; background-color: #fce8e6;
+}
+.albor-error-msg {
+  display: none; color: #c5221f; font-size: 11.5px; font-weight: 600; margin-top: 2px;
+}
+.albor-field :is(:user-invalid, .user-invalid-fallback) ~ .albor-error-msg {
+  display: block;
+}
+.albor-combo { position: relative; width: 100%; }
+.albor-combo input { padding-right: 54px; }
+.albor-combo-tools {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 4px;
+}
+.albor-combo-ok {
+  color: #15803d; font-size: 12px; font-weight: 800; display: none; pointer-events: none;
+}
+.albor-combo.matched .albor-combo-ok { display: inline; }
+.albor-combo-clear {
+  border: none; background: #eee; color: #444; width: 22px; height: 22px;
+  border-radius: 50%; font-size: 13px; line-height: 1; cursor: pointer; display: none;
+  align-items: center; justify-content: center;
+}
+.albor-combo.has-value .albor-combo-clear { display: inline-flex; }
+.albor-combo-clear:hover { background: #ddd; color: #111; }
+.albor-combo-list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 180;
+  background: #fff; border: 1.5px solid var(--dark); border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.16); max-height: 250px; overflow-y: auto;
+  display: none; list-style: none;
+}
+.albor-combo-list.open { display: block; }
+.albor-combo-opt {
+  padding: 8px 11px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid #f1f1f1;
+  line-height: 1.3;
+}
+.albor-combo-opt:last-child { border-bottom: none; }
+.albor-combo-opt:hover, .albor-combo-opt.active {
+  background: var(--yellow-light); color: var(--dark); font-weight: 600;
+}
+.albor-combo-empty { padding: 10px 12px; font-size: 12px; color: var(--gray); }
+.albor-radio-group {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; min-height: 40px;
+}
+.albor-radio-item {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+  font-weight: 600; color: var(--dark); cursor: pointer; padding: 6px 4px;
+}
+.albor-radio-item input[type=radio] {
+  width: 17px; height: 17px; accent-color: var(--yellow-dark); cursor: pointer;
+}
+.albor-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.albor-chip-btn {
+  border: 1px solid #d1d5db; background: #fff; color: #374151; border-radius: 99px;
+  padding: 3px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.albor-chip-btn:hover { background: var(--yellow-light); border-color: var(--yellow-dark); }
+.albor-edit-banner {
+  display: none; justify-content: space-between; align-items: center; gap: 10px;
+  flex-wrap: wrap; background: #e8f0fe; border: 1.5px solid #90b8f8; color: #174ea6;
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 12.5px; font-weight: 700;
+}
+.albor-edit-banner.open { display: flex; }
+.albor-lote-kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px; margin-bottom: 14px;
+}
+.albor-table-wrapper {
+  overflow: auto; max-inline-size: 100%; max-block-size: min(520px, 75vh);
+  container-type: inline-size; border: 1px solid var(--border); border-radius: 8px;
+}
+.albor-table {
+  width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px;
+  --label-2: "Modalidad";
+  --label-3: "Fecha / Hora";
+  --label-4: "Especie y Cultivo";
+  --label-5: "Contrato / Depósito";
+  --label-6: "Pesos (B / T / N)";
+  --label-7: "Chofer / Transp.";
+  --label-8: "Destino";
+  --label-9: "Estado";
+  --label-10: "Acciones";
+}
+.albor-table thead { position: sticky; inset-block-start: 0; z-index: 2; }
+.albor-table th {
+  background: var(--dark); color: #fff; padding: 9px 10px; text-align: left;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.albor-table td {
+  padding: 9px 10px; border-bottom: 1px solid #ececec; vertical-align: top; background: #fff;
+}
+.albor-table tbody tr:hover td { background: #fffbe8; }
+.albor-badge-mode {
+  display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 8px;
+  border-radius: 99px; white-space: nowrap;
+}
+.albor-badge-mode.cosvei { background: #e8f0fe; color: #1967d2; }
+.albor-badge-mode.cosi { background: #e6f4ea; color: #137333; }
+@container (width < 720px) {
+  .albor-table, .albor-table thead, .albor-table tbody, .albor-table tr, .albor-table th, .albor-table td {
+    display: block;
+  }
+  .albor-table thead { display: none; }
+  .albor-table tbody tr {
+    margin-block-end: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  }
+  .albor-table td {
+    border-bottom: 1px solid #f2f2f2; padding: 6px 0; display: flex;
+    justify-content: space-between; gap: 10px; text-align: right;
+  }
+  .albor-table td:last-child { border-bottom: none; }
+  .albor-table td::before { font-weight: 700; color: var(--gray); text-align: left; }
+  .albor-table td:nth-child(2)::before { content: var(--label-2) ": "; }
+  .albor-table td:nth-child(3)::before { content: var(--label-3) ": "; }
+  .albor-table td:nth-child(4)::before { content: var(--label-4) ": "; }
+  .albor-table td:nth-child(5)::before { content: var(--label-5) ": "; }
+  .albor-table td:nth-child(6)::before { content: var(--label-6) ": "; }
+  .albor-table td:nth-child(7)::before { content: var(--label-7) ": "; }
+  .albor-table td:nth-child(8)::before { content: var(--label-8) ": "; }
+  .albor-table td:nth-child(9)::before { content: var(--label-9) ": "; }
+  .albor-table td:nth-child(10)::before { content: var(--label-10) ": "; }
+}
 </style>
 </head>
 <body>
@@ -471,6 +674,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
   <div class="view-panel" id="view-logistica">
     <div class="subtabs" id="subtabs-logistica">
       <div class="subtab active" data-subtab="log-asignaciones" onclick="switchSubTab('logistica','log-asignaciones')">Asignaciones</div>
+      <div class="subtab" data-subtab="albor" onclick="switchSubTab('logistica','albor')">Exportar Albor</div>
       <div class="subtab" data-subtab="descargas" onclick="switchSubTab('logistica','descargas')">Descargas</div>
       <div class="subtab" data-subtab="metricas" onclick="switchSubTab('logistica','metricas')">Métricas</div>
       <div class="subtab" data-subtab="logistica" onclick="switchSubTab('logistica','logistica')">Datos Maestros</div>
@@ -703,6 +907,424 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 
       </div>
     </div>
+
+    <!-- SUB-TAB LOGÍSTICA: EXPORTAR ALBOR -->
+    <div class="tab-content" id="tab-albor">
+      <div class="main">
+        <div class="albor-topbar">
+          <div>
+            <h3 id="alborFormTitle" style="font-size:16px;font-weight:700;color:var(--dark);">Importador de Cosechas para Albor</h3>
+            <p style="font-size:12px;color:var(--gray);margin-top:2px;">Cargá cosechas guiadas por las Referencias oficiales de Albor y exportá el Excel listo para importar (<code>Cosechas a importar</code>).</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <span class="albor-ref-pill" id="alborRefStatus">Cargando referencias...</span>
+            <button type="button" class="btn btn-dark" id="btnAlborFromAsig" style="font-size:12px;padding:7px 12px;">Traer desde Asignaciones</button>
+            <button type="button" class="btn btn-secondary" id="btnAlborUploadRefs" style="font-size:12px;padding:7px 12px;">Actualizar Referencias (.xlsx)</button>
+            <button type="button" class="btn btn-danger" id="btnAlborResetRefs" style="font-size:12px;padding:7px 12px;display:none;">Restaurar base</button>
+            <input type="file" id="inpAlborRefs" accept=".xlsx,.xls" class="visually-hidden">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="albor-edit-banner" id="alborEditBanner" role="status">
+            <span id="alborEditBannerText">Editando cosecha del lote</span>
+            <button type="button" class="btn btn-secondary" id="btnAlborCancelEdit" style="font-size:11.5px;padding:5px 10px;">Cancelar edición</button>
+          </div>
+
+          <form id="alborForm" aria-labelledby="alborFormTitle" novalidate>
+            <fieldset class="albor-section">
+              <legend>1. Modalidad de Cosecha</legend>
+              <div class="albor-mode-grid">
+                <label class="albor-mode-card">
+                  <input type="radio" class="visually-hidden" name="alborModalidad" value="COS_VEI - Cosecha y Venta Directa Importar" checked>
+                  <span class="albor-mode-dot" aria-hidden="true"></span>
+                  <span>
+                    <span class="albor-mode-title">COS_VEI — Cosecha y Venta Directa Importar</span>
+                    <span class="albor-mode-desc">Incluye contrato, turno opcional y actores comerciales/corredores (32 columnas).</span>
+                  </span>
+                </label>
+                <label class="albor-mode-card">
+                  <input type="radio" class="visually-hidden" name="alborModalidad" value="COSI - Cosecha Importar">
+                  <span class="albor-mode-dot" aria-hidden="true"></span>
+                  <span>
+                    <span class="albor-mode-title">COSI — Cosecha Importar</span>
+                    <span class="albor-mode-desc">Cosecha a depósito/planta destino sin contrato ni actores comerciales (24 columnas).</span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="albor-section">
+              <legend>2. Campaña, Cultivo y Operación</legend>
+              <div class="albor-grid">
+                <div class="albor-field">
+                  <label for="albor_campana">Código campaña <span class="albor-req" aria-hidden="true">*</span></label>
+                  <select id="albor_campana" name="campana" required data-error="err_albor_campana"></select>
+                  <div id="err_albor_campana" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Seleccioná una campaña.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_especie">Código especie <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="especie">
+                    <input type="text" id="albor_especie" name="especie" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar especie (ej: 04 - Soja)..." data-error="err_albor_especie">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar especie">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de especie"></ul>
+                  </div>
+                  <div id="err_albor_especie" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí una especie válida de la lista de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_cultivo">Código cultivo <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="cultivo">
+                    <input type="text" id="albor_cultivo" name="cultivo" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar código, campo o lote..." data-error="err_albor_cultivo">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar cultivo">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de cultivo"></ul>
+                  </div>
+                  <div id="err_albor_cultivo" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un cultivo válido de la lista de Referencias.</div>
+                </div>
+
+                <div class="albor-field albor-only-cosi" style="display:none;">
+                  <label for="albor_depositoDestino">Código depósito destino <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="depositoDestino">
+                    <input type="text" id="albor_depositoDestino" name="depositoDestino" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar planta o depósito..." data-error="err_albor_depositoDestino">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar depósito">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de depósito destino"></ul>
+                  </div>
+                  <div id="err_albor_depositoDestino" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un depósito destino válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field albor-only-cosvei">
+                  <label for="albor_contrato">Número comprobante contrato <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="contrato">
+                    <input type="text" id="albor_contrato" name="contrato" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar número o nombre de contrato..." data-error="err_albor_contrato">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar contrato">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de contrato"></ul>
+                  </div>
+                  <div id="err_albor_contrato" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un contrato válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field albor-only-cosvei">
+                  <label for="albor_turno">Turno (opcional)</label>
+                  <span id="hint_albor_turno" class="albor-hint">Dejar vacío si no lleva cupo, elegir Sí/No o escribir código de turno.</span>
+                  <input type="text" id="albor_turno" name="turno" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" aria-describedby="hint_albor_turno" placeholder="Opcional (ej: Sí o código de turno)">
+                  <div class="albor-chips">
+                    <button type="button" class="albor-chip-btn" data-turno-val="">Vacío</button>
+                    <button type="button" class="albor-chip-btn" data-turno-val="Sí">Sí</button>
+                    <button type="button" class="albor-chip-btn" data-turno-val="No">No</button>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="albor-section">
+              <legend>3. Pesos de Origen (kg)</legend>
+              <div class="albor-grid">
+                <div class="albor-field">
+                  <label for="albor_pesoBruto">Peso Origen Bruto (kg) <span class="albor-req" aria-hidden="true">*</span></label>
+                  <input type="text" id="albor_pesoBruto" name="pesoBruto" inputmode="numeric" pattern="\d+" required autocomplete="off" placeholder="Ej: 45000" data-error="err_albor_pesoBruto">
+                  <div id="err_albor_pesoBruto" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Ingresá el peso bruto en kg (solo números enteros positivos).</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_pesoTara">Peso Origen Tara (kg) <span class="albor-req" aria-hidden="true">*</span></label>
+                  <input type="text" id="albor_pesoTara" name="pesoTara" inputmode="numeric" pattern="\d+" required autocomplete="off" placeholder="Ej: 15000" data-error="err_albor_pesoTara">
+                  <div id="err_albor_pesoTara" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Ingresá la tara en kg (solo números enteros).</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_pesoNeto">Peso Origen Neto (kg) <span class="albor-req" aria-hidden="true">*</span></label>
+                  <span id="hint_albor_neto" class="albor-hint">Se calcula automáticamente (Bruto − Tara), podés ajustarlo si hace falta.</span>
+                  <input type="text" id="albor_pesoNeto" name="pesoNeto" inputmode="numeric" pattern="\d+" required autocomplete="off" aria-describedby="hint_albor_neto" placeholder="Ej: 30000" data-error="err_albor_pesoNeto">
+                  <div id="err_albor_pesoNeto" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Ingresá el peso neto en kg (debe ser mayor a 0).</div>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="albor-section">
+              <legend>4. Transporte, CPE y Flete</legend>
+              <div class="albor-grid">
+                <div class="albor-field">
+                  <label for="albor_chofer">Chofer (CUIT) <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="chofer">
+                    <input type="text" id="albor_chofer" name="chofer" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar nombre o CUIT de chofer..." data-error="err_albor_chofer">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar chofer">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de chofer"></ul>
+                  </div>
+                  <div id="err_albor_chofer" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un chofer válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_transportista">Código transportista <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="transportista">
+                    <input type="text" id="albor_transportista" name="transportista" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar transportista..." data-error="err_albor_transportista">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar transportista">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de transportista"></ul>
+                  </div>
+                  <div id="err_albor_transportista" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un transportista válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <span class="albor-field-legend">Tipo CPE <span class="albor-req" aria-hidden="true">*</span></span>
+                  <div class="albor-radio-group" id="albor_tipoCpeGroup"></div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_sucursalCpe">Sucursal CPE <span class="albor-req" aria-hidden="true">*</span></label>
+                  <select id="albor_sucursalCpe" name="sucursalCpe" required data-error="err_albor_sucursalCpe"></select>
+                  <div id="err_albor_sucursalCpe" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Seleccioná una sucursal CPE.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_fechaPartida">Fecha Partida <span class="albor-req" aria-hidden="true">*</span></label>
+                  <input type="date" id="albor_fechaPartida" name="fechaPartida" required data-error="err_albor_fechaPartida">
+                  <div id="err_albor_fechaPartida" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Indicá la fecha de partida.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_horaPartida">Hora Partida <span class="albor-req" aria-hidden="true">*</span></label>
+                  <input type="time" id="albor_horaPartida" name="horaPartida" required data-error="err_albor_horaPartida">
+                  <div id="err_albor_horaPartida" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Indicá la hora de partida (HH:mm).</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_catac">Catac <span class="albor-req" aria-hidden="true">*</span></label>
+                  <select id="albor_catac" name="catac" required data-error="err_albor_catac"></select>
+                  <div id="err_albor_catac" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Seleccioná una tarifa CATAC.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_distanciaPlanta">Distancia Planta (km) <span class="albor-req" aria-hidden="true">*</span></label>
+                  <input type="text" id="albor_distanciaPlanta" name="distanciaPlanta" inputmode="decimal" pattern="\d+([.,]\d+)?" required autocomplete="off" placeholder="Ej: 100" data-error="err_albor_distanciaPlanta">
+                  <div id="err_albor_distanciaPlanta" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Ingresá la distancia en km.</div>
+                </div>
+
+                <div class="albor-field">
+                  <span class="albor-field-legend">Check Mercadería No Fumigada <span class="albor-req" aria-hidden="true">*</span></span>
+                  <div class="albor-radio-group" id="albor_noFumigadaGroup"></div>
+                </div>
+
+                <div class="albor-field">
+                  <span class="albor-field-legend">Realiza la solicitud como Productor <span class="albor-req" aria-hidden="true">*</span></span>
+                  <div class="albor-radio-group" id="albor_comoProductorGroup"></div>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="albor-section">
+              <legend>5. Procedencia y Destino</legend>
+              <div class="albor-grid">
+                <div class="albor-field">
+                  <label for="albor_pais">Código país <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="pais">
+                    <input type="text" id="albor_pais" name="pais" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar país (ej: AR - Argentina)..." data-error="err_albor_pais">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar país">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de país"></ul>
+                  </div>
+                  <div id="err_albor_pais" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un país válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_provincia">Código provincia <span class="albor-req" aria-hidden="true">*</span></label>
+                  <select id="albor_provincia" name="provincia" required data-error="err_albor_provincia"></select>
+                  <div id="err_albor_provincia" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Seleccioná una provincia.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_partido">Código partido <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="partido">
+                    <input type="text" id="albor_partido" name="partido" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar partido..." data-error="err_albor_partido">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar partido">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de partido"></ul>
+                  </div>
+                  <div id="err_albor_partido" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un partido válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_localidad">Código localidad procedencia <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="localidad">
+                    <input type="text" id="albor_localidad" name="localidad" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar localidad..." data-error="err_albor_localidad">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar localidad">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de localidad"></ul>
+                  </div>
+                  <div id="err_albor_localidad" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí una localidad válida de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_destinatario">Código destinatario / mercado a término <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="destinatario">
+                    <input type="text" id="albor_destinatario" name="destinatario" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar destinatario..." data-error="err_albor_destinatario">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar destinatario">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de destinatario"></ul>
+                  </div>
+                  <div id="err_albor_destinatario" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un destinatario válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_destino">Código destino <span class="albor-req" aria-hidden="true">*</span></label>
+                  <div class="albor-combo" data-combo-key="destino">
+                    <input type="text" id="albor_destino" name="destino" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar planta / puerto destino..." data-error="err_albor_destino">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar destino">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de destino"></ul>
+                  </div>
+                  <div id="err_albor_destino" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Elegí un destino válido de Referencias.</div>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="albor-section albor-only-cosvei">
+              <legend>6. Actores Comerciales y Corredores (Opcional — solo Venta Directa)</legend>
+              <div class="albor-grid">
+                <div class="albor-field">
+                  <label for="albor_entregador">Código entregador</label>
+                  <div class="albor-combo" data-combo-key="entregador">
+                    <input type="text" id="albor_entregador" name="entregador" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Opcional — buscar..." data-error="err_albor_entregador">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar entregador">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de entregador"></ul>
+                  </div>
+                  <div id="err_albor_entregador" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Si completás este campo, elegí un valor válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_intermediario">Código intermediario</label>
+                  <div class="albor-combo" data-combo-key="intermediario">
+                    <input type="text" id="albor_intermediario" name="intermediario" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Opcional — buscar..." data-error="err_albor_intermediario">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar intermediario">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de intermediario"></ul>
+                  </div>
+                  <div id="err_albor_intermediario" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Si completás este campo, elegí un valor válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_remitente">Código remitente</label>
+                  <div class="albor-combo" data-combo-key="remitente">
+                    <input type="text" id="albor_remitente" name="remitente" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Opcional — buscar..." data-error="err_albor_remitente">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar remitente">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de remitente"></ul>
+                  </div>
+                  <div id="err_albor_remitente" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Si completás este campo, elegí un valor válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_remitenteComSec1">Código Remitente Comercial Venta Secundaria</label>
+                  <div class="albor-combo" data-combo-key="remitenteComSec1">
+                    <input type="text" id="albor_remitenteComSec1" name="remitenteComSec1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Opcional — buscar..." data-error="err_albor_remitenteComSec1">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar remitente comercial 1">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de remitente comercial 1"></ul>
+                  </div>
+                  <div id="err_albor_remitenteComSec1" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Si completás este campo, elegí un valor válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_remitenteComSec2">Código Remitente Comercial Venta Secundaria 2</label>
+                  <div class="albor-combo" data-combo-key="remitenteComSec2">
+                    <input type="text" id="albor_remitenteComSec2" name="remitenteComSec2" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Opcional — buscar..." data-error="err_albor_remitenteComSec2">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar remitente comercial 2">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de remitente comercial 2"></ul>
+                  </div>
+                  <div id="err_albor_remitenteComSec2" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Si completás este campo, elegí un valor válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_corredorPrimaria">Código Corredor Venta Primaria (Vendedor)</label>
+                  <div class="albor-combo" data-combo-key="corredorPrimaria">
+                    <input type="text" id="albor_corredorPrimaria" name="corredorPrimaria" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Opcional — buscar corredor..." data-error="err_albor_corredorPrimaria">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar corredor primaria">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de corredor primaria"></ul>
+                  </div>
+                  <div id="err_albor_corredorPrimaria" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Si completás este campo, elegí un valor válido de Referencias.</div>
+                </div>
+
+                <div class="albor-field">
+                  <label for="albor_corredorSecundaria">Código Corredor Venta Secundaria (Comprador)</label>
+                  <div class="albor-combo" data-combo-key="corredorSecundaria">
+                    <input type="text" id="albor_corredorSecundaria" name="corredorSecundaria" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Opcional — buscar corredor..." data-error="err_albor_corredorSecundaria">
+                    <div class="albor-combo-tools"><span class="albor-combo-ok" aria-hidden="true">✓</span><button type="button" class="albor-combo-clear" aria-label="Limpiar corredor secundaria">×</button></div>
+                    <ul class="albor-combo-list" role="listbox" aria-label="Opciones de corredor secundaria"></ul>
+                  </div>
+                  <div id="err_albor_corredorSecundaria" class="albor-error-msg"><span role="img" aria-label="Error">❌</span> Si completás este campo, elegí un valor válido de Referencias.</div>
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="actions" style="justify-content:space-between;margin-top:6px;">
+              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <button type="submit" class="btn btn-primary" id="btnAlborSubmit">+ Agregar al lote</button>
+                <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--dark);cursor:pointer;">
+                  <input type="checkbox" id="alborKeepFixed" checked style="width:16px;height:16px;accent-color:var(--yellow-dark);">
+                  Mantener datos fijos al agregar (limpia solo chofer, transportista, pesos, hora y turno)
+                </label>
+              </div>
+              <button type="button" class="btn btn-secondary" id="btnAlborReset">Limpiar formulario</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <h3>Lote de cosechas para exportar a Albor <span id="alborLoteCount" class="badge">0</span></h3>
+              <p style="font-size:12px;color:var(--gray);margin-top:2px;">Podés combinar filas <strong>COS_VEI</strong> y <strong>COSI</strong> en el mismo archivo. El lote se guarda automáticamente en este navegador.</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <select id="alborLoteFilterMode" aria-label="Filtrar lote por modalidad" style="font-size:12px;padding:6px 10px;">
+                <option value="ALL">Todas las modalidades</option>
+                <option value="COS_VEI">Solo COS_VEI (Venta Directa)</option>
+                <option value="COSI">Solo COSI (Cosecha)</option>
+              </select>
+              <button type="button" class="btn btn-green" id="btnAlborExport">📥 Exportar Excel Albor (.xlsx)</button>
+              <button type="button" class="btn btn-danger" id="btnAlborClearLote">Limpiar lote</button>
+            </div>
+          </div>
+
+          <div class="albor-lote-kpis" id="alborLoteKpis"></div>
+
+          <div class="albor-table-wrapper" tabindex="0" role="region" aria-labelledby="alborLoteCaption">
+            <table class="albor-table" id="alborLoteTable">
+              <caption id="alborLoteCaption" class="visually-hidden">Listado de cosechas cargadas para exportar al importador de Albor</caption>
+              <thead>
+                <tr>
+                  <th style="width:34px;"><input type="checkbox" id="alborSelectAll" aria-label="Seleccionar todas las filas visibles" checked></th>
+                  <th>Modalidad</th>
+                  <th>Fecha / Hora</th>
+                  <th>Especie / Cultivo</th>
+                  <th>Contrato / Depósito</th>
+                  <th>Pesos (kg)</th>
+                  <th>Chofer / Transportista</th>
+                  <th>Destino</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="alborLoteBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TRAER DESDE ASIGNACIONES PARA ALBOR -->
+<div class="modal-overlay" id="modalAlborAsigOverlay">
+  <div class="modal" style="max-width:860px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Pre-cargar desde Asignaciones</div>
+        <div style="font-size:12px;color:var(--gray);margin-top:2px;">Elegí una asignación para pre-llenar fecha, horario, tara, chofer, transportista, especie y cultivo si coinciden con Referencias.</div>
+      </div>
+      <button type="button" class="modal-close" id="btnCloseAlborAsigModal" aria-label="Cerrar modal">&#x2715;</button>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="field" style="flex:1.5;min-width:200px;">
+        <label for="alborAsigSearch">Buscar por campo, chofer, transportista o cultivo</label>
+        <input type="text" id="alborAsigSearch" placeholder="Filtrar asignaciones...">
+      </div>
+      <div class="field" style="flex:0.8;min-width:140px;">
+        <label for="alborAsigDate">Fecha</label>
+        <input type="date" id="alborAsigDate">
+      </div>
+    </div>
+    <div id="alborAsigListContainer" style="max-height:420px;overflow-y:auto;"></div>
   </div>
 </div>
 
@@ -1085,6 +1707,7 @@ function switchSubTab(viewName, subTabName) {
   if (subTabName === "mispedidos") cargarMisPedidos();
   if (subTabName === "op-asignaciones") cargarAsignacionesUI();
   if (subTabName === "log-asignaciones") cargarAsignacionesUI();
+  if (subTabName === "albor") initAlborModule();
   if (subTabName === "metricas") cargarMetricas();
   if (subTabName === "logistica") {
     renderComentariosActivos();
@@ -3972,6 +4595,1367 @@ function showToast(msg, type) {
   var t = document.getElementById("toast");
   t.textContent = msg; t.className = "toast show " + (type || "success");
   setTimeout(function() { t.className = "toast"; }, 3500);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MÓDULO EXPORTADOR DE COSECHAS A ALBOR (COS_VEI / COSI)
+   ═══════════════════════════════════════════════════════════════ */
+var ALBOR_MODO_COS_VEI = "COS_VEI - Cosecha y Venta Directa Importar";
+var ALBOR_MODO_COSI = "COSI - Cosecha Importar";
+var ALBOR_LOTE_STORAGE_KEY = "adblick_albor_lote_v1";
+var ALBOR_IDB_NAME = "adblick_albor_db";
+var ALBOR_IDB_STORE = "catalogs";
+var ALBOR_IDB_KEY = "custom_refs_v1";
+
+var ALBOR_FIELDS = [
+  { key: "modalidad", colIndex: 0, header: "Código tipo de comprobante", modes: ["both"], required: true, type: "modalidad", keepOnRepeat: true },
+  { key: "campana", colIndex: 9, header: "Código campaña", modes: ["both"], required: true, refList: "campana", type: "select", elId: "albor_campana", keepOnRepeat: true },
+  { key: "especie", colIndex: 10, header: "Código especie", modes: ["both"], required: true, refList: "especie", type: "combo", elId: "albor_especie", keepOnRepeat: true },
+  { key: "cultivo", colIndex: 12, header: "Código cultivo", modes: ["both"], required: true, refList: "cultivo", type: "combo", elId: "albor_cultivo", keepOnRepeat: true },
+  { key: "depositoDestino", colIndex: 14, header: "Código depósito destino", modes: ["COSI"], required: true, refList: "deposito", type: "combo", elId: "albor_depositoDestino", keepOnRepeat: true },
+  { key: "contrato", colIndex: 15, header: "Número comprobante contrato", modes: ["COS_VEI"], required: true, refList: "contrato", type: "combo", elId: "albor_contrato", keepOnRepeat: true },
+  { key: "pesoBruto", colIndex: 19, header: "Peso Origen Bruto", modes: ["both"], required: true, type: "textnum", elId: "albor_pesoBruto", keepOnRepeat: false },
+  { key: "pesoTara", colIndex: 20, header: "Peso Origen Tara", modes: ["both"], required: true, type: "textnum", elId: "albor_pesoTara", keepOnRepeat: false },
+  { key: "pesoNeto", colIndex: 21, header: "Peso Origen Neto", modes: ["both"], required: true, type: "textnum", elId: "albor_pesoNeto", keepOnRepeat: false },
+  { key: "chofer", colIndex: 37, header: "Chofer (CUIT)", modes: ["both"], required: true, refList: "chofer", type: "combo", elId: "albor_chofer", keepOnRepeat: false },
+  { key: "transportista", colIndex: 40, header: "Código transportista", modes: ["both"], required: true, refList: "transportista", type: "combo", elId: "albor_transportista", keepOnRepeat: false },
+  { key: "tipoCpe", colIndex: 42, header: "Tipo CPE", modes: ["both"], required: true, refList: "tipo_cpe", type: "radio", groupName: "alborTipoCpe", keepOnRepeat: true },
+  { key: "sucursalCpe", colIndex: 43, header: "Sucursal CPE", modes: ["both"], required: true, refList: "sucursal_cpe", type: "select", elId: "albor_sucursalCpe", keepOnRepeat: true },
+  { key: "turno", colIndex: 47, header: "Turno", modes: ["COS_VEI"], required: false, type: "turno", elId: "albor_turno", keepOnRepeat: false },
+  { key: "fechaPartida", colIndex: 52, header: "Fecha Partida", modes: ["both"], required: true, type: "date", elId: "albor_fechaPartida", keepOnRepeat: true },
+  { key: "horaPartida", colIndex: 53, header: "Hora Partida", modes: ["both"], required: true, type: "time", elId: "albor_horaPartida", keepOnRepeat: false },
+  { key: "noFumigada", colIndex: 54, header: "Check Mercadería No Fumigada", modes: ["both"], required: true, refList: "si_no", type: "radio", groupName: "alborNoFumigada", keepOnRepeat: true },
+  { key: "catac", colIndex: 55, header: "Catac", modes: ["both"], required: true, refList: "catac", type: "select", elId: "albor_catac", keepOnRepeat: true },
+  { key: "distanciaPlanta", colIndex: 56, header: "Distancia Planta", modes: ["both"], required: true, type: "textnum", elId: "albor_distanciaPlanta", keepOnRepeat: true },
+  { key: "entregador", colIndex: 62, header: "Código entregador", modes: ["COS_VEI"], required: false, refList: "entregador_remitente", type: "combo", elId: "albor_entregador", keepOnRepeat: true },
+  { key: "intermediario", colIndex: 64, header: "Código intermediario", modes: ["COS_VEI"], required: false, refList: "entregador_remitente", type: "combo", elId: "albor_intermediario", keepOnRepeat: true },
+  { key: "remitente", colIndex: 65, header: "Código remitente", modes: ["COS_VEI"], required: false, refList: "entregador_remitente", type: "combo", elId: "albor_remitente", keepOnRepeat: true },
+  { key: "remitenteComSec1", colIndex: 69, header: "Código Remitente Comercial Venta Secundaria", modes: ["COS_VEI"], required: false, refList: "remitente_sec_dest", type: "combo", elId: "albor_remitenteComSec1", keepOnRepeat: true },
+  { key: "remitenteComSec2", colIndex: 70, header: "Código Remitente Comercial Venta Secundaria 2", modes: ["COS_VEI"], required: false, refList: "remitente_sec_dest", type: "combo", elId: "albor_remitenteComSec2", keepOnRepeat: true },
+  { key: "comoProductor", colIndex: 73, header: "Realiza la solicitud como Productor", modes: ["both"], required: true, refList: "si_no", type: "radio", groupName: "alborComoProductor", keepOnRepeat: true },
+  { key: "pais", colIndex: 75, header: "Código país", modes: ["both"], required: true, refList: "pais", type: "combo", elId: "albor_pais", keepOnRepeat: true },
+  { key: "provincia", colIndex: 76, header: "Código provincia", modes: ["both"], required: true, refList: "provincia", type: "select", elId: "albor_provincia", keepOnRepeat: true },
+  { key: "partido", colIndex: 77, header: "Código partido", modes: ["both"], required: true, refList: "partido", type: "combo", elId: "albor_partido", keepOnRepeat: true },
+  { key: "localidad", colIndex: 78, header: "Código localidad procedencia", modes: ["both"], required: true, refList: "localidad", type: "combo", elId: "albor_localidad", keepOnRepeat: true },
+  { key: "destinatario", colIndex: 79, header: "Código destinatario/mercado a termino", modes: ["both"], required: true, refList: "remitente_sec_dest", type: "combo", elId: "albor_destinatario", keepOnRepeat: true },
+  { key: "destino", colIndex: 80, header: "Código destino", modes: ["both"], required: true, refList: "destino", type: "combo", elId: "albor_destino", keepOnRepeat: true },
+  { key: "corredorPrimaria", colIndex: 85, header: "Código Corredor Venta Primaria (Corredor Vendedor)", modes: ["COS_VEI"], required: false, refList: "corredor", type: "combo", elId: "albor_corredorPrimaria", keepOnRepeat: true },
+  { key: "corredorSecundaria", colIndex: 86, header: "Código Corredor Venta Secundaria (Corredor Comprador)", modes: ["COS_VEI"], required: false, refList: "corredor", type: "combo", elId: "albor_corredorSecundaria", keepOnRepeat: true }
+];
+
+var ALBOR_STATE = {
+  initialized: false,
+  refs: null,
+  isCustomRefs: false,
+  refIndex: {},
+  refSet: {},
+  combos: {},
+  lote: [],
+  selectedIds: {},
+  editingId: null,
+  netoManualOverride: false,
+  announcer: null,
+  announceTimer: null,
+  announcedField: null,
+  flaggedFields: new WeakSet(),
+  announcedFields: new WeakSet()
+};
+
+function alborFieldByKey(key) {
+  for (var i = 0; i < ALBOR_FIELDS.length; i++) {
+    if (ALBOR_FIELDS[i].key === key) return ALBOR_FIELDS[i];
+  }
+  return null;
+}
+
+function alborShortMode(fullMode) {
+  return fullMode === ALBOR_MODO_COSI ? "COSI" : "COS_VEI";
+}
+
+function alborIsFieldActive(field, fullMode) {
+  var shortM = alborShortMode(fullMode);
+  return field.modes.indexOf("both") !== -1 || field.modes.indexOf(shortM) !== -1;
+}
+
+function alborCurrentModalidad() {
+  var checked = document.querySelector("#alborForm input[name='alborModalidad']:checked");
+  return checked ? checked.value : ALBOR_MODO_COS_VEI;
+}
+
+/* ── IndexedDB para Referencias custom (.xlsx) ── */
+function alborOpenIdb() {
+  return new Promise(function(resolve, reject) {
+    if (!window.indexedDB) { reject(new Error("IndexedDB no disponible")); return; }
+    var req = window.indexedDB.open(ALBOR_IDB_NAME, 1);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(ALBOR_IDB_STORE)) {
+        db.createObjectStore(ALBOR_IDB_STORE);
+      }
+    };
+    req.onsuccess = function(e) { resolve(e.target.result); };
+    req.onerror = function() { reject(req.error || new Error("Error abriendo IndexedDB")); };
+  });
+}
+
+async function alborIdbGet(key) {
+  try {
+    var db = await alborOpenIdb();
+    return await new Promise(function(resolve) {
+      var tx = db.transaction(ALBOR_IDB_STORE, "readonly");
+      var req = tx.objectStore(ALBOR_IDB_STORE).get(key);
+      req.onsuccess = function() { resolve(req.result || null); };
+      req.onerror = function() { resolve(null); };
+    });
+  } catch (e) { return null; }
+}
+
+async function alborIdbSet(key, val) {
+  var db = await alborOpenIdb();
+  return await new Promise(function(resolve, reject) {
+    var tx = db.transaction(ALBOR_IDB_STORE, "readwrite");
+    var req = tx.objectStore(ALBOR_IDB_STORE).put(val, key);
+    req.onsuccess = function() { resolve(); };
+    req.onerror = function() { reject(req.error); };
+  });
+}
+
+async function alborIdbDelete(key) {
+  try {
+    var db = await alborOpenIdb();
+    return await new Promise(function(resolve) {
+      var tx = db.transaction(ALBOR_IDB_STORE, "readwrite");
+      var req = tx.objectStore(ALBOR_IDB_STORE).delete(key);
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function() { resolve(); };
+    });
+  } catch (e) {}
+}
+
+function alborBuildRefIndexes(refs) {
+  ALBOR_STATE.refs = refs;
+  ALBOR_STATE.refIndex = {};
+  ALBOR_STATE.refSet = {};
+  var lists = (refs && refs.lists) || {};
+  Object.keys(lists).forEach(function(listKey) {
+    var arr = Array.isArray(lists[listKey]) ? lists[listKey] : [];
+    var idxArr = new Array(arr.length);
+    var setObj = Object.create(null);
+    for (var i = 0; i < arr.length; i++) {
+      var raw = String(arr[i]).trim();
+      idxArr[i] = { raw: raw, norm: normStr(raw) };
+      setObj[raw] = true;
+    }
+    ALBOR_STATE.refIndex[listKey] = idxArr;
+    ALBOR_STATE.refSet[listKey] = setObj;
+  });
+}
+
+function alborUpdateRefBadge() {
+  var badge = document.getElementById("alborRefStatus");
+  var btnReset = document.getElementById("btnAlborResetRefs");
+  if (!badge) return;
+  if (!ALBOR_STATE.refs) {
+    badge.textContent = "Sin referencias cargadas";
+    badge.className = "albor-ref-pill";
+    if (btnReset) btnReset.style.display = "none";
+    return;
+  }
+  var cultivosN = (ALBOR_STATE.refs.lists.cultivo || []).length;
+  var chofN = (ALBOR_STATE.refs.lists.chofer || []).length;
+  if (ALBOR_STATE.isCustomRefs) {
+    badge.textContent = "Catálogo actualizado (" + (ALBOR_STATE.refs.source || "Excel") + " · " + cultivosN + " cultivos, " + chofN + " choferes)";
+    badge.className = "albor-ref-pill custom";
+    if (btnReset) btnReset.style.display = "inline-flex";
+  } else {
+    badge.textContent = "Catálogo base (" + cultivosN + " cultivos · " + chofN + " choferes)";
+    badge.className = "albor-ref-pill";
+    if (btnReset) btnReset.style.display = "none";
+  }
+}
+
+async function loadAlborReferencias(forceReloadBase) {
+  if (!forceReloadBase) {
+    var custom = await alborIdbGet(ALBOR_IDB_KEY);
+    if (custom && Array.isArray(custom.headers) && custom.headers.length === 90 && custom.lists) {
+      ALBOR_STATE.isCustomRefs = true;
+      alborBuildRefIndexes(custom);
+      alborUpdateRefBadge();
+      return custom;
+    }
+  }
+  var resp = await fetch("albor_referencias.json?v=" + Date.now());
+  if (!resp.ok) throw new Error("No se pudo cargar albor_referencias.json (HTTP " + resp.status + ")");
+  var base = await resp.json();
+  ALBOR_STATE.isCustomRefs = false;
+  alborBuildRefIndexes(base);
+  alborUpdateRefBadge();
+  return base;
+}
+
+function alborDedupStrings(arr) {
+  var seen = Object.create(null);
+  var out = [];
+  for (var i = 0; i < arr.length; i++) {
+    var s = String(arr[i] == null ? "" : arr[i]).trim();
+    if (!s || seen[s]) continue;
+    seen[s] = true;
+    out.push(s);
+  }
+  return out;
+}
+
+async function importAlborRefsFromExcel(file) {
+  if (!file) return;
+  try {
+    showToast("Procesando " + file.name + "...", "success");
+    var buf = await file.arrayBuffer();
+    var wb = XLSX.read(buf, { type: "array" });
+    var wsMain = wb.Sheets["Cosechas a importar"] || wb.Sheets[wb.SheetNames[0]];
+    var wsRefs = wb.Sheets["Referencias"];
+    if (!wsMain || !wsRefs) {
+      showToast("El archivo debe tener las hojas 'Cosechas a importar' y 'Referencias'.", "error");
+      return;
+    }
+    var mainRows = XLSX.utils.sheet_to_json(wsMain, { header: 1, defval: "" });
+    var rawHeaders = (mainRows[0] || []).map(function(h) { return String(h || "").trim(); });
+    while (rawHeaders.length && !rawHeaders[rawHeaders.length - 1]) rawHeaders.pop();
+    if (rawHeaders.length !== 90) {
+      showToast("Se esperaban 90 columnas en 'Cosechas a importar', pero hay " + rawHeaders.length + ".", "error");
+      return;
+    }
+    var refMatrix = XLSX.utils.sheet_to_json(wsRefs, { header: 1, defval: "" });
+    if (!refMatrix.length) {
+      showToast("La hoja 'Referencias' está vacía.", "error");
+      return;
+    }
+    var refHeaders = refMatrix[0] || [];
+    var headerToCol = Object.create(null);
+    for (var c = 0; c < refHeaders.length; c++) {
+      var nh = normStr(refHeaders[c]);
+      if (nh && headerToCol[nh] === undefined) headerToCol[nh] = c;
+    }
+
+    var spec = [
+      ["tipo_comprobante", "Código tipo de comprobante", 0],
+      ["tipo_cpe", "Tipo CPE", 1],
+      ["sucursal_cpe", "Numerador CPE", 2],
+      ["campana", "Código campaña", 4],
+      ["especie", "Código especie", 5],
+      ["cultivo", "Código cultivo", 7],
+      ["deposito", "Código depósito", 8],
+      ["contrato", "Código contrato", 9],
+      ["transportista", "Código transportista", 14],
+      ["si_no", "Mercaderia No Fumigada", 16],
+      ["entregador_remitente", "Código entregador", 17],
+      ["remitente_sec_dest", "Código Remitente Comercial Venta Secundaria", 20],
+      ["pais", "Código país", 25],
+      ["provincia", "Código provincia", 26],
+      ["localidad", "Código localidad procedencia", 27],
+      ["partido", "Código partido", 28],
+      ["destino", "Código destino", 30],
+      ["catac", "Código CATAC", 32],
+      ["chofer", "Chofer (CUIT)", 33],
+      ["corredor", "Código corredor", 36]
+    ];
+
+    var lists = {};
+    spec.forEach(function(item) {
+      var listKey = item[0], expectedHdr = item[1], fallbackCol = item[2];
+      var colIdx = headerToCol[normStr(expectedHdr)];
+      if (colIdx === undefined) colIdx = fallbackCol;
+      var vals = [];
+      for (var r = 1; r < refMatrix.length; r++) {
+        var row = refMatrix[r];
+        if (row && row[colIdx] != null && String(row[colIdx]).trim() !== "") {
+          vals.push(String(row[colIdx]).trim());
+        }
+      }
+      lists[listKey] = alborDedupStrings(vals);
+      if (listKey === "si_no" && !lists[listKey].length) lists[listKey] = ["Sí", "No"];
+    });
+
+    var payload = {
+      version: new Date().toISOString(),
+      source: file.name,
+      headers: rawHeaders,
+      lists: lists
+    };
+    await alborIdbSet(ALBOR_IDB_KEY, payload);
+    ALBOR_STATE.isCustomRefs = true;
+    alborBuildRefIndexes(payload);
+    alborUpdateRefBadge();
+    alborPopulateStaticControls(true);
+    alborRefreshAllComboStates();
+    showToast("Referencias actualizadas desde " + file.name, "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Error leyendo Referencias: " + err.message, "error");
+  }
+}
+
+async function resetAlborRefsToDefault() {
+  await alborIdbDelete(ALBOR_IDB_KEY);
+  await loadAlborReferencias(true);
+  alborPopulateStaticControls(true);
+  alborRefreshAllComboStates();
+  showToast("Catálogo restaurado a la versión base del repositorio", "success");
+}
+
+/* ── Validación accesible post-interacción (validate-input-after-interaction) ── */
+function alborEnsureAnnouncer() {
+  if (ALBOR_STATE.announcer) return;
+  var div = document.createElement("div");
+  div.setAttribute("aria-live", "polite");
+  div.className = "visually-hidden";
+  document.body.appendChild(div);
+  ALBOR_STATE.announcer = div;
+}
+
+function alborSpokenText(node) {
+  var copy = node.cloneNode(true);
+  copy.querySelectorAll("[aria-hidden='true']").forEach(function(n) { n.remove(); });
+  copy.querySelectorAll("[role='img'][aria-label]").forEach(function(n) {
+    n.replaceWith(n.getAttribute("aria-label") + ": ");
+  });
+  return (copy.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function alborLinkError(el, shown) {
+  var errorId = el.dataset ? el.dataset.error : "";
+  if (!errorId) return;
+  var ids = (el.getAttribute("aria-describedby") || "").split(/\s+/).filter(function(id) {
+    return id && id !== errorId;
+  });
+  if (shown) ids.push(errorId);
+  if (ids.length) el.setAttribute("aria-describedby", ids.join(" "));
+  else el.removeAttribute("aria-describedby");
+}
+
+function alborAnnounceError(el) {
+  alborEnsureAnnouncer();
+  var errorEl = el.dataset && el.dataset.error ? document.getElementById(el.dataset.error) : null;
+  if (!errorEl) return;
+  var lbl = el.labels && el.labels[0] ? (alborSpokenText(el.labels[0]) + ": ") : "";
+  clearTimeout(ALBOR_STATE.announceTimer);
+  ALBOR_STATE.announcer.textContent = "";
+  ALBOR_STATE.announcedField = el;
+  ALBOR_STATE.announceTimer = setTimeout(function() {
+    ALBOR_STATE.announcer.textContent = lbl + alborSpokenText(errorEl);
+  }, 450);
+}
+
+var ALBOR_SUPPORTS_USER_INVALID = (function() {
+  try { return typeof CSS !== "undefined" && CSS.supports && CSS.supports("selector(:user-invalid)"); }
+  catch (e) { return false; }
+})();
+
+function alborSyncAria(el, announce, forceFallbackInvalid) {
+  if (!el || !el.matches || !el.matches("input, select")) return;
+  var invalid = ALBOR_SUPPORTS_USER_INVALID ? el.matches(":user-invalid") : Boolean(forceFallbackInvalid && !el.validity.valid);
+  if (!ALBOR_SUPPORTS_USER_INVALID && forceFallbackInvalid) {
+    el.classList.toggle("user-invalid-fallback", !el.validity.valid);
+  }
+  if (invalid) {
+    if (announce && !ALBOR_STATE.announcedFields.has(el)) {
+      alborAnnounceError(el);
+      ALBOR_STATE.announcedFields.add(el);
+    }
+    el.setAttribute("aria-invalid", "true");
+    alborLinkError(el, true);
+    ALBOR_STATE.flaggedFields.add(el);
+  } else if (ALBOR_STATE.flaggedFields.has(el) || el.getAttribute("aria-invalid") !== "true") {
+    el.setAttribute("aria-invalid", "false");
+    alborLinkError(el, false);
+    ALBOR_STATE.flaggedFields.delete(el);
+    ALBOR_STATE.announcedFields.delete(el);
+    if (!ALBOR_SUPPORTS_USER_INVALID) el.classList.remove("user-invalid-fallback");
+    if (ALBOR_STATE.announcedField === el) {
+      clearTimeout(ALBOR_STATE.announceTimer);
+      if (ALBOR_STATE.announcer) ALBOR_STATE.announcer.textContent = "";
+    }
+  }
+}
+
+/* ── Combobox buscador virtualizado (top 60 resultados) ── */
+function alborFilterOptions(listKey, query) {
+  var items = ALBOR_STATE.refIndex[listKey] || [];
+  var qNorm = normStr(query);
+  if (!qNorm) return items.slice(0, 60);
+  var tokens = qNorm.split(/\s+/).filter(Boolean);
+  var starts = [];
+  var contains = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var ok = true;
+    for (var t = 0; t < tokens.length; t++) {
+      if (it.norm.indexOf(tokens[t]) === -1) { ok = false; break; }
+    }
+    if (!ok) continue;
+    if (it.norm.indexOf(tokens[0]) === 0) starts.push(it.raw);
+    else contains.push(it.raw);
+    if (starts.length + contains.length >= 60) break;
+  }
+  return starts.concat(contains).slice(0, 60);
+}
+
+function alborValidateComboInput(fieldKey) {
+  var field = alborFieldByKey(fieldKey);
+  var combo = ALBOR_STATE.combos[fieldKey];
+  if (!field || !combo) return true;
+  var val = combo.input.value.trim();
+  var setObj = ALBOR_STATE.refSet[field.refList] || {};
+  combo.wrap.classList.toggle("has-value", Boolean(val));
+  if (!val) {
+    combo.wrap.classList.remove("matched");
+    combo.input.setCustomValidity("");
+    return !combo.input.required;
+  }
+  var exact = Boolean(setObj[val]);
+  combo.wrap.classList.toggle("matched", exact);
+  if (exact) {
+    combo.input.setCustomValidity("");
+    return true;
+  }
+  combo.input.setCustomValidity("Seleccioná una opción exacta de la lista de Referencias.");
+  return false;
+}
+
+function setAlborComboValue(fieldKey, val) {
+  var combo = ALBOR_STATE.combos[fieldKey];
+  if (!combo) return;
+  combo.input.value = val ? String(val).trim() : "";
+  alborValidateComboInput(fieldKey);
+  alborSyncAria(combo.input, false, false);
+}
+
+function alborRefreshAllComboStates() {
+  Object.keys(ALBOR_STATE.combos).forEach(function(k) {
+    alborValidateComboInput(k);
+  });
+}
+
+function alborInitCombos() {
+  document.querySelectorAll("#alborForm .albor-combo").forEach(function(wrap) {
+    var key = wrap.getAttribute("data-combo-key");
+    var field = alborFieldByKey(key);
+    var input = wrap.querySelector("input");
+    var listEl = wrap.querySelector(".albor-combo-list");
+    var clearBtn = wrap.querySelector(".albor-combo-clear");
+    if (!field || !input || !listEl) return;
+
+    var state = { wrap: wrap, input: input, listEl: listEl, field: field, activeIdx: -1, options: [] };
+    ALBOR_STATE.combos[key] = state;
+
+    function closeList() {
+      listEl.classList.remove("open");
+      state.activeIdx = -1;
+    }
+
+    function renderList() {
+      var opts = alborFilterOptions(field.refList, input.value);
+      state.options = opts;
+      state.activeIdx = opts.length ? 0 : -1;
+      if (!opts.length) {
+        listEl.innerHTML = "<li class=\"albor-combo-empty\">Sin coincidencias en Referencias</li>";
+      } else {
+        var html = "";
+        for (var i = 0; i < opts.length; i++) {
+          html += "<li class=\"albor-combo-opt" + (i === 0 ? " active" : "") + "\" role=\"option\" data-idx=\"" + i + "\">" + escHtml(opts[i]) + "</li>";
+        }
+        listEl.innerHTML = html;
+      }
+      listEl.classList.add("open");
+    }
+
+    function pickOption(idx) {
+      if (idx < 0 || idx >= state.options.length) return;
+      input.value = state.options[idx];
+      alborValidateComboInput(key);
+      alborSyncAria(input, false, false);
+      closeList();
+    }
+
+    input.addEventListener("focus", function() {
+      renderList();
+    });
+
+    input.addEventListener("input", function() {
+      wrap.classList.toggle("has-value", Boolean(input.value.trim()));
+      // Solo limpiamos error previo mientras escribe (sin mostrar error prematuro)
+      input.setCustomValidity("");
+      var setObj = ALBOR_STATE.refSet[field.refList] || {};
+      wrap.classList.toggle("matched", Boolean(setObj[input.value.trim()]));
+      alborSyncAria(input, false, false);
+      renderList();
+    });
+
+    input.addEventListener("keydown", function(e) {
+      if (e.isComposing) return;
+      if (!listEl.classList.contains("open")) {
+        if (e.key === "ArrowDown") { renderList(); e.preventDefault(); }
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (state.options.length) {
+          state.activeIdx = (state.activeIdx + 1) % state.options.length;
+          updateActiveOpt();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (state.options.length) {
+          state.activeIdx = (state.activeIdx - 1 + state.options.length) % state.options.length;
+          updateActiveOpt();
+        }
+      } else if (e.key === "Enter") {
+        if (state.activeIdx >= 0 && state.options[state.activeIdx]) {
+          e.preventDefault();
+          pickOption(state.activeIdx);
+        }
+      } else if (e.key === "Escape") {
+        closeList();
+      } else if (e.key === "Tab") {
+        closeList();
+      }
+    });
+
+    function updateActiveOpt() {
+      var nodes = listEl.querySelectorAll(".albor-combo-opt");
+      nodes.forEach(function(n, idx) {
+        n.classList.toggle("active", idx === state.activeIdx);
+        if (idx === state.activeIdx) n.scrollIntoView({ block: "nearest" });
+      });
+    }
+
+    listEl.addEventListener("mousedown", function(e) {
+      var li = e.target.closest(".albor-combo-opt");
+      if (!li) return;
+      e.preventDefault();
+      var idx = parseInt(li.getAttribute("data-idx"), 10);
+      pickOption(idx);
+    });
+
+    input.addEventListener("blur", function() {
+      setTimeout(function() {
+        closeList();
+        alborValidateComboInput(key);
+        alborSyncAria(input, true, true);
+      }, 120);
+    });
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", function() {
+        input.value = "";
+        alborValidateComboInput(key);
+        alborSyncAria(input, false, false);
+        input.focus();
+        renderList();
+      });
+    }
+  });
+}
+
+/* ── Controles estáticos (selects y radios) ── */
+function alborFillSelect(elId, items, placeholder) {
+  var sel = document.getElementById(elId);
+  if (!sel) return;
+  var prev = sel.value;
+  var html = "<option value=\"\">" + escHtml(placeholder || "-- Seleccionar --") + "</option>";
+  (items || []).forEach(function(v) {
+    html += "<option value=\"" + escHtml(v) + "\">" + escHtml(v) + "</option>";
+  });
+  sel.innerHTML = html;
+  if (prev && items && items.indexOf(prev) !== -1) sel.value = prev;
+}
+
+function alborFillRadioGroup(containerId, groupName, items, defaultVal) {
+  var wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  var current = "";
+  var checkedEl = wrap.querySelector("input[name='" + groupName + "']:checked");
+  if (checkedEl) current = checkedEl.value;
+  var list = items && items.length ? items : [];
+  var html = "";
+  list.forEach(function(v, idx) {
+    var id = containerId + "_opt_" + idx;
+    var isChk = current ? (v === current) : (defaultVal ? v === defaultVal : idx === 0);
+    html += "<label class=\"albor-radio-item\" for=\"" + id + "\">" +
+      "<input type=\"radio\" id=\"" + id + "\" name=\"" + groupName + "\" value=\"" + escHtml(v) + "\"" + (isChk ? " checked" : "") + ">" +
+      "<span>" + escHtml(v) + "</span></label>";
+  });
+  wrap.innerHTML = html;
+}
+
+function alborPopulateStaticControls(preserveValues) {
+  var lists = (ALBOR_STATE.refs && ALBOR_STATE.refs.lists) || {};
+  var prevVals = preserveValues ? alborReadFormValues() : null;
+  alborFillSelect("albor_campana", lists.campana || [], "-- Campaña --");
+  alborFillSelect("albor_sucursalCpe", lists.sucursal_cpe || [], "-- Sucursal CPE --");
+  alborFillSelect("albor_catac", lists.catac || [], "-- CATAC --");
+  alborFillSelect("albor_provincia", lists.provincia || [], "-- Provincia --");
+  alborFillRadioGroup("albor_tipoCpeGroup", "alborTipoCpe", lists.tipo_cpe || ["E - Electrónica", "M - Manual"], "E - Electrónica");
+  var siNo = lists.si_no && lists.si_no.length ? lists.si_no : ["Sí", "No"];
+  alborFillRadioGroup("albor_noFumigadaGroup", "alborNoFumigada", siNo, siNo[0]);
+  alborFillRadioGroup("albor_comoProductorGroup", "alborComoProductor", siNo, siNo[0]);
+  if (prevVals) alborWriteFormValues(prevVals);
+}
+
+function alborTodayIso() {
+  var d = new Date();
+  return fmtDateKey(d);
+}
+
+function alborNowHm() {
+  var d = new Date();
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+
+function alborApplyDefaults(keepModalidad) {
+  var lists = (ALBOR_STATE.refs && ALBOR_STATE.refs.lists) || {};
+  if (!keepModalidad) {
+    var defRadio = document.querySelector("#alborForm input[name='alborModalidad'][value='" + ALBOR_MODO_COS_VEI + "']");
+    if (defRadio) defRadio.checked = true;
+  }
+  var campSel = document.getElementById("albor_campana");
+  if (campSel && lists.campana && lists.campana.length) {
+    campSel.value = lists.campana.indexOf("25/26 - 25/26") !== -1 ? "25/26 - 25/26" : lists.campana[0];
+  }
+  var paisDef = (lists.pais || []).indexOf("AR - Argentina") !== -1 ? "AR - Argentina" : "";
+  if (paisDef) setAlborComboValue("pais", paisDef);
+
+  var cpeE = document.querySelector("#alborForm input[name='alborTipoCpe'][value='E - Electrónica']");
+  if (cpeE) cpeE.checked = true;
+
+  var siVal = (lists.si_no && lists.si_no[0]) || "Sí";
+  var rFum = document.querySelector("#alborForm input[name='alborNoFumigada'][value='" + siVal + "']");
+  if (rFum) rFum.checked = true;
+  var rProd = document.querySelector("#alborForm input[name='alborComoProductor'][value='" + siVal + "']");
+  if (rProd) rProd.checked = true;
+
+  var fEl = document.getElementById("albor_fechaPartida");
+  var hEl = document.getElementById("albor_horaPartida");
+  if (fEl) fEl.value = alborTodayIso();
+  if (hEl) hEl.value = alborNowHm();
+  alborOnModalidadChange();
+}
+
+function alborOnModalidadChange() {
+  var mode = alborCurrentModalidad();
+  var isCosi = mode === ALBOR_MODO_COSI;
+  document.querySelectorAll("#alborForm .albor-only-cosi").forEach(function(el) {
+    el.style.display = isCosi ? "" : "none";
+  });
+  document.querySelectorAll("#alborForm .albor-only-cosvei").forEach(function(el) {
+    el.style.display = isCosi ? "none" : "";
+  });
+
+  ALBOR_FIELDS.forEach(function(f) {
+    if (!f.elId) return;
+    var el = document.getElementById(f.elId);
+    if (!el) return;
+    var active = alborIsFieldActive(f, mode);
+    el.required = active && f.required;
+    if (!active) {
+      el.setCustomValidity("");
+      alborSyncAria(el, false, false);
+    } else if (f.type === "combo") {
+      alborValidateComboInput(f.key);
+    }
+  });
+}
+
+function alborReadFormValues() {
+  var obj = { modalidad: alborCurrentModalidad() };
+  ALBOR_FIELDS.forEach(function(f) {
+    if (f.key === "modalidad") return;
+    if (f.type === "radio") {
+      var r = document.querySelector("#alborForm input[name='" + f.groupName + "']:checked");
+      obj[f.key] = r ? r.value : "";
+    } else if (f.elId) {
+      var el = document.getElementById(f.elId);
+      obj[f.key] = el ? String(el.value || "").trim() : "";
+    }
+  });
+  return obj;
+}
+
+function alborWriteFormValues(row) {
+  if (!row) return;
+  if (row.modalidad) {
+    var rad = document.querySelector("#alborForm input[name='alborModalidad'][value='" + row.modalidad + "']");
+    if (rad) rad.checked = true;
+  }
+  alborOnModalidadChange();
+  ALBOR_FIELDS.forEach(function(f) {
+    if (f.key === "modalidad") return;
+    var val = row[f.key] != null ? String(row[f.key]) : "";
+    if (f.type === "combo") {
+      setAlborComboValue(f.key, val);
+    } else if (f.type === "radio") {
+      var r = document.querySelector("#alborForm input[name='" + f.groupName + "'][value='" + val + "']");
+      if (r) r.checked = true;
+    } else if (f.elId) {
+      var el = document.getElementById(f.elId);
+      if (el) {
+        el.value = val;
+        el.setCustomValidity("");
+        alborSyncAria(el, false, false);
+      }
+    }
+  });
+  ALBOR_STATE.netoManualOverride = false;
+}
+
+function alborClearForm(keepFixed) {
+  var current = keepFixed ? alborReadFormValues() : null;
+  ALBOR_STATE.editingId = null;
+  ALBOR_STATE.netoManualOverride = false;
+  var banner = document.getElementById("alborEditBanner");
+  if (banner) banner.classList.remove("open");
+  var btnSub = document.getElementById("btnAlborSubmit");
+  if (btnSub) btnSub.textContent = "+ Agregar al lote";
+
+  ALBOR_FIELDS.forEach(function(f) {
+    if (f.key === "modalidad") return;
+    if (keepFixed && f.keepOnRepeat) return;
+    if (f.type === "combo") {
+      setAlborComboValue(f.key, "");
+    } else if (f.elId) {
+      var el = document.getElementById(f.elId);
+      if (el) {
+        el.value = "";
+        el.setCustomValidity("");
+        alborSyncAria(el, false, false);
+      }
+    }
+  });
+
+  if (!keepFixed) {
+    alborApplyDefaults(false);
+  } else {
+    var hEl = document.getElementById("albor_horaPartida");
+    if (hEl) hEl.value = alborNowHm();
+    if (current && current.modalidad) {
+      var rad = document.querySelector("#alborForm input[name='alborModalidad'][value='" + current.modalidad + "']");
+      if (rad) rad.checked = true;
+    }
+    alborOnModalidadChange();
+  }
+}
+
+function alborRecalcNeto() {
+  var bEl = document.getElementById("albor_pesoBruto");
+  var tEl = document.getElementById("albor_pesoTara");
+  var nEl = document.getElementById("albor_pesoNeto");
+  if (!bEl || !tEl || !nEl) return;
+  var bStr = bEl.value.trim();
+  var tStr = tEl.value.trim();
+  if (/^\d+$/.test(bStr) && /^\d+$/.test(tStr)) {
+    var b = parseInt(bStr, 10);
+    var t = parseInt(tStr, 10);
+    var neto = b - t;
+    if (!ALBOR_STATE.netoManualOverride) {
+      nEl.value = neto > 0 ? String(neto) : "";
+    }
+    if (neto <= 0) {
+      nEl.setCustomValidity("El peso neto debe ser mayor a 0 (Bruto mayor que Tara).");
+    } else {
+      nEl.setCustomValidity("");
+    }
+    alborSyncAria(nEl, false, false);
+  }
+}
+
+/* ── Validación de fila y persistencia en localStorage ── */
+function validateAlborRow(row) {
+  var missing = [];
+  var mode = row.modalidad || ALBOR_MODO_COS_VEI;
+  ALBOR_FIELDS.forEach(function(f) {
+    if (!alborIsFieldActive(f, mode)) return;
+    var val = String(row[f.key] || "").trim();
+    if (f.required && !val) {
+      missing.push(f.header);
+      return;
+    }
+    if (val && f.refList && ALBOR_STATE.refSet[f.refList] && !ALBOR_STATE.refSet[f.refList][val]) {
+      missing.push(f.header + " (fuera de Referencias)");
+    }
+  });
+  return missing;
+}
+
+function loadAlborLote() {
+  try {
+    var raw = localStorage.getItem(ALBOR_LOTE_STORAGE_KEY);
+    var parsed = raw ? JSON.parse(raw) : [];
+    ALBOR_STATE.lote = Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    ALBOR_STATE.lote = [];
+  }
+  ALBOR_STATE.selectedIds = {};
+  ALBOR_STATE.lote.forEach(function(r) {
+    if (r && r.id) ALBOR_STATE.selectedIds[r.id] = true;
+  });
+}
+
+function saveAlborLote() {
+  try {
+    localStorage.setItem(ALBOR_LOTE_STORAGE_KEY, JSON.stringify(ALBOR_STATE.lote));
+  } catch (e) {
+    showToast("No se pudo guardar el lote en localStorage: " + e.message, "error");
+  }
+}
+
+function alborShortLabel(s) {
+  if (!s) return "-";
+  return s.length > 38 ? s.slice(0, 35) + "..." : s;
+}
+
+function renderAlborLote() {
+  var tbody = document.getElementById("alborLoteBody");
+  var countEl = document.getElementById("alborLoteCount");
+  var kpiEl = document.getElementById("alborLoteKpis");
+  var filterMode = (document.getElementById("alborLoteFilterMode") || {}).value || "ALL";
+  if (!tbody) return;
+
+  var all = ALBOR_STATE.lote;
+  var cosVeiCount = 0, cosiCount = 0, incompleteCount = 0, selectedCount = 0;
+  all.forEach(function(r) {
+    if (r.modalidad === ALBOR_MODO_COSI) cosiCount++; else cosVeiCount++;
+    if (validateAlborRow(r).length > 0) incompleteCount++;
+    if (ALBOR_STATE.selectedIds[r.id]) selectedCount++;
+  });
+
+  if (countEl) countEl.textContent = String(all.length);
+  if (kpiEl) {
+    kpiEl.innerHTML =
+      kpiBox("Total filas", all.length, "#1A1A1A") +
+      kpiBox("COS_VEI (Venta Directa)", cosVeiCount, "#1967d2") +
+      kpiBox("COSI (Cosecha)", cosiCount, "#137333") +
+      kpiBox("Seleccionadas", selectedCount, "#7a6000") +
+      kpiBox("Incompletas", incompleteCount, incompleteCount > 0 ? "#c0392b" : "#15803d");
+  }
+
+  var filtered = all.filter(function(r) {
+    if (filterMode === "COS_VEI") return r.modalidad === ALBOR_MODO_COS_VEI;
+    if (filterMode === "COSI") return r.modalidad === ALBOR_MODO_COSI;
+    return true;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = "<tr><td colspan=\"10\" style=\"text-align:center;padding:24px;color:var(--gray);\">" +
+      (all.length ? "No hay cosechas en la modalidad filtrada." : "Todavía no agregaste cosechas al lote. Completá el formulario de arriba o usá \"Traer desde Asignaciones\".") +
+      "</td></tr>";
+    return;
+  }
+
+  var html = "";
+  filtered.forEach(function(r, idx) {
+    var isCosi = r.modalidad === ALBOR_MODO_COSI;
+    var missing = validateAlborRow(r);
+    var chk = ALBOR_STATE.selectedIds[r.id] ? " checked" : "";
+    var opDesc = isCosi ? alborShortLabel(r.depositoDestino) : alborShortLabel(r.contrato);
+    var estadoPill = missing.length === 0
+      ? "<span class=\"status-pill done\">Lista</span>"
+      : "<span class=\"status-pill pending\" title=\"" + escHtml(missing.join(", ")) + "\">Faltan " + missing.length + "</span>";
+    html += "<tr data-row-id=\"" + escHtml(r.id) + "\">" +
+      "<td><input type=\"checkbox\" class=\"albor-row-chk\" data-id=\"" + escHtml(r.id) + "\" aria-label=\"Seleccionar fila " + (idx + 1) + "\"" + chk + "></td>" +
+      "<td><span class=\"albor-badge-mode " + (isCosi ? "cosi" : "cosvei") + "\">" + (isCosi ? "COSI" : "COS_VEI") + "</span></td>" +
+      "<td><strong>" + escHtml(fmtDateExcel(r.fechaPartida) || "-") + "</strong><br><span style=\"color:var(--gray);\">" + escHtml(r.horaPartida || "-") + "</span></td>" +
+      "<td><strong>" + escHtml(r.especie || "-") + "</strong><br><span style=\"color:var(--gray);font-size:11px;\">" + escHtml(alborShortLabel(r.cultivo)) + "</span></td>" +
+      "<td>" + escHtml(opDesc) + ( !isCosi && r.turno ? "<br><span class=\"mono-tag\">Turno: " + escHtml(r.turno) + "</span>" : "" ) + "</td>" +
+      "<td style=\"white-space:nowrap;\">B: " + escHtml(r.pesoBruto || "-") + "<br>T: " + escHtml(r.pesoTara || "-") + "<br><strong>N: " + escHtml(r.pesoNeto || "-") + "</strong></td>" +
+      "<td>" + escHtml(alborShortLabel(r.chofer)) + "<br><span style=\"color:var(--gray);font-size:11px;\">" + escHtml(alborShortLabel(r.transportista)) + "</span></td>" +
+      "<td>" + escHtml(alborShortLabel(r.destino)) + "<br><span style=\"color:var(--gray);font-size:11px;\">" + escHtml(alborShortLabel(r.localidad)) + "</span></td>" +
+      "<td>" + estadoPill + "</td>" +
+      "<td><div class=\"action-group\" style=\"justify-content:flex-start;\">" +
+        "<button type=\"button\" class=\"btn btn-edit\" style=\"padding:4px 8px;font-size:11px;\" data-albor-act=\"edit\" data-id=\"" + escHtml(r.id) + "\">Editar</button>" +
+        "<button type=\"button\" class=\"btn btn-secondary\" style=\"padding:4px 8px;font-size:11px;\" data-albor-act=\"dup\" data-id=\"" + escHtml(r.id) + "\">Duplicar</button>" +
+        "<button type=\"button\" class=\"btn btn-danger\" style=\"padding:4px 8px;font-size:11px;\" data-albor-act=\"del\" data-id=\"" + escHtml(r.id) + "\">Eliminar</button>" +
+      "</div></td>" +
+    "</tr>";
+  });
+  tbody.innerHTML = html;
+
+  var selAll = document.getElementById("alborSelectAll");
+  if (selAll) {
+    selAll.checked = filtered.length > 0 && filtered.every(function(r) { return Boolean(ALBOR_STATE.selectedIds[r.id]); });
+  }
+}
+
+function editarAlborRow(id) {
+  var found = null;
+  var idx = -1;
+  for (var i = 0; i < ALBOR_STATE.lote.length; i++) {
+    if (ALBOR_STATE.lote[i].id === id) { found = ALBOR_STATE.lote[i]; idx = i; break; }
+  }
+  if (!found) return;
+  ALBOR_STATE.editingId = id;
+  alborWriteFormValues(found);
+  var banner = document.getElementById("alborEditBanner");
+  var bannerTxt = document.getElementById("alborEditBannerText");
+  if (banner) banner.classList.add("open");
+  if (bannerTxt) bannerTxt.textContent = "Editando fila #" + (idx + 1) + " (" + alborShortMode(found.modalidad) + " · " + (found.especie || "") + ")";
+  var btnSub = document.getElementById("btnAlborSubmit");
+  if (btnSub) btnSub.textContent = "Guardar cambios en fila #" + (idx + 1);
+  document.getElementById("alborForm").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function duplicarAlborRow(id) {
+  var idx = -1;
+  for (var i = 0; i < ALBOR_STATE.lote.length; i++) {
+    if (ALBOR_STATE.lote[i].id === id) { idx = i; break; }
+  }
+  if (idx === -1) return;
+  var copy = Object.assign({}, ALBOR_STATE.lote[idx], {
+    id: "alb_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7)
+  });
+  ALBOR_STATE.lote.splice(idx + 1, 0, copy);
+  ALBOR_STATE.selectedIds[copy.id] = true;
+  saveAlborLote();
+  renderAlborLote();
+  showToast("Fila duplicada en el lote", "success");
+}
+
+function eliminarAlborRow(id) {
+  ALBOR_STATE.lote = ALBOR_STATE.lote.filter(function(r) { return r.id !== id; });
+  delete ALBOR_STATE.selectedIds[id];
+  if (ALBOR_STATE.editingId === id) alborClearForm(false);
+  saveAlborLote();
+  renderAlborLote();
+  showToast("Fila eliminada del lote", "success");
+}
+
+/* ── Pre-carga desde Asignaciones ── */
+function alborMatchSingleOption(listKey, query) {
+  if (!query) return "";
+  var items = ALBOR_STATE.refIndex[listKey] || [];
+  var qn = normStr(query);
+  if (!qn) return "";
+  var tokens = qn.split(/\s+/).filter(function(t) { return t.length >= 2; });
+  if (!tokens.length) return "";
+  var exact = [];
+  var partial = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    // Extraer parte descriptiva después de "COD - "
+    var descNorm = it.norm.indexOf(" - ") !== -1 ? it.norm.split(" - ").slice(1).join(" - ") : it.norm;
+    if (descNorm === qn || it.norm === qn) exact.push(it.raw);
+    else if (tokens.every(function(t) { return it.norm.indexOf(t) !== -1; })) partial.push(it.raw);
+  }
+  if (exact.length === 1) return exact[0];
+  if (partial.length === 1) return partial[0];
+  return "";
+}
+
+function alborMatchChofer(choferName, cuit) {
+  var items = ALBOR_STATE.refIndex.chofer || [];
+  var cuitDigits = String(cuit || "").replace(/\D/g, "");
+  var nameTokens = normStr(choferName).split(/\s+/).filter(function(t) { return t.length >= 2; });
+  if (cuitDigits.length >= 8) {
+    var byCuit = [];
+    for (var i = 0; i < items.length; i++) {
+      var rawDigits = items[i].raw.replace(/\D/g, "");
+      if (rawDigits.indexOf(cuitDigits) !== -1) byCuit.push(items[i].raw);
+    }
+    if (byCuit.length === 1) return byCuit[0];
+  }
+  if (nameTokens.length) {
+    var byName = [];
+    for (var j = 0; j < items.length; j++) {
+      if (nameTokens.every(function(t) { return items[j].norm.indexOf(t) !== -1; })) {
+        byName.push(items[j].raw);
+      }
+    }
+    if (byName.length === 1) return byName[0];
+  }
+  return "";
+}
+
+function alborMatchCultivo(campo, lote, cultivo) {
+  var items = ALBOR_STATE.refIndex.cultivo || [];
+  var tokens = [];
+  [campo, cultivo].forEach(function(part) {
+    normStr(part).split(/\s+/).forEach(function(t) {
+      if (t.length >= 2) tokens.push(t);
+    });
+  });
+  var loteNorm = normStr(lote);
+  if (!tokens.length) return "";
+  var matches = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    if (!tokens.every(function(t) { return it.norm.indexOf(t) !== -1; })) continue;
+    if (loteNorm && it.norm.indexOf(loteNorm) === -1) continue;
+    matches.push(it.raw);
+    if (matches.length > 3) break;
+  }
+  return matches.length === 1 ? matches[0] : "";
+}
+
+async function abrirModalAlborAsignaciones() {
+  var ov = document.getElementById("modalAlborAsigOverlay");
+  var cont = document.getElementById("alborAsigListContainer");
+  if (!ov || !cont) return;
+  ov.classList.add("open");
+  if (!ASIGNACIONES_CACHE.length) {
+    cont.innerHTML = "<div class=\"loading-pedidos\">Cargando asignaciones desde SharePoint...</div>";
+    await cargarAsignacionesUI(false);
+  }
+  renderAlborAsigModalList();
+}
+
+function renderAlborAsigModalList() {
+  var cont = document.getElementById("alborAsigListContainer");
+  if (!cont) return;
+  var q = normStr((document.getElementById("alborAsigSearch") || {}).value || "");
+  var fDate = (document.getElementById("alborAsigDate") || {}).value || "";
+  var list = ASIGNACIONES_CACHE.filter(function(a) {
+    if (fDate && a.fecha !== fDate) return false;
+    if (q) {
+      var hay = normStr([a.campo, a.cultivo, a.lote, a.transportista, a.chofer, a.cuit, a.patente].join(" "));
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+
+  if (!list.length) {
+    cont.innerHTML = "<div class=\"empty-state\">No hay asignaciones que coincidan con el filtro.</div>";
+    return;
+  }
+
+  var html = "<div class=\"table-wrapper\"><table class=\"pedidos-table\"><thead><tr>" +
+    "<th>Fecha / Horario</th><th>Campo / Lote</th><th>Cultivo</th><th>Transportista</th><th>Chofer</th><th>Tara</th><th>Acción</th>" +
+    "</tr></thead><tbody>";
+  list.slice(0, 80).forEach(function(a) {
+    html += "<tr>" +
+      "<td>" + escHtml(fmtDateExcel(a.fecha) || "-") + "<br><span style=\"color:var(--gray);font-size:11px;\">" + escHtml(a.horario || "") + "</span></td>" +
+      "<td><strong>" + escHtml(a.campo || "-") + "</strong>" + (a.lote ? "<br><span class=\"mono-tag\">" + escHtml(a.lote) + "</span>" : "") + "</td>" +
+      "<td>" + escHtml(a.cultivo || "-") + "</td>" +
+      "<td>" + escHtml(a.transportista || "-") + "</td>" +
+      "<td>" + escHtml(a.chofer || "-") + "</td>" +
+      "<td>" + escHtml(a.tara || "-") + "</td>" +
+      "<td><button type=\"button\" class=\"btn btn-primary\" style=\"padding:5px 10px;font-size:11.5px;\" data-preload-asig=\"" + escHtml(a.spId) + "\">Pre-cargar</button></td>" +
+    "</tr>";
+  });
+  html += "</tbody></table></div>";
+  cont.innerHTML = html;
+}
+
+function precargarDesdeAsignacion(spId) {
+  var asig = null;
+  for (var i = 0; i < ASIGNACIONES_CACHE.length; i++) {
+    if (ASIGNACIONES_CACHE[i].spId === spId) { asig = ASIGNACIONES_CACHE[i]; break; }
+  }
+  if (!asig) return;
+  var loaded = [];
+  if (asig.fecha) {
+    var fEl = document.getElementById("albor_fechaPartida");
+    if (fEl) { fEl.value = asig.fecha; loaded.push("Fecha"); }
+  }
+  var hmMatch = String(asig.horario || "").match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (hmMatch) {
+    var hEl = document.getElementById("albor_horaPartida");
+    if (hEl) { hEl.value = hmMatch[1].padStart(2, "0") + ":" + hmMatch[2]; loaded.push("Hora"); }
+  }
+  var taraDigits = String(asig.tara || "").replace(/\D/g, "");
+  if (taraDigits && parseInt(taraDigits, 10) >= 1000) {
+    var tEl = document.getElementById("albor_pesoTara");
+    if (tEl) { tEl.value = taraDigits; alborRecalcNeto(); loaded.push("Tara"); }
+  }
+  var mChofer = alborMatchChofer(asig.chofer, asig.cuit);
+  if (mChofer) { setAlborComboValue("chofer", mChofer); loaded.push("Chofer"); }
+
+  var mTransp = alborMatchSingleOption("transportista", asig.transportista);
+  if (mTransp) { setAlborComboValue("transportista", mTransp); loaded.push("Transportista"); }
+
+  var mEspecie = alborMatchSingleOption("especie", asig.cultivo);
+  if (mEspecie) { setAlborComboValue("especie", mEspecie); loaded.push("Especie"); }
+
+  var mCultivo = alborMatchCultivo(asig.campo, asig.lote, asig.cultivo);
+  if (mCultivo) { setAlborComboValue("cultivo", mCultivo); loaded.push("Cultivo"); }
+
+  document.getElementById("modalAlborAsigOverlay").classList.remove("open");
+  if (loaded.length) {
+    showToast("Pre-cargado: " + loaded.join(", ") + ". Completá el resto de los campos.", "success");
+  } else {
+    showToast("La asignación no tuvo coincidencias exactas en Referencias; completá manualmente.", "error");
+  }
+}
+
+/* ── Exportación Excel compatible con Albor ── */
+function buildAlborWorkbookData(rows, refs) {
+  var headers = (refs && refs.headers && refs.headers.length === 90) ? refs.headers : [];
+  if (headers.length !== 90) throw new Error("Faltan las 90 cabeceras oficiales de Albor.");
+
+  var aoa = [headers.slice()];
+  rows.forEach(function(row) {
+    var mode = row.modalidad || ALBOR_MODO_COS_VEI;
+    var out = new Array(90);
+    for (var c = 0; c < 90; c++) out[c] = "";
+    out[0] = mode;
+
+    ALBOR_FIELDS.forEach(function(f) {
+      if (f.key === "modalidad") return;
+      if (!alborIsFieldActive(f, mode)) return;
+      var val = String(row[f.key] || "").trim();
+      if (f.key === "fechaPartida" && val) val = fmtDateExcel(val);
+      out[f.colIndex] = val;
+    });
+    aoa.push(out);
+  });
+  return aoa;
+}
+
+function exportarCosechasAlborExcel() {
+  if (!ALBOR_STATE.refs) {
+    showToast("Todavía no se cargaron las Referencias de Albor.", "error");
+    return;
+  }
+  var filterMode = (document.getElementById("alborLoteFilterMode") || {}).value || "ALL";
+  var rowsToExport = ALBOR_STATE.lote.filter(function(r) {
+    if (!ALBOR_STATE.selectedIds[r.id]) return false;
+    if (filterMode === "COS_VEI") return r.modalidad === ALBOR_MODO_COS_VEI;
+    if (filterMode === "COSI") return r.modalidad === ALBOR_MODO_COSI;
+    return true;
+  });
+
+  if (!rowsToExport.length) {
+    showToast("Seleccioná al menos una cosecha del lote para exportar.", "error");
+    return;
+  }
+
+  var incomplete = rowsToExport.filter(function(r) { return validateAlborRow(r).length > 0; });
+  if (incomplete.length > 0) {
+    var ok = window.confirm(
+      "Hay " + incomplete.length + " fila(s) con campos obligatorios incompletos o fuera de Referencias.\n" +
+      "¿Querés exportar el Excel igualmente?"
+    );
+    if (!ok) return;
+  }
+
+  var aoa = buildAlborWorkbookData(rowsToExport, ALBOR_STATE.refs);
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  // Mantener fechas, horas, pesos y distancia como texto '@' igual que ImportacionCosecha.xlsx
+  var textCols = [19, 20, 21, 52, 53, 56];
+  for (var r = 1; r < aoa.length; r++) {
+    for (var i = 0; i < textCols.length; i++) {
+      var colIdx = textCols[i];
+      var addr = XLSX.utils.encode_cell({ r: r, c: colIdx });
+      if (ws[addr] && ws[addr].v !== "") {
+        ws[addr].v = String(ws[addr].v);
+        ws[addr].t = "s";
+        ws[addr].z = "@";
+      }
+    }
+  }
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Cosechas a importar");
+  var now = new Date();
+  var fname = "ImportacionCosecha_Albor_" + fmtDateKey(now) + "_" +
+    String(now.getHours()).padStart(2, "0") + String(now.getMinutes()).padStart(2, "0") + ".xlsx";
+  XLSX.writeFile(wb, fname);
+  showToast("Excel exportado para Albor (" + rowsToExport.length + " filas)", "success");
+}
+
+/* ── Inicialización y eventos del módulo Albor ── */
+async function initAlborModule() {
+  if (!ALBOR_STATE.refs) {
+    try {
+      await loadAlborReferencias(false);
+    } catch (e) {
+      console.error(e);
+      showToast("Error cargando catálogo Albor: " + e.message, "error");
+    }
+  }
+
+  if (ALBOR_STATE.initialized) {
+    renderAlborLote();
+    return;
+  }
+  ALBOR_STATE.initialized = true;
+  alborEnsureAnnouncer();
+  alborPopulateStaticControls(false);
+  alborInitCombos();
+  alborApplyDefaults(false);
+  loadAlborLote();
+  renderAlborLote();
+
+  var form = document.getElementById("alborForm");
+  if (!form) return;
+
+  // Iniciar aria-invalid="false" en todos los controles del formulario
+  form.querySelectorAll("input, select").forEach(function(el) {
+    if (el.type !== "radio" && el.type !== "checkbox") {
+      el.setAttribute("aria-invalid", "false");
+    }
+  });
+
+  form.querySelectorAll("input[name='alborModalidad']").forEach(function(rad) {
+    rad.addEventListener("change", alborOnModalidadChange);
+  });
+
+  form.querySelectorAll(".albor-chip-btn[data-turno-val]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var tEl = document.getElementById("albor_turno");
+      if (tEl) {
+        tEl.value = btn.getAttribute("data-turno-val") || "";
+        tEl.focus();
+      }
+    });
+  });
+
+  var bEl = document.getElementById("albor_pesoBruto");
+  var tEl = document.getElementById("albor_pesoTara");
+  var nEl = document.getElementById("albor_pesoNeto");
+  if (bEl) bEl.addEventListener("input", alborRecalcNeto);
+  if (tEl) tEl.addEventListener("input", alborRecalcNeto);
+  if (nEl) {
+    nEl.addEventListener("input", function() {
+      ALBOR_STATE.netoManualOverride = true;
+      var v = nEl.value.trim();
+      if (/^\d+$/.test(v) && parseInt(v, 10) <= 0) {
+        nEl.setCustomValidity("El peso neto debe ser mayor a 0.");
+      } else {
+        nEl.setCustomValidity("");
+      }
+    });
+  }
+
+  // Sincronización de validación post-interacción
+  form.addEventListener("blur", function(e) {
+    alborSyncAria(e.target, true, true);
+  }, true);
+  form.addEventListener("input", function(e) {
+    if (e.target.hasAttribute("aria-invalid")) alborSyncAria(e.target, false, false);
+  });
+  form.addEventListener("change", function(e) {
+    alborSyncAria(e.target, true, true);
+  }, true);
+  form.addEventListener("invalid", function(e) {
+    ALBOR_STATE.announcedFields.add(e.target);
+    alborSyncAria(e.target, false, true);
+  }, true);
+
+  form.addEventListener("submit", function(e) {
+    e.preventDefault();
+    var mode = alborCurrentModalidad();
+    ALBOR_FIELDS.forEach(function(f) {
+      if (f.type === "combo" && alborIsFieldActive(f, mode)) {
+        alborValidateComboInput(f.key);
+      }
+    });
+    alborRecalcNeto();
+
+    if (!form.checkValidity()) {
+      var firstInvalid = form.querySelector(":invalid");
+      if (firstInvalid) {
+        alborSyncAria(firstInvalid, true, true);
+        firstInvalid.focus();
+      }
+      showToast("Revisá los campos marcados antes de agregar al lote.", "error");
+      return;
+    }
+
+    var values = alborReadFormValues();
+    if (ALBOR_STATE.editingId) {
+      for (var i = 0; i < ALBOR_STATE.lote.length; i++) {
+        if (ALBOR_STATE.lote[i].id === ALBOR_STATE.editingId) {
+          values.id = ALBOR_STATE.editingId;
+          ALBOR_STATE.lote[i] = values;
+          break;
+        }
+      }
+      saveAlborLote();
+      renderAlborLote();
+      alborClearForm(false);
+      showToast("Cosecha actualizada en el lote", "success");
+    } else {
+      values.id = "alb_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+      ALBOR_STATE.lote.push(values);
+      ALBOR_STATE.selectedIds[values.id] = true;
+      saveAlborLote();
+      renderAlborLote();
+      var keepFixed = Boolean((document.getElementById("alborKeepFixed") || {}).checked);
+      alborClearForm(keepFixed);
+      showToast("Cosecha agregada al lote (" + ALBOR_STATE.lote.length + " en total)", "success");
+    }
+  });
+
+  document.getElementById("btnAlborCancelEdit").addEventListener("click", function() {
+    alborClearForm(false);
+  });
+  document.getElementById("btnAlborReset").addEventListener("click", function() {
+    alborClearForm(false);
+  });
+  document.getElementById("btnAlborExport").addEventListener("click", exportarCosechasAlborExcel);
+  document.getElementById("btnAlborClearLote").addEventListener("click", function() {
+    if (!ALBOR_STATE.lote.length) return;
+    if (!window.confirm("¿Vaciar todas las filas (" + ALBOR_STATE.lote.length + ") del lote de Albor?")) return;
+    ALBOR_STATE.lote = [];
+    ALBOR_STATE.selectedIds = {};
+    saveAlborLote();
+    renderAlborLote();
+    showToast("Lote limpiado", "success");
+  });
+
+  document.getElementById("alborLoteFilterMode").addEventListener("change", renderAlborLote);
+  document.getElementById("alborSelectAll").addEventListener("change", function(e) {
+    var checked = e.target.checked;
+    var filterMode = (document.getElementById("alborLoteFilterMode") || {}).value || "ALL";
+    ALBOR_STATE.lote.forEach(function(r) {
+      var match = filterMode === "ALL" ||
+        (filterMode === "COS_VEI" && r.modalidad === ALBOR_MODO_COS_VEI) ||
+        (filterMode === "COSI" && r.modalidad === ALBOR_MODO_COSI);
+      if (match) {
+        if (checked) ALBOR_STATE.selectedIds[r.id] = true;
+        else delete ALBOR_STATE.selectedIds[r.id];
+      }
+    });
+    renderAlborLote();
+  });
+
+  document.getElementById("alborLoteBody").addEventListener("change", function(e) {
+    if (!e.target.classList.contains("albor-row-chk")) return;
+    var id = e.target.getAttribute("data-id");
+    if (e.target.checked) ALBOR_STATE.selectedIds[id] = true;
+    else delete ALBOR_STATE.selectedIds[id];
+    renderAlborLote();
+  });
+
+  document.getElementById("alborLoteBody").addEventListener("click", function(e) {
+    var btn = e.target.closest("button[data-albor-act]");
+    if (!btn) return;
+    var act = btn.getAttribute("data-albor-act");
+    var id = btn.getAttribute("data-id");
+    if (act === "edit") editarAlborRow(id);
+    else if (act === "dup") duplicarAlborRow(id);
+    else if (act === "del") eliminarAlborRow(id);
+  });
+
+  // Botones de barra superior y modal Asignaciones
+  document.getElementById("btnAlborUploadRefs").addEventListener("click", function() {
+    document.getElementById("inpAlborRefs").click();
+  });
+  document.getElementById("inpAlborRefs").addEventListener("change", function(e) {
+    var f = e.target.files && e.target.files[0];
+    if (f) importAlborRefsFromExcel(f);
+    e.target.value = "";
+  });
+  document.getElementById("btnAlborResetRefs").addEventListener("click", resetAlborRefsToDefault);
+  document.getElementById("btnAlborFromAsig").addEventListener("click", abrirModalAlborAsignaciones);
+  document.getElementById("btnCloseAlborAsigModal").addEventListener("click", function() {
+    document.getElementById("modalAlborAsigOverlay").classList.remove("open");
+  });
+  document.getElementById("alborAsigSearch").addEventListener("input", renderAlborAsigModalList);
+  document.getElementById("alborAsigDate").addEventListener("change", renderAlborAsigModalList);
+  document.getElementById("alborAsigListContainer").addEventListener("click", function(e) {
+    var btn = e.target.closest("button[data-preload-asig]");
+    if (!btn) return;
+    precargarDesdeAsignacion(btn.getAttribute("data-preload-asig"));
+  });
 }
 
 window.addEventListener("load", function() {
