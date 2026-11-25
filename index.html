@@ -5412,6 +5412,13 @@ function alborShortLabel(s) {
   return s.length > 38 ? s.slice(0, 35) + "..." : s;
 }
 
+function alborKpiBox(label, val, color) {
+  return "<div class='card' style='margin:0;padding:12px 14px;text-align:center;'>" +
+         "<div style='font-size:10.5px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;'>" + escHtml(label) + "</div>" +
+         "<div style='font-size:22px;font-weight:800;color:" + (color || "var(--dark)") + ";margin-top:4px;'>" + escHtml(val) + "</div>" +
+         "</div>";
+}
+
 function renderAlborLote() {
   var tbody = document.getElementById("alborLoteBody");
   var countEl = document.getElementById("alborLoteCount");
@@ -5430,11 +5437,11 @@ function renderAlborLote() {
   if (countEl) countEl.textContent = String(all.length);
   if (kpiEl) {
     kpiEl.innerHTML =
-      kpiBox("Total filas", all.length, "#1A1A1A") +
-      kpiBox("COS_VEI (Venta Directa)", cosVeiCount, "#1967d2") +
-      kpiBox("COSI (Cosecha)", cosiCount, "#137333") +
-      kpiBox("Seleccionadas", selectedCount, "#7a6000") +
-      kpiBox("Incompletas", incompleteCount, incompleteCount > 0 ? "#c0392b" : "#15803d");
+      alborKpiBox("Total filas", all.length, "#1A1A1A") +
+      alborKpiBox("COS_VEI (Venta Directa)", cosVeiCount, "#1967d2") +
+      alborKpiBox("COSI (Cosecha)", cosiCount, "#137333") +
+      alborKpiBox("Seleccionadas", selectedCount, "#7a6000") +
+      alborKpiBox("Incompletas", incompleteCount, incompleteCount > 0 ? "#c0392b" : "#15803d");
   }
 
   var filtered = all.filter(function(r) {
@@ -5761,27 +5768,11 @@ function exportarCosechasAlborExcel() {
 }
 
 /* ── Inicialización y eventos del módulo Albor ── */
-async function initAlborModule() {
-  if (!ALBOR_STATE.refs) {
-    try {
-      await loadAlborReferencias(false);
-    } catch (e) {
-      console.error(e);
-      showToast("Error cargando catálogo Albor: " + e.message, "error");
-    }
-  }
-
-  if (ALBOR_STATE.initialized) {
-    renderAlborLote();
-    return;
-  }
-  ALBOR_STATE.initialized = true;
+function alborBindUiEventsOnce() {
+  if (ALBOR_STATE.listenersBound) return;
+  ALBOR_STATE.listenersBound = true;
   alborEnsureAnnouncer();
-  alborPopulateStaticControls(false);
   alborInitCombos();
-  alborApplyDefaults(false);
-  loadAlborLote();
-  renderAlborLote();
 
   var form = document.getElementById("alborForm");
   if (!form) return;
@@ -5937,7 +5928,8 @@ async function initAlborModule() {
 
   // Botones de barra superior y modal Asignaciones
   document.getElementById("btnAlborUploadRefs").addEventListener("click", function() {
-    document.getElementById("inpAlborRefs").click();
+    var inp = document.getElementById("inpAlborRefs");
+    if (inp) inp.click();
   });
   document.getElementById("inpAlborRefs").addEventListener("change", function(e) {
     var f = e.target.files && e.target.files[0];
@@ -5956,6 +5948,29 @@ async function initAlborModule() {
     if (!btn) return;
     precargarDesdeAsignacion(btn.getAttribute("data-preload-asig"));
   });
+}
+
+async function initAlborModule() {
+  alborBindUiEventsOnce();
+
+  if (!ALBOR_STATE.refs) {
+    try {
+      await loadAlborReferencias(false);
+    } catch (e) {
+      console.error(e);
+      showToast("Error cargando catálogo Albor: " + e.message, "error");
+    }
+  }
+
+  if (ALBOR_STATE.initialized) {
+    renderAlborLote();
+    return;
+  }
+  ALBOR_STATE.initialized = true;
+  alborPopulateStaticControls(false);
+  alborApplyDefaults(false);
+  loadAlborLote();
+  renderAlborLote();
 }
 
 window.addEventListener("load", function() {
