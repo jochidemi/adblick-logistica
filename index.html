@@ -1398,23 +1398,32 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
 
       <!-- Bloque 2: Transportista, Chofer y Camión -->
       <div style="background:#fffbe8;border:1px solid #f0e090;border-radius:8px;padding:12px;">
-        <div style="font-size:11px;font-weight:700;color:#7a6000;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Datos del Transportista, Chofer y Unidad</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:700;color:#7a6000;text-transform:uppercase;letter-spacing:0.05em;">Datos del Transportista, Chofer y Unidad</div>
+          <span id="asigPadronAlborStatus" style="font-size:10.5px;color:#7a6000;font-weight:600;">Padrón listo (también podés escribir a mano)</span>
+        </div>
         <div class="form-row" style="gap:10px;">
           <div class="field" style="flex:1.5;min-width:220px;">
-            <label>Transportista (Padrón o manual)</label>
-            <input type="text" id="asigTransportista" list="dlTransportistas" placeholder="Buscar o escribir transportista..." oninput="onAsigTransportistaInput()">
+            <label for="asigTransportista">Transportista (Padrón o manual)</label>
+            <div class="albor-combo" id="asigTranspCombo">
+              <input type="text" id="asigTransportista" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar en padrón/Albor o escribir manual..." oninput="onAsigTransportistaInput()">
+              <ul class="albor-combo-list" id="asigTranspList" role="listbox" aria-label="Sugerencias de transportistas"></ul>
+            </div>
             <datalist id="dlTransportistas"></datalist>
           </div>
           <div class="field" style="flex:1;min-width:160px;">
-            <label>CUIT Transportista</label>
-            <input type="text" id="asigCuit" placeholder="30-12345678-9">
+            <label for="asigCuit">CUIT Transportista</label>
+            <input type="text" id="asigCuit" placeholder="30-12345678-9" inputmode="numeric" autocomplete="off">
           </div>
         </div>
 
         <div class="form-row" style="gap:10px;margin-top:10px;">
           <div class="field" style="flex:1.5;min-width:220px;">
-            <label for="asigChofer">Nombre del Chofer</label>
-            <input type="text" id="asigChofer" placeholder="Nombre y apellido del chofer">
+            <label for="asigChofer">Nombre del Chofer (Padrón Albor o manual)</label>
+            <div class="albor-combo" id="asigChoferCombo">
+              <input type="text" id="asigChofer" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Buscar por nombre o CUIT, o escribir manual...">
+              <ul class="albor-combo-list" id="asigChoferList" role="listbox" aria-label="Sugerencias de choferes"></ul>
+            </div>
           </div>
           <div class="field" style="flex:1;min-width:160px;">
             <label for="asigCuitChofer">CUIT del Chofer</label>
@@ -4366,6 +4375,7 @@ function abrirModalAsignacionDirecta() {
   document.getElementById("asigZona").value = "";
   poblarCombosModalAsignacion("", "", "", "");
   limpiarInputsTransporteModal();
+  ensureAlborRefsForAsignacionModal();
   document.getElementById("modalAsignacionOverlay").classList.add("open");
 }
 
@@ -4385,6 +4395,7 @@ function abrirModalAsignacionDesdePedido(slotKey) {
   if (slot.comentarios) {
     document.getElementById("asigComentarios").value = slot.comentarios;
   }
+  ensureAlborRefsForAsignacionModal();
   document.getElementById("modalAsignacionOverlay").classList.add("open");
 }
 
@@ -4408,6 +4419,7 @@ function abrirEdicionAsignacion(spId) {
   document.getElementById("asigLocacion").value = asig.locacion || "";
   document.getElementById("asigTara").value = asig.tara || "";
   document.getElementById("asigComentarios").value = asig.comentarios || "";
+  ensureAlborRefsForAsignacionModal();
   document.getElementById("modalAsignacionOverlay").classList.add("open");
 }
 
@@ -6201,6 +6213,255 @@ async function initAlborModule() {
   alborApplyDefaults(false);
   loadAlborLote();
   renderAlborLote();
+}
+
+/* ── Buscadores híbridos (Padrón SP + Catálogo Albor + manual) en Modal de Asignación ── */
+var ASIG_HYBRID_STATE = {
+  bound: false,
+  loadingRefs: false,
+  choferes: [],
+  transportistas: []
+};
+
+function asigParseAlborChofer(raw) {
+  var s = String(raw || "").trim();
+  var m = s.match(/^(.*?)\s*\(([\d\-]+)\)\s*$/);
+  var nombre = m ? m[1].trim() : s;
+  var cuit = m ? m[2].trim() : "";
+  var digits = cuit.replace(/\D/g, "");
+  return {
+    raw: s,
+    nombre: nombre,
+    cuit: cuit,
+    cuitDigits: digits,
+    norm: normStr(nombre + " " + cuit + " " + digits)
+  };
+}
+
+function asigParseAlborTransportista(raw) {
+  var s = String(raw || "").trim();
+  var idx = s.indexOf(" - ");
+  var codigo = idx !== -1 ? s.slice(0, idx).trim() : "";
+  var nombre = idx !== -1 ? s.slice(idx + 3).trim() : s;
+  return {
+    raw: s,
+    codigo: codigo,
+    nombre: nombre || s,
+    cuit: "",
+    razonSocial: "",
+    source: "Albor",
+    norm: normStr(s)
+  };
+}
+
+function asigRebuildHybridIndexes() {
+  var lists = (ALBOR_STATE.refs && ALBOR_STATE.refs.lists) || {};
+  ASIG_HYBRID_STATE.choferes = (lists.chofer || []).map(asigParseAlborChofer);
+
+  var seenTransp = Object.create(null);
+  var transpOut = [];
+  (PADRON_TRANSP || []).forEach(function(t) {
+    var nm = String(t.nombre || "").trim();
+    if (!nm) return;
+    var nk = normStr(nm);
+    seenTransp[nk] = true;
+    transpOut.push({
+      raw: nm,
+      codigo: "",
+      nombre: nm,
+      cuit: String(t.cuit || "").trim(),
+      razonSocial: String(t.razonSocial || "").trim(),
+      source: "Padrón SP",
+      norm: normStr([nm, t.razonSocial, t.cuit].filter(Boolean).join(" "))
+    });
+  });
+  (lists.transportista || []).forEach(function(raw) {
+    var parsed = asigParseAlborTransportista(raw);
+    var nk = normStr(parsed.nombre);
+    if (seenTransp[nk]) return;
+    seenTransp[nk] = true;
+    transpOut.push(parsed);
+  });
+  ASIG_HYBRID_STATE.transportistas = transpOut;
+
+  var st = document.getElementById("asigPadronAlborStatus");
+  if (st) {
+    var nCh = ASIG_HYBRID_STATE.choferes.length;
+    var nTr = ASIG_HYBRID_STATE.transportistas.length;
+    if (nCh > 0) {
+      st.textContent = "Sugerencias activas (" + nTr + " transp. · " + nCh + " choferes) o carga manual";
+    } else if (ASIG_HYBRID_STATE.loadingRefs) {
+      st.textContent = "Cargando padrón Albor... (podés escribir a mano)";
+    } else {
+      st.textContent = "Padrón SP (" + (PADRON_TRANSP || []).length + " transp.) o carga manual";
+    }
+  }
+}
+
+function asigFilterHybridList(items, query) {
+  var qNorm = normStr(query);
+  if (!qNorm) return items.slice(0, 50);
+  var tokens = qNorm.split(/\s+/).filter(Boolean);
+  var starts = [];
+  var contains = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var ok = true;
+    for (var t = 0; t < tokens.length; t++) {
+      if (it.norm.indexOf(tokens[t]) === -1) { ok = false; break; }
+    }
+    if (!ok) continue;
+    if (normStr(it.nombre).indexOf(tokens[0]) === 0) starts.push(it);
+    else contains.push(it);
+    if (starts.length + contains.length >= 50) break;
+  }
+  return starts.concat(contains).slice(0, 50);
+}
+
+function asigSetupHybridCombo(inputId, listId, getItemsFn, renderItemFn, onPickFn) {
+  var input = document.getElementById(inputId);
+  var listEl = document.getElementById(listId);
+  if (!input || !listEl) return;
+  var activeIdx = -1;
+  var currentOpts = [];
+
+  function closeList() {
+    listEl.classList.remove("open");
+    activeIdx = -1;
+  }
+
+  function renderList() {
+    var all = getItemsFn();
+    if (!all.length) {
+      closeList();
+      return;
+    }
+    currentOpts = asigFilterHybridList(all, input.value);
+    activeIdx = currentOpts.length ? 0 : -1;
+    if (!currentOpts.length) {
+      listEl.innerHTML = "<li class=\"albor-combo-empty\">Sin coincidencias en padrón — se guardará el texto escrito a mano</li>";
+    } else {
+      var html = "";
+      for (var i = 0; i < currentOpts.length; i++) {
+        html += "<li class=\"albor-combo-opt" + (i === 0 ? " active" : "") + "\" role=\"option\" data-idx=\"" + i + "\">" + renderItemFn(currentOpts[i]) + "</li>";
+      }
+      listEl.innerHTML = html;
+    }
+    listEl.classList.add("open");
+  }
+
+  function updateActive() {
+    var nodes = listEl.querySelectorAll(".albor-combo-opt");
+    nodes.forEach(function(n, idx) {
+      n.classList.toggle("active", idx === activeIdx);
+      if (idx === activeIdx) n.scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  function pick(idx) {
+    if (idx < 0 || idx >= currentOpts.length) return;
+    onPickFn(currentOpts[idx]);
+    closeList();
+  }
+
+  input.addEventListener("focus", renderList);
+  input.addEventListener("input", renderList);
+  input.addEventListener("keydown", function(e) {
+    if (e.isComposing) return;
+    if (!listEl.classList.contains("open")) {
+      if (e.key === "ArrowDown") { renderList(); e.preventDefault(); }
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (currentOpts.length) { activeIdx = (activeIdx + 1) % currentOpts.length; updateActive(); }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (currentOpts.length) { activeIdx = (activeIdx - 1 + currentOpts.length) % currentOpts.length; updateActive(); }
+    } else if (e.key === "Enter") {
+      if (activeIdx >= 0 && currentOpts[activeIdx]) { e.preventDefault(); pick(activeIdx); }
+    } else if (e.key === "Escape" || e.key === "Tab") {
+      closeList();
+    }
+  });
+  listEl.addEventListener("mousedown", function(e) {
+    var li = e.target.closest(".albor-combo-opt");
+    if (!li) return;
+    e.preventDefault();
+    pick(parseInt(li.getAttribute("data-idx"), 10));
+  });
+  input.addEventListener("blur", function() {
+    setTimeout(closeList, 130);
+  });
+}
+
+function asigBindHybridCombosOnce() {
+  if (ASIG_HYBRID_STATE.bound) return;
+  ASIG_HYBRID_STATE.bound = true;
+
+  asigSetupHybridCombo(
+    "asigChofer",
+    "asigChoferList",
+    function() { return ASIG_HYBRID_STATE.choferes; },
+    function(it) {
+      return "<strong>" + escHtml(it.nombre) + "</strong>" +
+        (it.cuit ? " <span class=\"mono-tag\" style=\"margin-left:6px;\">" + escHtml(it.cuit) + "</span>" : "");
+    },
+    function(it) {
+      document.getElementById("asigChofer").value = it.nombre;
+      if (it.cuit) document.getElementById("asigCuitChofer").value = it.cuit;
+    }
+  );
+
+  asigSetupHybridCombo(
+    "asigTransportista",
+    "asigTranspList",
+    function() { return ASIG_HYBRID_STATE.transportistas; },
+    function(it) {
+      var meta = [];
+      if (it.cuit) meta.push("CUIT " + it.cuit);
+      if (it.codigo) meta.push("Cód. " + it.codigo);
+      meta.push(it.source);
+      return "<strong>" + escHtml(it.nombre) + "</strong>" +
+        " <span style=\"color:var(--gray);font-size:11px;margin-left:4px;\">(" + escHtml(meta.join(" · ")) + ")</span>";
+    },
+    function(it) {
+      document.getElementById("asigTransportista").value = it.nombre;
+      if (it.cuit) document.getElementById("asigCuit").value = it.cuit;
+    }
+  );
+
+  // Si escribe un CUIT del chofer que coincide en forma única con Albor y el nombre está vacío, completar el nombre
+  var cuitChEl = document.getElementById("asigCuitChofer");
+  if (cuitChEl) {
+    cuitChEl.addEventListener("blur", function() {
+      var chInput = document.getElementById("asigChofer");
+      if (!chInput || chInput.value.trim()) return;
+      var digits = cuitChEl.value.replace(/\D/g, "");
+      if (digits.length < 10) return;
+      var matches = ASIG_HYBRID_STATE.choferes.filter(function(c) { return c.cuitDigits === digits; });
+      if (matches.length === 1) {
+        chInput.value = matches[0].nombre;
+        cuitChEl.value = matches[0].cuit;
+      }
+    });
+  }
+}
+
+async function ensureAlborRefsForAsignacionModal() {
+  asigBindHybridCombosOnce();
+  asigRebuildHybridIndexes();
+  if (ALBOR_STATE.refs || ASIG_HYBRID_STATE.loadingRefs) return;
+  ASIG_HYBRID_STATE.loadingRefs = true;
+  asigRebuildHybridIndexes();
+  try {
+    await loadAlborReferencias(false);
+  } catch (e) {
+    console.warn("No se pudo precargar catálogo Albor para modal de asignación:", e);
+  } finally {
+    ASIG_HYBRID_STATE.loadingRefs = false;
+    asigRebuildHybridIndexes();
+  }
 }
 
 window.addEventListener("load", function() {
