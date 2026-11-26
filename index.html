@@ -1412,16 +1412,23 @@ textarea { width: 100%; min-height: 60px; resize: vertical; }
         </div>
 
         <div class="form-row" style="gap:10px;margin-top:10px;">
-          <div class="field" style="flex:1.4;min-width:200px;">
-            <label>Nombre del Chofer</label>
+          <div class="field" style="flex:1.5;min-width:220px;">
+            <label for="asigChofer">Nombre del Chofer</label>
             <input type="text" id="asigChofer" placeholder="Nombre y apellido del chofer">
           </div>
-          <div class="field" style="flex:1;min-width:140px;">
-            <label>Patente Camión (Chasis)</label>
+          <div class="field" style="flex:1;min-width:160px;">
+            <label for="asigCuitChofer">CUIT del Chofer</label>
+            <input type="text" id="asigCuitChofer" placeholder="20-12345678-9" inputmode="numeric" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="form-row" style="gap:10px;margin-top:10px;">
+          <div class="field" style="flex:1;min-width:160px;">
+            <label for="asigPatente">Patente Camión (Chasis)</label>
             <input type="text" id="asigPatente" placeholder="AB 123 CD" style="text-transform:uppercase;">
           </div>
-          <div class="field" style="flex:1;min-width:140px;">
-            <label>Patente Acoplado</label>
+          <div class="field" style="flex:1;min-width:160px;">
+            <label for="asigAcoplado">Patente Acoplado</label>
             <input type="text" id="asigAcoplado" placeholder="AB 456 EF" style="text-transform:uppercase;">
           </div>
         </div>
@@ -3305,6 +3312,7 @@ var ASIG_DESIRED_COLS = [
   { name: "Transportista", multiline: false },
   { name: "CUIT", multiline: false },
   { name: "Chofer", multiline: false },
+  { name: "CUITChofer", multiline: false },
   { name: "Patente", multiline: false },
   { name: "Acoplado", multiline: false },
   { name: "Horario", multiline: false },
@@ -3465,6 +3473,12 @@ function parseAsignacionSpItem(item, sourceListId) {
     } catch (e2) {}
     rawCom = rawCom.replace(/\s*\[ASIG_JSON:\{[\s\S]*\}\]$/, "").trim();
   }
+  var cuitChoferInCom = "";
+  var mCuitCh = rawCom.match(/\[CUIT_CHOFER:([^\]]+)\]/);
+  if (mCuitCh) {
+    cuitChoferInCom = String(mCuitCh[1] || "").trim();
+    rawCom = rawCom.replace(/\s*\[CUIT_CHOFER:[^\]]+\]/g, "").trim();
+  }
 
   function pick(colName, jsonKey) {
     var v = getAsigField(f, colName);
@@ -3492,6 +3506,7 @@ function parseAsignacionSpItem(item, sourceListId) {
     transportista: pick("Transportista", "transportista"),
     cuit: pick("CUIT", "cuit"),
     chofer: pick("Chofer", "chofer"),
+    cuitChofer: pick("CUITChofer", "cuitChofer") || cuitChoferInCom,
     patente: pick("Patente", "patente"),
     acoplado: pick("Acoplado", "acoplado"),
     horario: pick("Horario", "horario"),
@@ -3516,6 +3531,7 @@ function buildAsignacionSpFields(asigObj, isFallbackPedidosList) {
     transportista: asigObj.transportista || "",
     cuit: asigObj.cuit || "",
     chofer: asigObj.chofer || "",
+    cuitChofer: asigObj.cuitChofer || "",
     patente: asigObj.patente || "",
     acoplado: asigObj.acoplado || "",
     horario: asigObj.horario || "",
@@ -3558,6 +3574,7 @@ function buildAsignacionSpFields(asigObj, isFallbackPedidosList) {
     Transportista: asigObj.transportista || "",
     CUIT: asigObj.cuit || "",
     Chofer: asigObj.chofer || "",
+    CUITChofer: asigObj.cuitChofer || "",
     Patente: asigObj.patente || "",
     Acoplado: asigObj.acoplado || "",
     Horario: asigObj.horario || "",
@@ -3573,7 +3590,9 @@ function buildAsignacionSpFields(asigObj, isFallbackPedidosList) {
   var hasKnownCols = SP_COLS.asigColMap && Object.keys(SP_COLS.asigColMap).length > 0;
   var hasJsonCol = hasKnownCols && Boolean(SP_COLS.asigColMap["datosjson"]);
   var hasComCol = hasKnownCols && Boolean(SP_COLS.asigColMap["comentarios"]);
+  var hasCuitChoferCol = hasKnownCols && Boolean(SP_COLS.asigColMap["cuitchofer"]);
   var hasCoreCols = hasKnownCols && Boolean(SP_COLS.asigColMap["transportista"] || SP_COLS.asigColMap["chofer"] || SP_COLS.asigColMap["patente"]);
+  var wroteJsonCol = false;
 
   Object.keys(pairs).forEach(function(canonical) {
     if (canonical === "DatosJSON" && hasCoreCols && !hasJsonCol) return;
@@ -3583,15 +3602,21 @@ function buildAsignacionSpFields(asigObj, isFallbackPedidosList) {
       if (spCol) {
         if (canonical === "DatosJSON" && pairs[canonical].length > 250) return;
         fields[spCol] = pairs[canonical];
+        if (canonical === "DatosJSON") wroteJsonCol = true;
       }
     } else {
       fields[canonical] = pairs[canonical];
+      if (canonical === "DatosJSON") wroteJsonCol = true;
     }
   });
 
   if (hasKnownCols && !hasCoreCols && !hasJsonCol && hasComCol) {
     var comColName = SP_COLS.asigColMap["comentarios"];
     fields[comColName] = (asigObj.comentarios ? (asigObj.comentarios + " ") : "") + "[ASIG_JSON:" + jsonStr + "]";
+  } else if (hasKnownCols && asigObj.cuitChofer && !hasCuitChoferCol && !wroteJsonCol && hasComCol) {
+    var comColFallback = SP_COLS.asigColMap["comentarios"];
+    var baseCom = fields[comColFallback] || asigObj.comentarios || "";
+    fields[comColFallback] = (baseCom ? (baseCom + " ") : "") + "[CUIT_CHOFER:" + asigObj.cuitChofer + "]";
   }
 
   return { fields: fields, jsonStr: jsonStr };
@@ -3793,7 +3818,7 @@ function getAsignacionesFiltradasOperador() {
     if (fCultivo && a.cultivo !== fCultivo) return false;
     if (fFecha && a.fecha !== fFecha) return false;
     if (fTexto) {
-      var blob = normStr([a.campo, a.zona, a.cultivo, a.lote, a.transportista, a.cuit, a.chofer, a.patente, a.acoplado, a.horario, a.locacion, a.comentarios].join(" "));
+      var blob = normStr([a.campo, a.zona, a.cultivo, a.lote, a.transportista, a.cuit, a.chofer, a.cuitChofer, a.patente, a.acoplado, a.horario, a.locacion, a.comentarios].join(" "));
       if (blob.indexOf(fTexto) === -1) return false;
     }
     return true;
@@ -3813,7 +3838,7 @@ function getAsignacionesFiltradasLogistica() {
     if (fZona && a.zona !== fZona) return false;
     if (fFecha && a.fecha !== fFecha) return false;
     if (fTexto) {
-      var blob = normStr([a.campo, a.zona, a.cultivo, a.lote, a.transportista, a.cuit, a.chofer, a.patente, a.acoplado, a.horario, a.locacion, a.usuarioPedido, a.comentarios].join(" "));
+      var blob = normStr([a.campo, a.zona, a.cultivo, a.lote, a.transportista, a.cuit, a.chofer, a.cuitChofer, a.patente, a.acoplado, a.horario, a.locacion, a.usuarioPedido, a.comentarios].join(" "));
       if (blob.indexOf(fTexto) === -1) return false;
     }
     return true;
@@ -3826,8 +3851,9 @@ function buildAsignacionesTableHtml(rows, isLogistica) {
   html += "<th style=\"text-align:left;\">Campo / Zona</th>";
   html += "<th style=\"text-align:left;\">Cultivo / Lote</th>";
   html += "<th style=\"text-align:left;\">Transportista</th>";
-  html += "<th>CUIT</th>";
+  html += "<th>CUIT Transp.</th>";
   html += "<th style=\"text-align:left;\">Chofer</th>";
+  html += "<th>CUIT Chofer</th>";
   html += "<th>Patente Chasis</th>";
   html += "<th>Acoplado</th>";
   html += "<th>Horario / Locación</th>";
@@ -3851,6 +3877,7 @@ function buildAsignacionesTableHtml(rows, isLogistica) {
     html += "<td style=\"text-align:left;font-weight:600;\">" + escHtml(a.transportista || "-") + "</td>";
     html += "<td>" + (a.cuit ? "<span class=\"mono-tag\">" + escHtml(a.cuit) + "</span>" : "-") + "</td>";
     html += "<td style=\"text-align:left;font-weight:600;\">" + escHtml(a.chofer || "-") + "</td>";
+    html += "<td>" + (a.cuitChofer ? "<span class=\"mono-tag\">" + escHtml(a.cuitChofer) + "</span>" : "-") + "</td>";
     html += "<td>" + (a.patente ? "<span class=\"mono-tag\">" + escHtml(a.patente) + "</span>" : "-") + "</td>";
     html += "<td>" + (a.acoplado ? "<span class=\"mono-tag\">" + escHtml(a.acoplado) + "</span>" : "-") + "</td>";
     html += "<td style=\"font-size:11.5px;\">" + horLoc + "</td>";
@@ -4321,6 +4348,7 @@ function limpiarInputsTransporteModal() {
   document.getElementById("asigTransportista").value = "";
   document.getElementById("asigCuit").value = "";
   document.getElementById("asigChofer").value = "";
+  document.getElementById("asigCuitChofer").value = "";
   document.getElementById("asigPatente").value = "";
   document.getElementById("asigAcoplado").value = "";
   document.getElementById("asigHorario").value = "";
@@ -4373,6 +4401,7 @@ function abrirEdicionAsignacion(spId) {
   document.getElementById("asigTransportista").value = asig.transportista || "";
   document.getElementById("asigCuit").value = asig.cuit || "";
   document.getElementById("asigChofer").value = asig.chofer || "";
+  document.getElementById("asigCuitChofer").value = asig.cuitChofer || "";
   document.getElementById("asigPatente").value = asig.patente || "";
   document.getElementById("asigAcoplado").value = asig.acoplado || "";
   document.getElementById("asigHorario").value = asig.horario || "";
@@ -4418,6 +4447,7 @@ async function guardarAsignacion() {
       transportista: document.getElementById("asigTransportista").value.trim(),
       cuit: document.getElementById("asigCuit").value.trim(),
       chofer: document.getElementById("asigChofer").value.trim(),
+      cuitChofer: document.getElementById("asigCuitChofer").value.trim(),
       patente: document.getElementById("asigPatente").value.trim().toUpperCase(),
       acoplado: document.getElementById("asigAcoplado").value.trim().toUpperCase(),
       horario: document.getElementById("asigHorario").value.trim(),
@@ -4503,7 +4533,7 @@ async function exportarAsignacionesExcel(modo) {
   }
   var cols = [
     "Fecha", "Transportista", "CUIT Transportista", "Campo", "Zona",
-    "Cultivo", "Lote", "Chofer", "Patente Camión", "Patente Acoplado",
+    "Cultivo", "Lote", "Chofer", "CUIT Chofer", "Patente Camión", "Patente Acoplado",
     "Horario", "Locación", "Tara", "Pedido por (Operador)", "Comentarios", "Asignado por"
   ];
   var rows = [cols];
@@ -4517,6 +4547,7 @@ async function exportarAsignacionesExcel(modo) {
       a.cultivo || "",
       a.lote || "",
       a.chofer || "",
+      a.cuitChofer || "",
       a.patente || "",
       a.acoplado || "",
       a.horario || "",
@@ -4555,7 +4586,7 @@ async function exportarAsignacionesPDF(modo) {
     doc.setTextColor(100);
     doc.text("Generado el " + fechaHoy + " · Usuario: " + currentUser + " · Total: " + list.length + " camiones", 14, 20);
 
-    var head = [["Fecha", "Transportista", "CUIT", "Campo", "Zona", "Cultivo / Lote", "Chofer", "Patente", "Acoplado", "Horario / Locación", "Tara", "Comentarios"]];
+    var head = [["Fecha", "Transportista", "CUIT Transp.", "Campo", "Zona", "Cultivo / Lote", "Chofer", "CUIT Chofer", "Patente", "Acoplado", "Horario / Locación", "Tara", "Comentarios"]];
     var body = list.map(function(a) {
       return [
         fmtDateExcel(a.fecha) || "-",
@@ -4565,6 +4596,7 @@ async function exportarAsignacionesPDF(modo) {
         a.zona || "-",
         [a.cultivo, a.lote ? ("Lote " + a.lote) : ""].filter(Boolean).join(" · ") || "-",
         a.chofer || "-",
+        a.cuitChofer || "-",
         a.patente || "-",
         a.acoplado || "-",
         [a.horario, a.locacion].filter(Boolean).join(" · ") || "-",
@@ -5816,7 +5848,7 @@ function renderAlborAsigModalList() {
   var list = ASIGNACIONES_CACHE.filter(function(a) {
     if (fDate && a.fecha !== fDate) return false;
     if (q) {
-      var hay = normStr([a.campo, a.cultivo, a.lote, a.transportista, a.chofer, a.cuit, a.patente].join(" "));
+      var hay = normStr([a.campo, a.cultivo, a.lote, a.transportista, a.chofer, a.cuitChofer, a.cuit, a.patente].join(" "));
       if (hay.indexOf(q) === -1) return false;
     }
     return true;
@@ -5828,7 +5860,7 @@ function renderAlborAsigModalList() {
   }
 
   var html = "<div class=\"table-wrapper\"><table class=\"pedidos-table\"><thead><tr>" +
-    "<th>Fecha / Horario</th><th>Campo / Lote</th><th>Cultivo</th><th>Transportista</th><th>Chofer</th><th>Tara</th><th>Acción</th>" +
+    "<th>Fecha / Horario</th><th>Campo / Lote</th><th>Cultivo</th><th>Transportista</th><th>Chofer / CUIT</th><th>Tara</th><th>Acción</th>" +
     "</tr></thead><tbody>";
   list.slice(0, 80).forEach(function(a) {
     html += "<tr>" +
@@ -5836,7 +5868,7 @@ function renderAlborAsigModalList() {
       "<td><strong>" + escHtml(a.campo || "-") + "</strong>" + (a.lote ? "<br><span class=\"mono-tag\">" + escHtml(a.lote) + "</span>" : "") + "</td>" +
       "<td>" + escHtml(a.cultivo || "-") + "</td>" +
       "<td>" + escHtml(a.transportista || "-") + "</td>" +
-      "<td>" + escHtml(a.chofer || "-") + "</td>" +
+      "<td>" + escHtml(a.chofer || "-") + (a.cuitChofer ? "<br><span class=\"mono-tag\">" + escHtml(a.cuitChofer) + "</span>" : "") + "</td>" +
       "<td>" + escHtml(a.tara || "-") + "</td>" +
       "<td><button type=\"button\" class=\"btn btn-primary\" style=\"padding:5px 10px;font-size:11.5px;\" data-preload-asig=\"" + escHtml(a.spId) + "\">Pre-cargar</button></td>" +
     "</tr>";
@@ -5866,7 +5898,7 @@ function precargarDesdeAsignacion(spId) {
     var tEl = document.getElementById("albor_pesoTara");
     if (tEl) { tEl.value = taraDigits; alborRecalcNeto(); loaded.push("Tara"); }
   }
-  var mChofer = alborMatchChofer(asig.chofer, asig.cuit);
+  var mChofer = alborMatchChofer(asig.chofer, asig.cuitChofer);
   if (mChofer) { setAlborComboValue("chofer", mChofer); loaded.push("Chofer"); }
 
   var mTransp = alborMatchSingleOption("transportista", asig.transportista);
