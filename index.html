@@ -4606,6 +4606,7 @@ var ALBOR_LOTE_STORAGE_KEY = "adblick_albor_lote_v1";
 var ALBOR_IDB_NAME = "adblick_albor_db";
 var ALBOR_IDB_STORE = "catalogs";
 var ALBOR_IDB_KEY = "custom_refs_v1";
+var ALBOR_SP_FILE_PATH = "Albor_Referencias/albor_referencias.json";
 
 var ALBOR_FIELDS = [
   { key: "modalidad", colIndex: 0, header: "Código tipo de comprobante", modes: ["both"], required: true, type: "modalidad", keepOnRepeat: true },
@@ -4645,8 +4646,11 @@ var ALBOR_FIELDS = [
 
 var ALBOR_STATE = {
   initialized: false,
+  listenersBound: false,
   refs: null,
   isCustomRefs: false,
+  refsSource: "base",
+  spEtag: null,
   refIndex: {},
   refSet: {},
   combos: {},
@@ -4751,6 +4755,131 @@ function alborBuildRefIndexes(refs) {
   });
 }
 
+function alborFmtShortDateTime(isoStr) {
+  if (!isoStr) return "";
+  try {
+    var d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) + " " +
+      d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  } catch (e) { return ""; }
+}
+
+function alborSpDriveItemUrl(suffix) {
+  return "https://graph.microsoft.com/v1.0/sites/" + CONFIG.sharepointSiteId +
+    "/drive/root:/" + ALBOR_SP_FILE_PATH + (suffix || "");
+}
+
+async function alborGraphFetch(url, options) {
+  var opts = Object.assign({}, options || {});
+  var retried401 = false;
+  while (true) {
+    if (!graphToken && currentAccount) await acquireTokenSilent();
+    var headers = Object.assign({}, opts.headers || {});
+    if (graphToken) headers.Authorization = "Bearer " + graphToken;
+    var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+    if (res.status === 401 && !retried401 && currentAccount) {
+      retried401 = true;
+      await acquireTokenSilent();
+      continue;
+    }
+    return res;
+  }
+}
+
+async function alborFetchRefsFromSharePoint(cached) {
+  if (!graphToken && !currentAccount) return { unavailable: true };
+  var metaUrl = alborSpDriveItemUrl("?$select=id,eTag,lastModifiedDateTime,@microsoft.graph.downloadUrl");
+  var metaRes = await alborGraphFetch(metaUrl, { method: "GET" });
+  if (metaRes.status === 404) return { notFound: true };
+  if (!metaRes.ok) throw new Error("SharePoint HTTP " + metaRes.status);
+  var meta = await metaRes.json();
+  var etag = meta.eTag || meta.lastModifiedDateTime || "";
+
+  if (cached && cached._spEtag && etag && cached._spEtag === etag &&
+      Array.isArray(cached.headers) && cached.headers.length === 90 && cached.lists) {
+    return { payload: cached, fromCache: true, eTag: etag };
+  }
+
+  var downloadUrl = meta["@microsoft.graph.downloadUrl"];
+  var contentRes = downloadUrl
+    ? await fetch(downloadUrl)
+    : await alborGraphFetch(alborSpDriveItemUrl(":/content"), { method: "GET" });
+  if (!contentRes.ok) throw new Error("Descarga SharePoint HTTP " + contentRes.status);
+  var payload = await contentRes.json();
+  if (!payload || !Array.isArray(payload.headers) || payload.headers.length !== 90 || !payload.lists) {
+    throw new Error("Archivo compartido en SharePoint con formato inválido");
+  }
+  payload._spEtag = etag;
+  delete payload._localOnly;
+  try { await alborIdbSet(ALBOR_IDB_KEY, payload); } catch (e) {}
+  return { payload: payload, fromCache: false, eTag: etag };
+}
+
+async function alborUploadRefsToSharePoint(payload) {
+  var cleanPayload = {
+    version: payload.version,
+    source: payload.source,
+    updatedBy: payload.updatedBy || currentUser || "Usuario",
+    updatedAt: payload.updatedAt || new Date().toISOString(),
+    headers: payload.headers,
+    lists: payload.lists
+  };
+  var jsonStr = JSON.stringify(cleanPayload);
+  var blob = new Blob([jsonStr], { type: "application/json; charset=utf-8" });
+
+  // Subida directa (<= 3.8 MB) o por sesión de carga si algún día supera el límite simple de Graph (4 MB)
+  if (blob.size <= 3800000) {
+    var putRes = await alborGraphFetch(alborSpDriveItemUrl(":/content"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: blob
+    });
+    if (!putRes.ok) {
+      var errTxt = "";
+      try { errTxt = await putRes.text(); } catch (e) {}
+      throw new Error("HTTP " + putRes.status + (errTxt ? ": " + errTxt.slice(0, 140) : ""));
+    }
+    var item = await putRes.json();
+    return { eTag: item.eTag || item.lastModifiedDateTime || "" };
+  }
+
+  var sessRes = await alborGraphFetch(alborSpDriveItemUrl(":/createUploadSession"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ item: { "@microsoft.graph.conflictBehavior": "replace" } })
+  });
+  if (!sessRes.ok) throw new Error("UploadSession HTTP " + sessRes.status);
+  var sess = await sessRes.json();
+  var chunkSize = 3276800; // 3.2 MiB (múltiplo de 320 KiB)
+  var offset = 0;
+  var finalItem = null;
+  while (offset < blob.size) {
+    var end = Math.min(offset + chunkSize, blob.size);
+    var chunk = blob.slice(offset, end);
+    var chRes = await fetch(sess.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Length": String(end - offset),
+        "Content-Range": "bytes " + offset + "-" + (end - 1) + "/" + blob.size
+      },
+      body: chunk
+    });
+    if (!chRes.ok && chRes.status !== 202) throw new Error("Chunk HTTP " + chRes.status);
+    if (chRes.status === 200 || chRes.status === 201) finalItem = await chRes.json();
+    offset = end;
+  }
+  return { eTag: (finalItem && (finalItem.eTag || finalItem.lastModifiedDateTime)) || "" };
+}
+
+async function alborDeleteRefsFromSharePoint() {
+  if (!graphToken && !currentAccount) return;
+  var delRes = await alborGraphFetch(alborSpDriveItemUrl(""), { method: "DELETE" });
+  if (!delRes.ok && delRes.status !== 404) {
+    throw new Error("No se pudo eliminar el catálogo compartido en SharePoint (HTTP " + delRes.status + ")");
+  }
+}
+
 function alborUpdateRefBadge() {
   var badge = document.getElementById("alborRefStatus");
   var btnReset = document.getElementById("btnAlborResetRefs");
@@ -4763,8 +4892,14 @@ function alborUpdateRefBadge() {
   }
   var cultivosN = (ALBOR_STATE.refs.lists.cultivo || []).length;
   var chofN = (ALBOR_STATE.refs.lists.chofer || []).length;
-  if (ALBOR_STATE.isCustomRefs) {
-    badge.textContent = "Catálogo actualizado (" + (ALBOR_STATE.refs.source || "Excel") + " · " + cultivosN + " cultivos, " + chofN + " choferes)";
+  var when = alborFmtShortDateTime(ALBOR_STATE.refs.updatedAt || ALBOR_STATE.refs.version);
+  var who = ALBOR_STATE.refs.updatedBy ? (" por " + ALBOR_STATE.refs.updatedBy) : "";
+  if (ALBOR_STATE.refsSource === "sharepoint") {
+    badge.textContent = "Catálogo compartido (SharePoint" + who + (when ? " · " + when : "") + ") · " + cultivosN + " cultivos, " + chofN + " choferes";
+    badge.className = "albor-ref-pill custom";
+    if (btnReset) btnReset.style.display = "inline-flex";
+  } else if (ALBOR_STATE.refsSource === "local") {
+    badge.textContent = "Catálogo local (" + (ALBOR_STATE.refs.source || "Excel") + ") · " + cultivosN + " cultivos, " + chofN + " choferes";
     badge.className = "albor-ref-pill custom";
     if (btnReset) btnReset.style.display = "inline-flex";
   } else {
@@ -4775,19 +4910,44 @@ function alborUpdateRefBadge() {
 }
 
 async function loadAlborReferencias(forceReloadBase) {
+  var cached = !forceReloadBase ? await alborIdbGet(ALBOR_IDB_KEY) : null;
   if (!forceReloadBase) {
-    var custom = await alborIdbGet(ALBOR_IDB_KEY);
-    if (custom && Array.isArray(custom.headers) && custom.headers.length === 90 && custom.lists) {
-      ALBOR_STATE.isCustomRefs = true;
-      alborBuildRefIndexes(custom);
-      alborUpdateRefBadge();
-      return custom;
+    try {
+      var sp = await alborFetchRefsFromSharePoint(cached);
+      if (sp && sp.payload) {
+        ALBOR_STATE.isCustomRefs = true;
+        ALBOR_STATE.refsSource = "sharepoint";
+        ALBOR_STATE.spEtag = sp.eTag || sp.payload._spEtag || null;
+        alborBuildRefIndexes(sp.payload);
+        alborUpdateRefBadge();
+        return sp.payload;
+      }
+      if (sp && sp.notFound && cached && cached._localOnly && Array.isArray(cached.headers) && cached.headers.length === 90 && cached.lists) {
+        ALBOR_STATE.isCustomRefs = true;
+        ALBOR_STATE.refsSource = "local";
+        ALBOR_STATE.spEtag = null;
+        alborBuildRefIndexes(cached);
+        alborUpdateRefBadge();
+        return cached;
+      }
+    } catch (spErr) {
+      console.warn("No se pudo leer catálogo Albor desde SharePoint:", spErr);
+      if (cached && Array.isArray(cached.headers) && cached.headers.length === 90 && cached.lists) {
+        ALBOR_STATE.isCustomRefs = true;
+        ALBOR_STATE.refsSource = cached._spEtag ? "sharepoint" : "local";
+        ALBOR_STATE.spEtag = cached._spEtag || null;
+        alborBuildRefIndexes(cached);
+        alborUpdateRefBadge();
+        return cached;
+      }
     }
   }
   var resp = await fetch("albor_referencias.json?v=" + Date.now());
   if (!resp.ok) throw new Error("No se pudo cargar albor_referencias.json (HTTP " + resp.status + ")");
   var base = await resp.json();
   ALBOR_STATE.isCustomRefs = false;
+  ALBOR_STATE.refsSource = "base";
+  ALBOR_STATE.spEtag = null;
   alborBuildRefIndexes(base);
   alborUpdateRefBadge();
   return base;
@@ -4875,19 +5035,43 @@ async function importAlborRefsFromExcel(file) {
       if (listKey === "si_no" && !lists[listKey].length) lists[listKey] = ["Sí", "No"];
     });
 
+    var nowIso = new Date().toISOString();
     var payload = {
-      version: new Date().toISOString(),
+      version: nowIso,
       source: file.name,
+      updatedBy: currentUser || "Usuario",
+      updatedAt: nowIso,
       headers: rawHeaders,
       lists: lists
     };
-    await alborIdbSet(ALBOR_IDB_KEY, payload);
+
+    var savedToSp = false;
+    var spErrMsg = "";
+    try {
+      showToast("Subiendo referencias a SharePoint para todo el equipo...", "success");
+      var up = await alborUploadRefsToSharePoint(payload);
+      payload._spEtag = up.eTag || nowIso;
+      savedToSp = true;
+    } catch (spErr) {
+      console.error("Error subiendo referencias a SharePoint:", spErr);
+      spErrMsg = spErr.message || String(spErr);
+      payload._localOnly = true;
+    }
+
+    try { await alborIdbSet(ALBOR_IDB_KEY, payload); } catch (e) {}
     ALBOR_STATE.isCustomRefs = true;
+    ALBOR_STATE.refsSource = savedToSp ? "sharepoint" : "local";
+    ALBOR_STATE.spEtag = savedToSp ? (payload._spEtag || null) : null;
     alborBuildRefIndexes(payload);
     alborUpdateRefBadge();
     alborPopulateStaticControls(true);
     alborRefreshAllComboStates();
-    showToast("Referencias actualizadas desde " + file.name, "success");
+
+    if (savedToSp) {
+      showToast("Referencias actualizadas en SharePoint para todo el equipo (" + file.name + ")", "success");
+    } else {
+      showToast("Guardado solo en este navegador (no se pudo subir a SharePoint: " + spErrMsg + ")", "error");
+    }
   } catch (err) {
     console.error(err);
     showToast("Error leyendo Referencias: " + err.message, "error");
@@ -4895,11 +5079,22 @@ async function importAlborRefsFromExcel(file) {
 }
 
 async function resetAlborRefsToDefault() {
-  await alborIdbDelete(ALBOR_IDB_KEY);
-  await loadAlborReferencias(true);
-  alborPopulateStaticControls(true);
-  alborRefreshAllComboStates();
-  showToast("Catálogo restaurado a la versión base del repositorio", "success");
+  var isShared = ALBOR_STATE.refsSource === "sharepoint";
+  var msg = isShared
+    ? "¿Restaurar el catálogo base del repositorio para todo el equipo? Se eliminará el archivo compartido en SharePoint."
+    : "¿Restaurar el catálogo base del repositorio en este navegador?";
+  if (!window.confirm(msg)) return;
+  try {
+    if (isShared) await alborDeleteRefsFromSharePoint();
+    await alborIdbDelete(ALBOR_IDB_KEY);
+    await loadAlborReferencias(true);
+    alborPopulateStaticControls(true);
+    alborRefreshAllComboStates();
+    showToast(isShared ? "Catálogo base restaurado para todo el equipo" : "Catálogo restaurado a la versión base", "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Error al restaurar: " + err.message, "error");
+  }
 }
 
 /* ── Validación accesible post-interacción (validate-input-after-interaction) ── */
@@ -5953,16 +6148,19 @@ function alborBindUiEventsOnce() {
 async function initAlborModule() {
   alborBindUiEventsOnce();
 
-  if (!ALBOR_STATE.refs) {
-    try {
-      await loadAlborReferencias(false);
-    } catch (e) {
-      console.error(e);
-      showToast("Error cargando catálogo Albor: " + e.message, "error");
-    }
+  var prevEtag = ALBOR_STATE.spEtag;
+  try {
+    await loadAlborReferencias(false);
+  } catch (e) {
+    console.error(e);
+    showToast("Error cargando catálogo Albor: " + e.message, "error");
   }
 
   if (ALBOR_STATE.initialized) {
+    if (ALBOR_STATE.spEtag !== prevEtag) {
+      alborPopulateStaticControls(true);
+      alborRefreshAllComboStates();
+    }
     renderAlborLote();
     return;
   }
